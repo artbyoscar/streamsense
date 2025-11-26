@@ -8,7 +8,11 @@
       "Bash(powershell:*)",
       "Bash(tree:*)",
       "Bash(mv:*)",
-      "Bash(npx expo start:*)"
+      "Bash(npx expo start:*)",
+      "Bash(findstr:*)",
+      "Bash(grep:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
