@@ -2,7 +2,7 @@ import { enableScreens } from 'react-native-screens';
 enableScreens(false);
 
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Text } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
@@ -18,6 +18,9 @@ import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
 import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/ThemeProvider';
+
+// Suppress Fragment warning (likely from third-party library)
+LogBox.ignoreLogs(['Invalid prop `index` supplied to `React.Fragment`']);
 
 const queryClient = new QueryClient();
 

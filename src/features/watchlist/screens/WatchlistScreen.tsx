@@ -260,13 +260,13 @@ export const WatchlistScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to content search
-    navigation.navigate('ContentSearch');
+    // Navigate to content search (RootStack level)
+    navigation.getParent()?.navigate('ContentSearch');
   };
 
   const handleBrowseTrending = () => {
-    // Navigate to content search
-    navigation.navigate('ContentSearch');
+    // Navigate to content search (RootStack level)
+    navigation.getParent()?.navigate('ContentSearch');
   };
 
   const handleUpgrade = () => {

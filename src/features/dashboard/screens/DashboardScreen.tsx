@@ -115,8 +115,8 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to subscription form
-    navigation.navigate('SubscriptionForm', {});
+    // Navigate to subscription form (RootStack level)
+    navigation.getParent()?.navigate('SubscriptionForm', {});
   };
 
   const handleUpgrade = () => {
@@ -145,8 +145,8 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    // Navigate to subscription form in edit mode
-    navigation.navigate('SubscriptionForm', { subscriptionId });
+    // Navigate to subscription form in edit mode (RootStack level)
+    navigation.getParent()?.navigate('SubscriptionForm', { subscriptionId });
   };
 
   const handleFindContent = () => {
