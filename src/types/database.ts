@@ -34,6 +34,8 @@ export interface Database {
           last_name: string | null;
           avatar_url: string | null;
           onboarding_completed: boolean;
+          is_premium: boolean;
+          premium_expires_at: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -44,6 +46,8 @@ export interface Database {
           last_name?: string | null;
           avatar_url?: string | null;
           onboarding_completed?: boolean;
+          is_premium?: boolean;
+          premium_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -54,6 +58,8 @@ export interface Database {
           last_name?: string | null;
           avatar_url?: string | null;
           onboarding_completed?: boolean;
+          is_premium?: boolean;
+          premium_expires_at?: string | null;
           created_at?: string;
           updated_at?: string;
         };

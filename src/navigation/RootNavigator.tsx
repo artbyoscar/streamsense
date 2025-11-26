@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useAuth } from '@/features/auth';
+import { useRevenueCat } from '@/hooks/useRevenueCat';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
 import { logger } from '@/utils';
@@ -14,6 +15,9 @@ import { logger } from '@/utils';
  */
 export const RootNavigator: React.FC = () => {
   const { isAuthenticated, isInitialized } = useAuth();
+
+  // Initialize RevenueCat when user is authenticated
+  useRevenueCat();
 
   // Show loading screen while initializing authentication
   if (!isInitialized) {
