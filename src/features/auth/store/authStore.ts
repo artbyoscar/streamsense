@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { supabase } from '@/config/supabase';
 import { logger } from '@/utils';
+import { setUserContext, clearUserContext, addBreadcrumb } from '@/services/sentry';
 import type {
   AuthState,
   LoginCredentials,
@@ -57,6 +58,14 @@ export const useAuthStore = create<AuthState>()(
             error: null,
           });
 
+          // Set Sentry user context if authenticated
+          if (session?.user) {
+            setUserContext({
+              id: session.user.id,
+              email: session.user.email,
+            });
+          }
+
           logger.info('[Auth] Authentication initialized', {
             authenticated: !!session,
             userId: session?.user?.id,
@@ -72,6 +81,21 @@ export const useAuthStore = create<AuthState>()(
               isAuthenticated: !!session,
               isLoading: false,
             });
+
+            // Update Sentry context
+            if (session?.user) {
+              setUserContext({
+                id: session.user.id,
+                email: session.user.email,
+              });
+              addBreadcrumb({
+                category: 'auth',
+                message: `Auth event: ${_event}`,
+                level: 'info',
+              });
+            } else {
+              clearUserContext();
+            }
           });
         } catch (error) {
           logger.error('[Auth] Initialization failed:', error);

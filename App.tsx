@@ -4,6 +4,10 @@ import { AppProviders } from './src/providers';
 import { RootNavigator } from './src/navigation';
 import { ErrorBoundary, ToastProvider, OfflineBanner } from './src/components';
 import { markAppStart } from './src/utils';
+import { initializeSentry } from './src/services/sentry';
+
+// Initialize Sentry as early as possible
+initializeSentry();
 
 /**
  * StreamSense App

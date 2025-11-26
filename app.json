@@ -30,7 +30,19 @@
       "tmdbApiKey": process.env.EXPO_PUBLIC_TMDB_API_KEY,
       "tmdbAccessToken": process.env.EXPO_PUBLIC_TMDB_ACCESS_TOKEN,
       "revenueCatIosApiKey": process.env.REVENUECAT_IOS_API_KEY,
-      "revenueCatAndroidApiKey": process.env.REVENUECAT_ANDROID_API_KEY
+      "revenueCatAndroidApiKey": process.env.REVENUECAT_ANDROID_API_KEY,
+      "sentryDsn": process.env.SENTRY_DSN
+    },
+    "hooks": {
+      "postPublish": [
+        {
+          "file": "sentry-expo/upload-sourcemaps",
+          "config": {
+            "organization": "your-org",
+            "project": "streamsense"
+          }
+        }
+      ]
     }
   }
 }

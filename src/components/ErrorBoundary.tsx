@@ -9,6 +9,7 @@ import { Text, Button as PaperButton } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from './theme';
 import { logError } from '@/utils';
+import { captureException } from '@/services/sentry';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -41,9 +42,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
+    // Log error locally
     logError(error, {
       component: 'ErrorBoundary',
       errorInfo: errorInfo.componentStack,
+    });
+
+    // Send to Sentry
+    captureException(error, {
+      component: 'ErrorBoundary',
+      componentStack: errorInfo.componentStack,
     });
 
     this.setState({
