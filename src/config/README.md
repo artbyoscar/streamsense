@@ -5,9 +5,11 @@ This directory contains all configuration files for StreamSense.
 ## Files
 
 ### [env.ts](env.ts)
+
 Environment variable loader with validation.
 
 **Usage:**
+
 ```typescript
 import { env, isFeatureEnabled, getSafeEnvInfo } from '@/config';
 
@@ -25,6 +27,7 @@ console.log('Environment:', getSafeEnvInfo());
 ```
 
 **Features:**
+
 - ✅ Type-safe configuration access
 - ✅ Automatic validation on app startup
 - ✅ Helpful error messages for missing variables
@@ -32,19 +35,20 @@ console.log('Environment:', getSafeEnvInfo());
 - ✅ Safe logging without sensitive data
 
 ### [supabase.ts](supabase.ts)
+
 Supabase client with secure storage.
 
 **Usage:**
+
 ```typescript
 import { supabase } from '@/config';
 
 // Use Supabase client
-const { data, error } = await supabase
-  .from('subscriptions')
-  .select('*');
+const { data, error } = await supabase.from('subscriptions').select('*');
 ```
 
 **Features:**
+
 - ✅ Expo SecureStore integration for auth tokens
 - ✅ Automatic token refresh
 - ✅ Session persistence
@@ -55,10 +59,12 @@ const { data, error } = await supabase
 See [../../ENV_CONFIG.md](../../ENV_CONFIG.md) for complete environment variable documentation.
 
 ### Required Variables
+
 - `EXPO_PUBLIC_SUPABASE_URL` - Your Supabase project URL
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY` - Your Supabase anonymous key
 
 ### Optional Variables
+
 - `EXPO_PUBLIC_PLAID_CLIENT_ID` - Plaid client ID (for bank integration)
 - `EXPO_PUBLIC_PLAID_SECRET` - Plaid secret key
 - `EXPO_PUBLIC_PLAID_ENV` - Plaid environment (sandbox/development/production)
@@ -69,6 +75,7 @@ See [../../ENV_CONFIG.md](../../ENV_CONFIG.md) for complete environment variable
 ## Examples
 
 ### Check if running in production
+
 ```typescript
 import { env } from '@/config';
 
@@ -78,6 +85,7 @@ if (env.app.env === 'production') {
 ```
 
 ### Conditional feature initialization
+
 ```typescript
 import { env, isFeatureEnabled } from '@/config';
 
@@ -89,6 +97,7 @@ if (isFeatureEnabled('plaid')) {
 ```
 
 ### Debug logging
+
 ```typescript
 import { env } from '@/config';
 
@@ -98,6 +107,7 @@ if (env.app.debug) {
 ```
 
 ### Safe environment logging
+
 ```typescript
 import { getSafeEnvInfo } from '@/config';
 
