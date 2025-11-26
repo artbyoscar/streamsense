@@ -65,11 +65,7 @@ function AppContent() {
 
   // Show main app if authenticated
   if (isAuthenticated) {
-    return (
-      <NavigationContainer theme={getNavigationTheme(isDark)}>
-        <MainNavigator />
-      </NavigationContainer>
-    );
+    return <MainNavigator />;
   }
 
   // Show auth flow if not authenticated
