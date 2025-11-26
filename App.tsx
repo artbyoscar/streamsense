@@ -1,33 +1,30 @@
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { AppProviders } from './src/providers';
-import { RootNavigator } from './src/navigation';
-import { ErrorBoundary, ToastProvider, OfflineBanner } from './src/components';
-import { markAppStart } from './src/utils';
-import { initializeSentry } from './src/services/sentry';
+import React from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-// Initialize Sentry as early as possible
-initializeSentry();
-
-/**
- * StreamSense App
- * Subscription tracking application with authentication and navigation
- */
 export default function App() {
-  useEffect(() => {
-    // Mark app startup for performance tracking
-    markAppStart();
-  }, []);
-
   return (
-    <ErrorBoundary>
-      <AppProviders>
-        <ToastProvider>
-          <StatusBar style="auto" />
-          <OfflineBanner />
-          <RootNavigator />
-        </ToastProvider>
-      </AppProviders>
-    </ErrorBoundary>
+    <View style={styles.container}>
+      <Text style={styles.text}>StreamSense Test</Text>
+      <Text style={styles.subtext}>If you see this, basic rendering works!</Text>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2563EB',
+  },
+  text: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  subtext: {
+    fontSize: 16,
+    color: 'white',
+    marginTop: 10,
+  },
+});
