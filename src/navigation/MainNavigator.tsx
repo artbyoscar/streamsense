@@ -15,6 +15,7 @@ import { DashboardScreen } from '@/features/dashboard';
 import { SubscriptionDetailScreen, SubscriptionFormScreen } from '@/features/subscriptions';
 import { WatchlistScreen, ContentSearchScreen } from '@/features/watchlist';
 import { RecommendationsScreen } from '@/features/recommendations';
+import { SettingsScreen } from '@/features/settings';
 
 // Services
 import { generateRecommendations } from '@/services/recommendations';
@@ -146,7 +147,7 @@ const RecommendationsStackNavigator: React.FC = () => {
 };
 
 /**
- * Settings Stack Navigator (Placeholder)
+ * Settings Stack Navigator
  */
 const SettingsStackNavigator: React.FC = () => {
   return (
@@ -163,27 +164,12 @@ const SettingsStackNavigator: React.FC = () => {
     >
       <SettingsStack.Screen
         name="Settings"
-        component={SettingsPlaceholderScreen}
+        component={SettingsScreen}
         options={{
           title: 'Settings',
         }}
       />
     </SettingsStack.Navigator>
-  );
-};
-
-/**
- * Settings Placeholder Screen
- */
-const SettingsPlaceholderScreen: React.FC = () => {
-  return (
-    <View style={styles.placeholderContainer}>
-      <MaterialCommunityIcons name="cog" size={64} color={COLORS.gray} />
-      <Text style={styles.placeholderTitle}>Settings</Text>
-      <Text style={styles.placeholderSubtitle}>
-        Manage your account, preferences, and app settings
-      </Text>
-    </View>
   );
 };
 
@@ -348,25 +334,6 @@ export const MainNavigator: React.FC = () => {
 // ============================================================================
 
 const styles = StyleSheet.create({
-  placeholderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-    backgroundColor: COLORS.background,
-  },
-  placeholderTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  placeholderSubtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-  },
   badge: {
     position: 'absolute',
     right: -6,
