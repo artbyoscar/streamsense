@@ -23,6 +23,7 @@ import { useWatchlistStore } from '@/features/watchlist';
 import { generateRecommendations } from '@/services/recommendations';
 import { getPosterUrl } from '@/services/tmdb';
 import { syncAllPlaidItems } from '@/services/plaid';
+import { isFeatureEnabled } from '@/config/env';
 import { COLORS, EmptyState, LoadingScreen, Card, PaywallModal } from '@/components';
 import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import { SubscriptionListItem } from '../components/SubscriptionListItem';
@@ -89,8 +90,10 @@ export const DashboardScreen: React.FC = () => {
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
     try {
-      // Sync transactions from Plaid
-      await syncAllPlaidItems();
+      // Sync transactions from Plaid (only if configured)
+      if (isFeatureEnabled('plaid')) {
+        await syncAllPlaidItems();
+      }
 
       // Refetch subscriptions
       await refetch();
