@@ -9,22 +9,60 @@ The premium feature provides:
 - **Automatic Syncing**: Subscription status syncs with Supabase user profiles
 - **Cross-Platform**: Works on both iOS and Android
 - **Restore Purchases**: Users can restore previous purchases
+- **Two Screen Options**: Comprehensive PremiumScreen and focused UpgradeScreen
 
 ## Architecture
 
 ```
 src/features/premium/
+├── screens/
+│   ├── PremiumScreen.tsx      # Full-featured premium screen
+│   └── UpgradeScreen.tsx      # Focused upgrade screen
 ├── store/
-│   └── premiumStore.ts       # Zustand store for premium state
-├── index.ts                   # Feature exports
-└── README.md                  # This file
+│   └── premiumStore.ts        # Zustand store for premium state
+├── index.ts                    # Feature exports
+└── README.md                   # This file
 
 src/services/
-└── purchases.ts               # RevenueCat service wrapper
+└── purchases.ts                # RevenueCat service wrapper
 
 src/hooks/
-└── useRevenueCat.ts          # Hook for initializing RevenueCat
+└── useRevenueCat.ts           # Hook for initializing RevenueCat
 ```
+
+## Screens
+
+### UpgradeScreen
+**Purpose**: Marketing-focused screen to convert free users to premium
+
+**Features**:
+- Hero section with crown icon and compelling headline
+- Premium benefits showcase with icons:
+  - Unlimited Subscriptions
+  - Advanced Analytics
+  - Priority Support
+  - Ad-Free Experience
+- Pricing cards for Monthly ($4.99/mo) and Annual ($47.99/year)
+- Annual savings badge showing 20% savings ($11.89)
+- "Best Value" badge on annual plan
+- Large "Start Premium" CTA button
+- Restore purchases link
+- Terms of Service and Privacy Policy links
+
+**Use Case**: First-time upgrade prompts, paywall, onboarding upsell
+
+### PremiumScreen
+**Purpose**: Comprehensive subscription management screen
+
+**Features**:
+- All features from UpgradeScreen
+- Full offerings display from RevenueCat
+- Premium member status view
+- Subscription details (expiration, plan type)
+- Package cards for all available offerings
+- Detailed feature list
+
+**Use Case**: Settings menu, full subscription management
 
 ## Setup
 
@@ -61,6 +99,37 @@ This adds:
 5. Link products to the `premium` entitlement in RevenueCat
 
 ## Usage
+
+### Show Upgrade Screen
+
+Use the `UpgradeScreen` for focused conversion flows:
+
+```typescript
+import { UpgradeScreen } from '@/features/premium';
+
+function PaywallScreen() {
+  return <UpgradeScreen />;
+}
+
+// Or in navigation
+navigation.navigate('Upgrade');
+```
+
+### Show Full Premium Screen
+
+Use the `PremiumScreen` for comprehensive subscription management:
+
+```typescript
+import { PremiumScreen } from '@/features/premium';
+
+function SettingsScreen() {
+  return (
+    <View>
+      <PremiumScreen />
+    </View>
+  );
+}
+```
 
 ### Initialize RevenueCat
 

@@ -4,6 +4,7 @@
 
 // Screens
 export { PremiumScreen } from './screens/PremiumScreen';
+export { UpgradeScreen } from './screens/UpgradeScreen';
 
 // Store
 export {
