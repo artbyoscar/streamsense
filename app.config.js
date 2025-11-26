@@ -18,9 +18,7 @@ export default {
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
-      },
-      edgeToEdgeEnabled: true,
-      predictiveBackGestureEnabled: false
+      }
     },
     web: {
       favicon: "./assets/favicon.png"
