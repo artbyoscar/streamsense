@@ -1,0 +1,117 @@
+/**
+ * Card Component
+ * Container card with shadow and optional header
+ */
+
+import React from 'react';
+import { StyleSheet, View, ViewStyle } from 'react-native';
+import { Card as PaperCard, Text } from 'react-native-paper';
+
+// Color scheme
+const COLORS = {
+  white: '#FFFFFF',
+  gray: '#6B7280',
+  darkGray: '#374151',
+  lightGray: '#F9FAFB',
+  border: '#E5E7EB',
+};
+
+export interface CardProps {
+  children: React.ReactNode;
+  title?: string;
+  subtitle?: string;
+  headerRight?: React.ReactNode;
+  onPress?: () => void;
+  style?: ViewStyle;
+  elevation?: number;
+  testID?: string;
+}
+
+export const Card: React.FC<CardProps> = ({
+  children,
+  title,
+  subtitle,
+  headerRight,
+  onPress,
+  style,
+  elevation = 2,
+  testID,
+}) => {
+  const hasHeader = title || subtitle || headerRight;
+
+  const CardContent = (
+    <>
+      {hasHeader && (
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            {title && <Text style={styles.title}>{title}</Text>}
+            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+          </View>
+          {headerRight && <View style={styles.headerRight}>{headerRight}</View>}
+        </View>
+      )}
+      <PaperCard.Content style={hasHeader && styles.contentWithHeader}>
+        {children}
+      </PaperCard.Content>
+    </>
+  );
+
+  if (onPress) {
+    return (
+      <PaperCard
+        style={[styles.card, style]}
+        elevation={elevation}
+        onPress={onPress}
+        testID={testID}
+      >
+        {CardContent}
+      </PaperCard>
+    );
+  }
+
+  return (
+    <PaperCard style={[styles.card, style]} elevation={elevation} testID={testID}>
+      {CardContent}
+    </PaperCard>
+  );
+};
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: COLORS.white,
+    borderRadius: 12,
+    marginVertical: 6,
+    marginHorizontal: 0,
+    overflow: 'hidden',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  headerRight: {
+    marginLeft: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  contentWithHeader: {
+    paddingTop: 16,
+  },
+});
