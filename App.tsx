@@ -12,6 +12,7 @@ import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
 import Constants from 'expo-constants';
+import { supabase } from './src/config/supabase';
 
 const queryClient = new QueryClient();
 
@@ -56,12 +57,31 @@ function AppContent() {
     console.log('[App] Checking Supabase config...');
     const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL;
     const supabaseKey = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    console.log('[App] Supabase URL:', supabaseUrl ? 'SET' : 'NOT SET');
-    console.log('[App] Supabase Anon Key:', supabaseKey ? 'SET' : 'NOT SET');
+    console.log('[App] Supabase URL from extra:', supabaseUrl);
+    console.log('[App] Supabase Anon Key:', supabaseKey ? 'SET (length: ' + supabaseKey.length + ')' : 'NOT SET');
+
+    // Also check process.env directly
+    console.log('[App] process.env.EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
+
+    // Test Supabase connection
+    const testConnection = async () => {
+      try {
+        console.log('[App] Testing Supabase connection...');
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('[App] Supabase connection error:', error.message);
+        } else {
+          console.log('[App] Supabase connection successful!');
+        }
+      } catch (e: any) {
+        console.error('[App] Supabase connection failed:', e.message || e);
+      }
+    };
 
     console.log('[App] Starting auth initialization...');
     initialize().then(() => {
       console.log('[App] Auth initialization completed');
+      testConnection();
     });
   }, [initialize]);
 
