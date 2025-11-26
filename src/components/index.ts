@@ -19,6 +19,8 @@ export type { LoadingScreenProps } from './LoadingScreen';
 export { EmptyState } from './EmptyState';
 export type { EmptyStateProps } from './EmptyState';
 
+export { PaywallModal } from './PaywallModal';
+
 export { ErrorBoundary } from './ErrorBoundary';
 
 // Color Scheme Constants

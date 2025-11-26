@@ -18,7 +18,8 @@ import type { DashboardStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionsData, formatCurrency } from '@/features/subscriptions';
 import { syncAllPlaidItems } from '@/services/plaid';
-import { COLORS, EmptyState, LoadingScreen, Card } from '@/components';
+import { COLORS, EmptyState, LoadingScreen, Card, PaywallModal } from '@/components';
+import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import { SubscriptionListItem } from '../components/SubscriptionListItem';
 import { QuickActionsCard } from '../components/QuickActionsCard';
 import { SuggestionsAlert } from '../components/SuggestionsAlert';
@@ -29,6 +30,10 @@ export const DashboardScreen: React.FC = () => {
   const navigation = useNavigation<DashboardNavigationProp>();
   const user = useAuthStore((state) => state.user);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  // Premium feature check
+  const { canAddSubscription, isPremium } = usePremiumFeature();
 
   const {
     subscriptions,
@@ -60,7 +65,24 @@ export const DashboardScreen: React.FC = () => {
 
   // Navigation handlers
   const handleAddSubscription = () => {
+    // Check if user can add more subscriptions
+    const check = canAddSubscription(totalActive);
+
+    if (!check.allowed) {
+      // Show paywall if limit reached
+      setShowPaywall(true);
+      return;
+    }
+
+    // Proceed to add subscription
     navigation.navigate('SubscriptionForm', {});
+  };
+
+  const handleUpgrade = () => {
+    setShowPaywall(false);
+    // Navigate to upgrade screen
+    // @ts-ignore - Navigation to different tab
+    navigation.getParent()?.navigate('SettingsTab');
   };
 
   const handleConnectBank = () => {
@@ -253,6 +275,16 @@ export const DashboardScreen: React.FC = () => {
         {/* Bottom Padding */}
         <View style={styles.bottomPadding} />
       </View>
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onUpgrade={handleUpgrade}
+        feature="subscriptions"
+        limit={3}
+        current={totalActive}
+      />
     </ScrollView>
   );
 };

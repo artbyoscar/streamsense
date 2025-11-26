@@ -21,7 +21,8 @@ import type { WatchlistStackParamList } from '@/navigation/types';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useWatchlistStore, SortOption, FilterOption } from '../store/watchlistStore';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
-import { COLORS, Card, LoadingScreen, EmptyState } from '@/components';
+import { COLORS, Card, LoadingScreen, EmptyState, PaywallModal } from '@/components';
+import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import type { WatchlistItem, WatchlistPriority } from '@/types';
 
 type WatchlistNavigationProp = StackNavigationProp<WatchlistStackParamList, 'Watchlist'>;
@@ -179,6 +180,10 @@ const SwipeableWatchlistItem: React.FC<SwipeableWatchlistItemProps> = ({
 export const WatchlistScreen: React.FC = () => {
   const navigation = useNavigation<WatchlistNavigationProp>();
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
+
+  // Premium feature check
+  const { canAddWatchlistItem, isPremium } = usePremiumFeature();
 
   const {
     isLoading,
@@ -243,11 +248,28 @@ export const WatchlistScreen: React.FC = () => {
   };
 
   const handleAddContent = () => {
+    // Check if user can add more watchlist items
+    const check = canAddWatchlistItem(watchlist.length);
+
+    if (!check.allowed) {
+      // Show paywall if limit reached
+      setShowPaywall(true);
+      return;
+    }
+
+    // Proceed to add content
     navigation.navigate('ContentSearch');
   };
 
   const handleBrowseTrending = () => {
     navigation.navigate('ContentSearch');
+  };
+
+  const handleUpgrade = () => {
+    setShowPaywall(false);
+    // Navigate to upgrade screen (in settings tab or dedicated upgrade screen)
+    // @ts-ignore - Navigation to different tab
+    navigation.getParent()?.getParent()?.navigate('SettingsTab');
   };
 
   // Get current sort label
@@ -437,6 +459,16 @@ export const WatchlistScreen: React.FC = () => {
 
       {/* FAB */}
       <FAB icon="plus" style={styles.fab} onPress={handleAddContent} />
+
+      {/* Paywall Modal */}
+      <PaywallModal
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onUpgrade={handleUpgrade}
+        feature="watchlist"
+        limit={10}
+        current={watchlist.length}
+      />
     </View>
   );
 };
