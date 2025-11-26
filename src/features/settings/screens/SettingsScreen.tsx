@@ -432,7 +432,7 @@ export const SettingsScreen: React.FC = () => {
               icon="test-tube"
               title="Test Features"
               subtitle="Test error handling, performance, and Sentry"
-              onPress={() => navigation.navigate('Test')}
+              onPress={() => Alert.alert('Test Features', 'Test features coming soon!')}
             />
           </Card>
         </>

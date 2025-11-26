@@ -119,7 +119,8 @@ export const SubscriptionDetailScreen: React.FC = () => {
 
   // Handle edit
   const handleEdit = () => {
-    navigation.navigate('SubscriptionForm', { subscriptionId });
+    // TODO: Implement subscription form as modal/dialog
+    Alert.alert('Edit Subscription', 'Edit form coming soon!');
   };
 
   // Handle pause/resume tracking

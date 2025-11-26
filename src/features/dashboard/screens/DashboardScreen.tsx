@@ -10,6 +10,7 @@ import {
   ScrollView,
   RefreshControl,
   Image,
+  Alert,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -74,8 +75,8 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // Proceed to add subscription
-    navigation.navigate('SubscriptionForm', {});
+    // TODO: Implement subscription form as modal/dialog
+    Alert.alert('Add Subscription', 'Subscription form coming soon!');
   };
 
   const handleUpgrade = () => {
@@ -104,7 +105,8 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    navigation.navigate('SubscriptionDetail', { subscriptionId });
+    // TODO: Implement subscription detail as modal/dialog
+    Alert.alert('Subscription Details', `Viewing subscription ${subscriptionId}`);
   };
 
   // Get greeting based on time of day

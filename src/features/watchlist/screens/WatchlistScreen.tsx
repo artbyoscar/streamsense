@@ -214,8 +214,11 @@ export const WatchlistScreen: React.FC = () => {
 
   // Handlers
   const handleItemPress = (item: WatchlistItem) => {
-    // ContentDetail screen not yet implemented, navigate to search for now
-    navigation.navigate('ContentSearch');
+    // TODO: Implement content detail as modal/dialog
+    Alert.alert(
+      'Content Details',
+      `Viewing details for "${item.content?.title}"\n\nContent detail view coming soon!`
+    );
   };
 
   const handleMarkWatched = async (item: WatchlistItem) => {
@@ -257,12 +260,13 @@ export const WatchlistScreen: React.FC = () => {
       return;
     }
 
-    // Proceed to add content
-    navigation.navigate('ContentSearch');
+    // TODO: Implement content search as modal/dialog
+    Alert.alert('Add to Watchlist', 'Content search coming soon!');
   };
 
   const handleBrowseTrending = () => {
-    navigation.navigate('ContentSearch');
+    // TODO: Implement content search as modal/dialog
+    Alert.alert('Browse Trending', 'Content search coming soon!');
   };
 
   const handleUpgrade = () => {
