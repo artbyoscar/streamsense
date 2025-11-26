@@ -7,6 +7,8 @@ import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
+import { ToastProvider } from './src/components/Toast';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -22,14 +24,18 @@ const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <PaperProvider theme={theme}>
-        <NavigationContainer>
-          <Tab.Navigator screenOptions={{ headerShown: false }}>
-            <Tab.Screen name="Login" component={LoginScreen} />
-          </Tab.Navigator>
-        </NavigationContainer>
-      </PaperProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <PaperProvider theme={theme}>
+          <ToastProvider>
+            <NavigationContainer>
+              <Tab.Navigator screenOptions={{ headerShown: false }}>
+                <Tab.Screen name="Login" component={LoginScreen} />
+              </Tab.Navigator>
+            </NavigationContainer>
+          </ToastProvider>
+        </PaperProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
