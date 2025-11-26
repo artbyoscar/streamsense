@@ -3,7 +3,7 @@
  * API calls for subscription management
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import type {
   UserSubscription,
   UserSubscriptionInsert,

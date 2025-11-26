@@ -13,7 +13,7 @@ import { PlaidConnectionOnboardingScreen } from './PlaidConnectionOnboardingScre
 import { SubscriptionReviewScreen } from './SubscriptionReviewScreen';
 import { FirstInsightsScreen } from './FirstInsightsScreen';
 import { useAuth } from '@/features/auth';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 
 // ============================================================================
 // TYPES

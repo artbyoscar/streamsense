@@ -3,7 +3,7 @@
  * Client-side functions for Plaid Link integration
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import type {
   CreateLinkTokenResponse,
   ExchangePublicTokenResponse,

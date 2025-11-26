@@ -7,7 +7,7 @@ import { useRevenueCat } from '@/hooks/useRevenueCat';
 import { AuthNavigator } from './AuthNavigator';
 import { MainNavigator } from './MainNavigator';
 import { OnboardingNavigator } from '@/features/onboarding';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import { logger } from '@/utils';
 
 /**

@@ -3,7 +3,7 @@
  * API calls for watchlist management
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
 
 // ============================================================================

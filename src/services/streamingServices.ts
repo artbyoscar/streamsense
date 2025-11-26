@@ -3,7 +3,7 @@
  * Fetch streaming services from database
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import type { StreamingService } from '@/types';
 
 /**

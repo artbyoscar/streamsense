@@ -4,7 +4,7 @@
  * Tier 1 AI - No API costs, pure business logic
  */
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/config/supabase';
 import type {
   UserSubscription,
   WatchlistItem,

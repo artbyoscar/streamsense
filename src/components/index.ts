@@ -40,17 +40,4 @@ export type { ToastType, ToastOptions } from './Toast';
 export { OfflineBanner } from './OfflineBanner';
 
 // Color Scheme Constants
-export const COLORS = {
-  primary: '#2563EB',
-  success: '#10B981',
-  error: '#EF4444',
-  warning: '#F59E0B',
-  info: '#3B82F6',
-  white: '#FFFFFF',
-  black: '#000000',
-  gray: '#6B7280',
-  lightGray: '#E5E7EB',
-  darkGray: '#374151',
-  background: '#F9FAFB',
-  border: '#E5E7EB',
-} as const;
+export * from './theme';
