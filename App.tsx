@@ -9,7 +9,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
-import { useAuthStore } from './src/stores/authStore';
+import { useAuthStore } from './src/features/auth/store/authStore';
 
 const queryClient = new QueryClient();
 
@@ -25,10 +25,23 @@ const Tab = createBottomTabNavigator();
 
 function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
+  const isLoading = useAuthStore((state) => state.isLoading);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
-    initialize();
+    console.log('[App] Starting auth initialization...');
+    console.log('[App] Before init - isLoading:', isLoading, 'isInitialized:', isInitialized);
+
+    initialize().then(() => {
+      console.log('[App] Auth initialization completed');
+      const state = useAuthStore.getState();
+      console.log('[App] After init - isLoading:', state.isLoading, 'isInitialized:', state.isInitialized);
+    }).catch((error) => {
+      console.error('[App] Auth initialization failed:', error);
+    });
   }, [initialize]);
+
+  console.log('[App] Rendering - isLoading:', isLoading, 'isInitialized:', isInitialized);
 
   return (
     <NavigationContainer>
