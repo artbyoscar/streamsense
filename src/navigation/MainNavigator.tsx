@@ -1,142 +1,389 @@
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import type { MainTabParamList } from './types';
-
-const Tab = createBottomTabNavigator<MainTabParamList>();
-
 /**
  * Main Tab Navigator
- * Bottom tab navigation for authenticated users
+ * Bottom tab navigation with stack navigators for each tab
  */
+
+import React, { useState, useEffect } from 'react';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Text } from 'react-native-paper';
+
+// Screens
+import { DashboardScreen } from '@/features/dashboard';
+import { SubscriptionDetailScreen, SubscriptionFormScreen } from '@/features/subscriptions';
+import { WatchlistScreen, ContentSearchScreen } from '@/features/watchlist';
+import { RecommendationsScreen } from '@/features/recommendations';
+
+// Services
+import { generateRecommendations } from '@/services/recommendations';
+import { useSubscriptionsStore } from '@/features/subscriptions';
+
+// Types
+import type {
+  MainTabParamList,
+  DashboardStackParamList,
+  WatchlistStackParamList,
+  RecommendationsStackParamList,
+  SettingsStackParamList,
+} from './types';
+
+// Colors
+import { COLORS } from '@/components';
+
+const Tab = createBottomTabNavigator<MainTabParamList>();
+const DashboardStack = createStackNavigator<DashboardStackParamList>();
+const WatchlistStack = createStackNavigator<WatchlistStackParamList>();
+const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>();
+const SettingsStack = createStackNavigator<SettingsStackParamList>();
+
+// ============================================================================
+// STACK NAVIGATORS
+// ============================================================================
+
+/**
+ * Dashboard Stack Navigator
+ */
+const DashboardStackNavigator: React.FC = () => {
+  return (
+    <DashboardStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
+      <DashboardStack.Screen
+        name="Dashboard"
+        component={DashboardScreen}
+        options={{ headerShown: false }}
+      />
+      <DashboardStack.Screen
+        name="SubscriptionDetail"
+        component={SubscriptionDetailScreen}
+        options={{
+          title: 'Subscription Details',
+          headerBackTitle: 'Back',
+        }}
+      />
+      <DashboardStack.Screen
+        name="SubscriptionForm"
+        component={SubscriptionFormScreen}
+        options={({ route }) => ({
+          title: route.params?.subscriptionId ? 'Edit Subscription' : 'Add Subscription',
+          headerBackTitle: 'Back',
+        })}
+      />
+    </DashboardStack.Navigator>
+  );
+};
+
+/**
+ * Watchlist Stack Navigator
+ */
+const WatchlistStackNavigator: React.FC = () => {
+  return (
+    <WatchlistStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
+      <WatchlistStack.Screen
+        name="Watchlist"
+        component={WatchlistScreen}
+        options={{
+          title: 'My Watchlist',
+        }}
+      />
+      <WatchlistStack.Screen
+        name="ContentSearch"
+        component={ContentSearchScreen}
+        options={{
+          title: 'Search Content',
+          headerBackTitle: 'Back',
+        }}
+      />
+    </WatchlistStack.Navigator>
+  );
+};
+
+/**
+ * Recommendations Stack Navigator
+ */
+const RecommendationsStackNavigator: React.FC = () => {
+  return (
+    <RecommendationsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
+      <RecommendationsStack.Screen
+        name="Recommendations"
+        component={RecommendationsScreen}
+        options={{
+          title: 'Recommendations',
+        }}
+      />
+    </RecommendationsStack.Navigator>
+  );
+};
+
+/**
+ * Settings Stack Navigator (Placeholder)
+ */
+const SettingsStackNavigator: React.FC = () => {
+  return (
+    <SettingsStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: COLORS.primary,
+        },
+        headerTintColor: COLORS.white,
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
+      <SettingsStack.Screen
+        name="Settings"
+        component={SettingsPlaceholderScreen}
+        options={{
+          title: 'Settings',
+        }}
+      />
+    </SettingsStack.Navigator>
+  );
+};
+
+/**
+ * Settings Placeholder Screen
+ */
+const SettingsPlaceholderScreen: React.FC = () => {
+  return (
+    <View style={styles.placeholderContainer}>
+      <MaterialCommunityIcons name="cog" size={64} color={COLORS.gray} />
+      <Text style={styles.placeholderTitle}>Settings</Text>
+      <Text style={styles.placeholderSubtitle}>
+        Manage your account, preferences, and app settings
+      </Text>
+    </View>
+  );
+};
+
+// ============================================================================
+// CUSTOM TAB BAR BADGE
+// ============================================================================
+
+/**
+ * Custom badge component with animation
+ */
+interface TabBarBadgeProps {
+  count: number;
+}
+
+const TabBarBadge: React.FC<TabBarBadgeProps> = ({ count }) => {
+  const [scale] = useState(new Animated.Value(0));
+
+  useEffect(() => {
+    if (count > 0) {
+      Animated.spring(scale, {
+        toValue: 1,
+        friction: 3,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      scale.setValue(0);
+    }
+  }, [count]);
+
+  if (count === 0) return null;
+
+  return (
+    <Animated.View
+      style={[
+        styles.badge,
+        {
+          transform: [{ scale }],
+        },
+      ]}
+    >
+      <Text style={styles.badgeText}>{count > 9 ? '9+' : count}</Text>
+    </Animated.View>
+  );
+};
+
+// ============================================================================
+// MAIN TAB NAVIGATOR
+// ============================================================================
+
 export const MainNavigator: React.FC = () => {
-  const theme = useTheme();
+  const [recommendationCount, setRecommendationCount] = useState(0);
+  const subscriptions = useSubscriptionsStore((state) => state.subscriptions);
+
+  // Load recommendation count
+  useEffect(() => {
+    const loadRecommendationCount = async () => {
+      try {
+        const recs = await generateRecommendations(subscriptions);
+        setRecommendationCount(recs.length);
+      } catch (error) {
+        console.error('Error loading recommendations:', error);
+      }
+    };
+
+    if (subscriptions.length > 0) {
+      loadRecommendationCount();
+    }
+  }, [subscriptions]);
 
   return (
     <Tab.Navigator
       screenOptions={{
-        headerStyle: {
-          backgroundColor: theme.colors.primary,
-        },
-        headerTintColor: '#FFFFFF',
-        tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: 'gray',
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: COLORS.gray,
         tabBarStyle: {
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 65,
+          borderTopWidth: 1,
+          borderTopColor: COLORS.lightGray,
+          backgroundColor: COLORS.white,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: '600',
+        },
+        tabBarItemStyle: {
+          paddingVertical: 4,
         },
       }}
     >
       <Tab.Screen
-        name="Dashboard"
-        component={DashboardScreen}
+        name="DashboardTab"
+        component={DashboardStackNavigator}
         options={{
-          title: 'Dashboard',
-          tabBarIcon: ({ color, size }) => <Icon name="view-dashboard" color={color} size={size} />,
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'home' : 'home-outline'}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
+
       <Tab.Screen
-        name="Subscriptions"
-        component={SubscriptionsScreen}
+        name="WatchlistTab"
+        component={WatchlistStackNavigator}
         options={{
-          title: 'Subscriptions',
-          tabBarIcon: ({ color, size }) => <Icon name="credit-card" color={color} size={size} />,
+          tabBarLabel: 'Watchlist',
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'bookmark' : 'bookmark-outline'}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
+
       <Tab.Screen
-        name="Analytics"
-        component={AnalyticsScreen}
+        name="RecommendationsTab"
+        component={RecommendationsStackNavigator}
         options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, size }) => <Icon name="chart-line" color={color} size={size} />,
+          tabBarLabel: 'Tips',
+          tabBarIcon: ({ color, size, focused }) => (
+            <View>
+              <MaterialCommunityIcons
+                name={focused ? 'lightbulb-on' : 'lightbulb-on-outline'}
+                color={color}
+                size={size}
+              />
+              {recommendationCount > 0 && <TabBarBadge count={recommendationCount} />}
+            </View>
+          ),
         }}
       />
+
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="SettingsTab"
+        component={SettingsStackNavigator}
         options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => <Icon name="account" color={color} size={size} />,
+          tabBarLabel: 'Settings',
+          tabBarIcon: ({ color, size, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'cog' : 'cog-outline'}
+              color={color}
+              size={size}
+            />
+          ),
         }}
       />
     </Tab.Navigator>
   );
 };
 
-/**
- * Placeholder Screens
- * TODO: Implement full screens for each tab
- */
-
-const DashboardScreen: React.FC = () => {
-  return (
-    <View style={styles.container}>
-      <Text variant="displaySmall" style={styles.title}>
-        Dashboard
-      </Text>
-      <Text variant="bodyLarge" style={styles.subtitle}>
-        Overview of your subscriptions
-      </Text>
-    </View>
-  );
-};
-
-const SubscriptionsScreen: React.FC = () => {
-  return (
-    <View style={styles.container}>
-      <Text variant="displaySmall" style={styles.title}>
-        Subscriptions
-      </Text>
-      <Text variant="bodyLarge" style={styles.subtitle}>
-        Manage your subscriptions
-      </Text>
-    </View>
-  );
-};
-
-const AnalyticsScreen: React.FC = () => {
-  return (
-    <View style={styles.container}>
-      <Text variant="displaySmall" style={styles.title}>
-        Analytics
-      </Text>
-      <Text variant="bodyLarge" style={styles.subtitle}>
-        View your spending insights
-      </Text>
-    </View>
-  );
-};
-
-const ProfileScreen: React.FC = () => {
-  return (
-    <View style={styles.container}>
-      <Text variant="displaySmall" style={styles.title}>
-        Profile
-      </Text>
-      <Text variant="bodyLarge" style={styles.subtitle}>
-        Manage your account settings
-      </Text>
-    </View>
-  );
-};
+// ============================================================================
+// STYLES
+// ============================================================================
 
 const styles = StyleSheet.create({
-  container: {
+  placeholderContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
+    padding: 40,
+    backgroundColor: COLORS.background,
   },
-  title: {
-    fontWeight: 'bold',
+  placeholderTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+    marginTop: 16,
     marginBottom: 8,
+  },
+  placeholderSubtitle: {
+    fontSize: 14,
+    color: COLORS.gray,
     textAlign: 'center',
   },
-  subtitle: {
-    opacity: 0.7,
-    textAlign: 'center',
+  badge: {
+    position: 'absolute',
+    right: -6,
+    top: -4,
+    backgroundColor: COLORS.error,
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: COLORS.white,
+  },
+  badgeText: {
+    color: COLORS.white,
+    fontSize: 10,
+    fontWeight: '700',
   },
 });

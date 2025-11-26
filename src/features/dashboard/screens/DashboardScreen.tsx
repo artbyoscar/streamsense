@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { DashboardStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/store/authStore';
 import { useSubscriptionsData, formatCurrency } from '@/features/subscriptions';
 import { syncAllPlaidItems } from '@/services/plaid';
@@ -21,8 +23,10 @@ import { SubscriptionListItem } from '../components/SubscriptionListItem';
 import { QuickActionsCard } from '../components/QuickActionsCard';
 import { SuggestionsAlert } from '../components/SuggestionsAlert';
 
+type DashboardNavigationProp = StackNavigationProp<DashboardStackParamList, 'Dashboard'>;
+
 export const DashboardScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<DashboardNavigationProp>();
   const user = useAuthStore((state) => state.user);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -56,28 +60,29 @@ export const DashboardScreen: React.FC = () => {
 
   // Navigation handlers
   const handleAddSubscription = () => {
-    // TODO: Navigate to add subscription screen
-    console.log('Navigate to add subscription');
+    navigation.navigate('SubscriptionForm', {});
   };
 
   const handleConnectBank = () => {
-    // TODO: Navigate to Plaid connection screen
-    console.log('Navigate to connect bank');
+    // Navigate to settings tab for Plaid connection
+    // @ts-ignore - Navigation to different tab
+    navigation.getParent()?.navigate('SettingsTab');
   };
 
   const handleViewRecommendations = () => {
-    // TODO: Navigate to recommendations screen
-    console.log('Navigate to recommendations');
+    // Navigate to recommendations tab
+    // @ts-ignore - Navigation to different tab
+    navigation.getParent()?.navigate('RecommendationsTab');
   };
 
   const handleViewSuggestions = () => {
-    // TODO: Navigate to suggestions review screen
-    console.log('Navigate to suggestions');
+    // Navigate to recommendations tab (same as recommendations for now)
+    // @ts-ignore - Navigation to different tab
+    navigation.getParent()?.navigate('RecommendationsTab');
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    // TODO: Navigate to subscription details
-    console.log('Navigate to subscription details:', subscriptionId);
+    navigation.navigate('SubscriptionDetail', { subscriptionId });
   };
 
   // Get greeting based on time of day

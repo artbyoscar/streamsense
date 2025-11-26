@@ -16,11 +16,15 @@ import {
 import { Text, FAB, Menu, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { WatchlistStackParamList } from '@/navigation/types';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useWatchlistStore, SortOption, FilterOption } from '../store/watchlistStore';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { COLORS, Card, LoadingScreen, EmptyState } from '@/components';
 import type { WatchlistItem, WatchlistPriority } from '@/types';
+
+type WatchlistNavigationProp = StackNavigationProp<WatchlistStackParamList, 'Watchlist'>;
 
 // ============================================================================
 // CONSTANTS
@@ -173,7 +177,7 @@ const SwipeableWatchlistItem: React.FC<SwipeableWatchlistItemProps> = ({
 // ============================================================================
 
 export const WatchlistScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<WatchlistNavigationProp>();
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
 
   const {
@@ -205,8 +209,8 @@ export const WatchlistScreen: React.FC = () => {
 
   // Handlers
   const handleItemPress = (item: WatchlistItem) => {
-    // TODO: Navigate to content detail
-    console.log('View content:', item.content_id);
+    // ContentDetail screen not yet implemented, navigate to search for now
+    navigation.navigate('ContentSearch');
   };
 
   const handleMarkWatched = async (item: WatchlistItem) => {
@@ -239,13 +243,11 @@ export const WatchlistScreen: React.FC = () => {
   };
 
   const handleAddContent = () => {
-    // TODO: Navigate to content search
-    console.log('Navigate to content search');
+    navigation.navigate('ContentSearch');
   };
 
   const handleBrowseTrending = () => {
-    // TODO: Navigate to content search with trending
-    console.log('Navigate to trending content');
+    navigation.navigate('ContentSearch');
   };
 
   // Get current sort label

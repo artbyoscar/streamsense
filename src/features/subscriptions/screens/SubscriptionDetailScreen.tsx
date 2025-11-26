@@ -15,10 +15,14 @@ import {
 import { Text, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { DashboardStackParamList } from '@/navigation/types';
 import { useSubscription, useUpdateSubscription, useDeleteSubscription } from '../hooks/useSubscriptions';
 import { formatCurrency } from '../store/subscriptionsStore';
 import { COLORS, Card, LoadingScreen, Button } from '@/components';
 import type { BillingCycle, SubscriptionStatus } from '@/types';
+
+type SubscriptionDetailNavigationProp = StackNavigationProp<DashboardStackParamList, 'SubscriptionDetail'>;
 
 // Service icon mapping
 const SERVICE_ICONS: Record<string, string> = {
@@ -77,7 +81,7 @@ type RouteParams = {
 };
 
 export const SubscriptionDetailScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<SubscriptionDetailNavigationProp>();
   const route = useRoute<RouteProp<RouteParams, 'SubscriptionDetail'>>();
   const { subscriptionId } = route.params;
 
@@ -115,8 +119,7 @@ export const SubscriptionDetailScreen: React.FC = () => {
 
   // Handle edit
   const handleEdit = () => {
-    // TODO: Navigate to edit subscription screen
-    console.log('Navigate to edit subscription:', subscriptionId);
+    navigation.navigate('SubscriptionForm', { subscriptionId });
   };
 
   // Handle pause/resume tracking

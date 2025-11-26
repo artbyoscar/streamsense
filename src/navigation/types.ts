@@ -48,10 +48,44 @@ export type AuthStackRouteProp<T extends keyof AuthStackParamList> = RouteProp<
  * Defines the tabs and their params in the main app
  */
 export type MainTabParamList = {
+  DashboardTab: undefined;
+  WatchlistTab: undefined;
+  RecommendationsTab: undefined;
+  SettingsTab: undefined;
+};
+
+/**
+ * Dashboard Stack Parameter List
+ */
+export type DashboardStackParamList = {
   Dashboard: undefined;
-  Subscriptions: undefined;
-  Analytics: undefined;
+  SubscriptionDetail: { subscriptionId: string };
+  SubscriptionForm: { subscriptionId?: string };
+};
+
+/**
+ * Watchlist Stack Parameter List
+ */
+export type WatchlistStackParamList = {
+  Watchlist: undefined;
+  ContentSearch: undefined;
+  ContentDetail: { contentId: number; contentType: 'movie' | 'tv' };
+};
+
+/**
+ * Recommendations Stack Parameter List
+ */
+export type RecommendationsStackParamList = {
+  Recommendations: undefined;
+};
+
+/**
+ * Settings Stack Parameter List
+ */
+export type SettingsStackParamList = {
+  Settings: undefined;
   Profile: undefined;
+  PlaidConnection: undefined;
 };
 
 /**
@@ -119,7 +153,7 @@ export const isAuthScreen = (screenName: string): screenName is keyof AuthStackP
  * Check if screen is in main tab
  */
 export const isMainScreen = (screenName: string): screenName is keyof MainTabParamList => {
-  return ['Dashboard', 'Subscriptions', 'Analytics', 'Profile'].includes(screenName);
+  return ['DashboardTab', 'WatchlistTab', 'RecommendationsTab', 'SettingsTab'].includes(screenName);
 };
 
 // ============================================================================
