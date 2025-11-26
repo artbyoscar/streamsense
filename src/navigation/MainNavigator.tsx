@@ -1,7 +1,3 @@
-// CRITICAL: Disable screens before any navigator imports to prevent New Architecture conflicts
-import { enableScreens } from 'react-native-screens';
-enableScreens(false);
-
 /**
  * Main Navigator with Root Stack
  * Root stack wraps tab navigation with globally accessible modal screens
@@ -61,7 +57,6 @@ const DashboardStackNavigator: React.FC = () => {
   return (
     <DashboardStack.Navigator
       screenOptions={{
-        detachInactiveScreens: false,
         headerStyle: {
           backgroundColor: colors.primary,
         },
@@ -98,7 +93,6 @@ const WatchlistStackNavigator: React.FC = () => {
   return (
     <WatchlistStack.Navigator
       screenOptions={{
-        detachInactiveScreens: false,
         headerStyle: {
           backgroundColor: colors.primary,
         },
@@ -128,7 +122,6 @@ const RecommendationsStackNavigator: React.FC = () => {
   return (
     <RecommendationsStack.Navigator
       screenOptions={{
-        detachInactiveScreens: false,
         headerStyle: {
           backgroundColor: colors.primary,
         },
@@ -158,7 +151,6 @@ const SettingsStackNavigator: React.FC = () => {
   return (
     <SettingsStack.Navigator
       screenOptions={{
-        detachInactiveScreens: false,
         headerStyle: {
           backgroundColor: colors.primary,
         },
@@ -362,7 +354,6 @@ export const MainNavigator: React.FC = () => {
   return (
     <RootStack.Navigator
       screenOptions={{
-        detachInactiveScreens: false,
         headerStyle: {
           backgroundColor: colors.primary,
         },
