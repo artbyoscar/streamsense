@@ -161,6 +161,17 @@ serve(async (req) => {
           .from('plaid_items')
           .update({ last_synced: new Date().toISOString() })
           .eq('id', plaidItem.id);
+
+        // Trigger subscription detection after initial sync
+        try {
+          await supabaseClient.functions.invoke('detect-subscriptions', {
+            body: { userId: user.id },
+          });
+          console.log('Subscription detection triggered after initial sync');
+        } catch (detectionError) {
+          console.error('Error triggering subscription detection:', detectionError);
+          // Don't fail if detection fails
+        }
       }
     } catch (syncError) {
       console.error('Error syncing initial transactions:', syncError);
