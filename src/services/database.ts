@@ -225,8 +225,8 @@ export async function getOrCreateProfile() {
     if (!user) throw new Error('Not authenticated');
 
     return await createProfile({
-      user_id: user.id,
-      preferred_currency: 'USD',
+      id: user.id,
+      email: user.email || '',
     });
   }
 }
