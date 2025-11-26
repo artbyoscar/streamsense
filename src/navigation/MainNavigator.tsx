@@ -16,6 +16,7 @@ import { SubscriptionDetailScreen, SubscriptionFormScreen } from '@/features/sub
 import { WatchlistScreen, ContentSearchScreen } from '@/features/watchlist';
 import { RecommendationsScreen } from '@/features/recommendations';
 import { SettingsScreen } from '@/features/settings';
+import { TestScreen } from '@/screens/TestScreen';
 
 // Services
 import { generateRecommendations } from '@/services/recommendations';
@@ -167,6 +168,14 @@ const SettingsStackNavigator: React.FC = () => {
         component={SettingsScreen}
         options={{
           title: 'Settings',
+        }}
+      />
+      <SettingsStack.Screen
+        name="Test"
+        component={TestScreen}
+        options={{
+          title: 'Test Features',
+          headerBackTitle: 'Settings',
         }}
       />
     </SettingsStack.Navigator>

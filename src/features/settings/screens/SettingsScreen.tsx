@@ -15,6 +15,9 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import type { SettingsStackParamList } from '@/navigation/types';
 import { useAuth } from '@/features/auth';
 import { usePremiumStore } from '@/features/premium';
 import { COLORS, Card } from '@/components';
@@ -138,6 +141,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 // ============================================================================
 
 export const SettingsScreen: React.FC = () => {
+  const navigation = useNavigation<StackNavigationProp<SettingsStackParamList>>();
   const { user, logout } = useAuth();
   const { isPremium, expirationDate } = usePremiumStore();
 
@@ -418,6 +422,21 @@ export const SettingsScreen: React.FC = () => {
           onPress={handleThemeSelect}
         />
       </Card>
+
+      {/* Developer Section (Only in Development) */}
+      {__DEV__ && (
+        <>
+          <SectionHeader title="Developer" />
+          <Card style={styles.card}>
+            <SettingItem
+              icon="test-tube"
+              title="Test Features"
+              subtitle="Test error handling, performance, and Sentry"
+              onPress={() => navigation.navigate('Test')}
+            />
+          </Card>
+        </>
+      )}
 
       {/* Support Section */}
       <SectionHeader title="Support" />

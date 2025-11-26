@@ -86,6 +86,7 @@ export type SettingsStackParamList = {
   Settings: undefined;
   Profile: undefined;
   PlaidConnection: undefined;
+  Test: undefined;
 };
 
 /**
