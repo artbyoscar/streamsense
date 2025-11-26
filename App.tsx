@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { AppProviders } from './src/providers';
 import { RootNavigator } from './src/navigation';
+import { ErrorBoundary, ToastProvider, OfflineBanner } from './src/components';
 
 /**
  * StreamSense App
@@ -8,9 +9,14 @@ import { RootNavigator } from './src/navigation';
  */
 export default function App() {
   return (
-    <AppProviders>
-      <StatusBar style="auto" />
-      <RootNavigator />
-    </AppProviders>
+    <ErrorBoundary>
+      <AppProviders>
+        <ToastProvider>
+          <StatusBar style="auto" />
+          <OfflineBanner />
+          <RootNavigator />
+        </ToastProvider>
+      </AppProviders>
+    </ErrorBoundary>
   );
 }
