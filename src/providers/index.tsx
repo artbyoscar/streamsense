@@ -1,19 +1,15 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { QueryProvider } from './QueryProvider';
 import { ThemeProvider } from './ThemeProvider';
-import { useAuthStore } from '@/stores';
+import { useAuthInit } from '@/features/auth';
 
 interface AppProvidersProps {
   children: React.ReactNode;
 }
 
 export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
-  const initialize = useAuthStore(state => state.initialize);
-
-  useEffect(() => {
-    // Initialize auth state on app start
-    initialize();
-  }, [initialize]);
+  // Initialize authentication on app start
+  useAuthInit();
 
   return (
     <QueryProvider>
