@@ -1,6 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import * as db from '@/services/database';
-import type { SubscriptionInsert, SubscriptionUpdate } from '@/types/database';
+import type { UserSubscriptionInsert, UserSubscriptionUpdate } from '@/types/database';
+
+// Backward compatibility aliases
+type SubscriptionInsert = UserSubscriptionInsert;
+type SubscriptionUpdate = UserSubscriptionUpdate;
 
 /**
  * React Query hooks for Supabase operations

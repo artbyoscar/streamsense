@@ -1,12 +1,17 @@
 import { supabase } from '@/config/supabase';
 import type {
-  Subscription,
-  SubscriptionInsert,
-  SubscriptionUpdate,
+  UserSubscription,
+  UserSubscriptionInsert,
+  UserSubscriptionUpdate,
   Profile,
   ProfileInsert,
   ProfileUpdate,
 } from '@/types/database';
+
+// Backward compatibility aliases
+type Subscription = UserSubscription;
+type SubscriptionInsert = UserSubscriptionInsert;
+type SubscriptionUpdate = UserSubscriptionUpdate;
 
 /**
  * Database service layer
@@ -113,18 +118,18 @@ export async function calculateMonthlySpending() {
   const subscriptions = await getActiveSubscriptions();
 
   const total = subscriptions.reduce((sum, sub) => {
-    let monthlyAmount = sub.amount;
+    let monthlyAmount = sub.price;
 
     // Convert to monthly
     switch (sub.billing_cycle) {
       case 'weekly':
-        monthlyAmount = sub.amount * 4.33; // Average weeks per month
+        monthlyAmount = sub.price * 4.33; // Average weeks per month
         break;
       case 'quarterly':
-        monthlyAmount = sub.amount / 3;
+        monthlyAmount = sub.price / 3;
         break;
       case 'yearly':
-        monthlyAmount = sub.amount / 12;
+        monthlyAmount = sub.price / 12;
         break;
       // 'monthly' stays the same
     }

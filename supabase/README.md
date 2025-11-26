@@ -28,6 +28,7 @@ Execute the migration files in order using the Supabase SQL Editor:
 3. `20250101000002_triggers_functions.sql` - Database functions and triggers
 
 **To run migrations:**
+
 - Go to your Supabase project dashboard
 - Navigate to SQL Editor
 - Copy and paste each migration file content
@@ -45,6 +46,7 @@ ORDER BY table_name;
 ```
 
 You should see:
+
 - content
 - plaid_items
 - profiles
@@ -134,6 +136,7 @@ You should see:
 User profile information extending Supabase auth.users.
 
 **Columns:**
+
 - `id` (UUID, PK, FK → auth.users) - User ID
 - `email` (TEXT) - User email
 - `first_name` (TEXT, nullable) - First name
@@ -144,10 +147,12 @@ User profile information extending Supabase auth.users.
 - `updated_at` (TIMESTAMPTZ) - Last update timestamp
 
 **Indexes:**
+
 - `profiles_email_idx` on email
 - `profiles_created_at_idx` on created_at DESC
 
 **RLS Policies:**
+
 - Users can view, update, and delete their own profile
 - Auto-created on user signup via trigger
 
@@ -156,6 +161,7 @@ User profile information extending Supabase auth.users.
 Catalog of available streaming services with pricing information.
 
 **Columns:**
+
 - `id` (UUID, PK) - Service ID
 - `name` (TEXT, UNIQUE) - Service name (e.g., "Netflix")
 - `logo_url` (TEXT, nullable) - Service logo URL
@@ -166,6 +172,7 @@ Catalog of available streaming services with pricing information.
 - `updated_at` (TIMESTAMPTZ) - Last update timestamp
 
 **Pricing Tiers Format:**
+
 ```json
 [
   {
@@ -182,10 +189,12 @@ Catalog of available streaming services with pricing information.
 ```
 
 **Indexes:**
+
 - `streaming_services_name_idx` on name
 - `streaming_services_pricing_tiers_idx` GIN on pricing_tiers
 
 **RLS Policies:**
+
 - Public read access
 - Authenticated users can suggest new services
 
@@ -197,6 +206,7 @@ Netflix, Disney+, HBO Max, Hulu, Amazon Prime Video, Apple TV+, Paramount+, Peac
 User's subscription records with billing information.
 
 **Columns:**
+
 - `id` (UUID, PK) - Subscription ID
 - `user_id` (UUID, FK → profiles) - Owner user ID
 - `service_id` (UUID, FK → streaming_services, nullable) - Linked service
@@ -213,6 +223,7 @@ User's subscription records with billing information.
 - `cancelled_at` (TIMESTAMPTZ, nullable) - Cancellation timestamp
 
 **Indexes:**
+
 - `user_subscriptions_user_id_idx` on user_id
 - `user_subscriptions_service_id_idx` on service_id
 - `user_subscriptions_status_idx` on status
@@ -220,9 +231,11 @@ User's subscription records with billing information.
 - `user_subscriptions_user_status_idx` on (user_id, status)
 
 **RLS Policies:**
+
 - Users can CRUD their own subscriptions only
 
 **Triggers:**
+
 - Auto-sets `cancelled_at` when status changes to cancelled
 
 ### plaid_items
@@ -230,6 +243,7 @@ User's subscription records with billing information.
 Plaid bank account connections for transaction sync.
 
 **Columns:**
+
 - `id` (UUID, PK) - Plaid item ID
 - `user_id` (UUID, FK → profiles) - Owner user ID
 - `access_token` (TEXT) - Encrypted Plaid access token
@@ -243,15 +257,18 @@ Plaid bank account connections for transaction sync.
 - `updated_at` (TIMESTAMPTZ) - Last update timestamp
 
 **Security:**
+
 - `access_token` should be encrypted at application level before storing
 - Never expose access tokens to client-side code
 
 **Indexes:**
+
 - `plaid_items_user_id_idx` on user_id
 - `plaid_items_item_id_idx` on item_id
 - `plaid_items_last_synced_idx` on last_synced DESC
 
 **RLS Policies:**
+
 - Users can CRUD their own Plaid connections only
 
 ### transactions
@@ -259,6 +276,7 @@ Plaid bank account connections for transaction sync.
 Bank transactions from Plaid for subscription detection.
 
 **Columns:**
+
 - `id` (UUID, PK) - Transaction ID
 - `user_id` (UUID, FK → profiles) - Owner user ID
 - `plaid_item_id` (UUID, FK → plaid_items, nullable) - Source Plaid item
@@ -272,6 +290,7 @@ Bank transactions from Plaid for subscription detection.
 - `created_at` (TIMESTAMPTZ) - Creation timestamp
 
 **Indexes:**
+
 - `transactions_user_id_idx` on user_id
 - `transactions_plaid_item_id_idx` on plaid_item_id
 - `transactions_date_idx` on date DESC
@@ -279,10 +298,12 @@ Bank transactions from Plaid for subscription detection.
 - `transactions_merchant_name_idx` GIN full-text search on merchant_name
 
 **RLS Policies:**
+
 - Users can view and update their own transactions
 - Service role can insert transactions
 
 **Constraints:**
+
 - UNIQUE (plaid_transaction_id, plaid_item_id)
 
 ### content
@@ -290,6 +311,7 @@ Bank transactions from Plaid for subscription detection.
 Movies and TV shows catalog from TMDB.
 
 **Columns:**
+
 - `id` (UUID, PK) - Content ID
 - `tmdb_id` (INTEGER, UNIQUE) - TMDB identifier
 - `title` (TEXT) - Content title
@@ -305,6 +327,7 @@ Movies and TV shows catalog from TMDB.
 - `updated_at` (TIMESTAMPTZ) - Last update timestamp
 
 **Indexes:**
+
 - `content_tmdb_id_idx` on tmdb_id
 - `content_type_idx` on type
 - `content_title_idx` GIN full-text search on title
@@ -312,6 +335,7 @@ Movies and TV shows catalog from TMDB.
 - `content_popularity_idx` on popularity DESC
 
 **RLS Policies:**
+
 - Public read access
 - Authenticated users can add/update content
 
@@ -320,6 +344,7 @@ Movies and TV shows catalog from TMDB.
 User watchlist with priority and notification preferences.
 
 **Columns:**
+
 - `id` (UUID, PK) - Watchlist item ID
 - `user_id` (UUID, FK → profiles) - Owner user ID
 - `content_id` (UUID, FK → content) - Content reference
@@ -329,15 +354,18 @@ User watchlist with priority and notification preferences.
 - `added_at` (TIMESTAMPTZ) - When added to watchlist
 
 **Indexes:**
+
 - `watchlist_items_user_id_idx` on user_id
 - `watchlist_items_content_id_idx` on content_id
 - `watchlist_items_priority_idx` on priority
 - `watchlist_items_added_at_idx` on added_at DESC
 
 **RLS Policies:**
+
 - Users can CRUD their own watchlist items only
 
 **Constraints:**
+
 - UNIQUE (user_id, content_id) - No duplicate watchlist entries
 
 ### viewing_logs
@@ -345,6 +373,7 @@ User watchlist with priority and notification preferences.
 User viewing history across streaming services.
 
 **Columns:**
+
 - `id` (UUID, PK) - Log entry ID
 - `user_id` (UUID, FK → profiles) - Owner user ID
 - `content_id` (UUID, FK → content) - Content watched
@@ -357,15 +386,18 @@ User viewing history across streaming services.
 - `created_at` (TIMESTAMPTZ) - Creation timestamp
 
 **Indexes:**
+
 - `viewing_logs_user_id_idx` on user_id
 - `viewing_logs_content_id_idx` on content_id
 - `viewing_logs_service_id_idx` on service_id
 - `viewing_logs_watched_at_idx` on watched_at DESC
 
 **RLS Policies:**
+
 - Users can CRUD their own viewing logs only
 
 **Constraints:**
+
 - CHECK rating >= 0 AND rating <= 10
 
 ## Database Functions
@@ -377,6 +409,7 @@ Calculates total monthly spending across all active subscriptions, normalizing d
 **Returns:** DECIMAL (total monthly amount)
 
 **Example:**
+
 ```sql
 SELECT calculate_monthly_spending(auth.uid());
 -- Returns: 45.67
@@ -389,6 +422,7 @@ Returns subscriptions renewing within the specified number of days.
 **Returns:** Table of upcoming renewals
 
 **Example:**
+
 ```sql
 SELECT * FROM get_upcoming_renewals(auth.uid(), 7);
 -- Returns renewals in next 7 days
@@ -399,6 +433,7 @@ SELECT * FROM get_upcoming_renewals(auth.uid(), 7);
 Returns comprehensive subscription statistics.
 
 **Returns:** Table with:
+
 - total_active
 - total_cancelled
 - monthly_spending
@@ -407,6 +442,7 @@ Returns comprehensive subscription statistics.
 - most_expensive_price
 
 **Example:**
+
 ```sql
 SELECT * FROM get_subscription_stats(auth.uid());
 ```
@@ -418,6 +454,7 @@ Full-text search for movies and TV shows.
 **Returns:** Ranked search results
 
 **Example:**
+
 ```sql
 SELECT * FROM search_content('stranger things', 'tv', 10);
 ```
@@ -429,6 +466,7 @@ Returns user's viewing history with content and service details.
 **Returns:** Table of viewing logs with content info
 
 **Example:**
+
 ```sql
 SELECT * FROM get_viewing_history(auth.uid(), 20);
 ```
@@ -440,6 +478,7 @@ Attempts to match a transaction merchant name to a known streaming service using
 **Returns:** UUID (service_id) or NULL
 
 **Example:**
+
 ```sql
 SELECT match_transaction_to_service('NETFLIX.COM', 15.99);
 -- Returns Netflix service ID if pattern matches
@@ -486,6 +525,7 @@ Automatically creates a profile when a new user signs up via Supabase Auth.
 **Function:** handle_new_user()
 
 **Metadata Mapping:**
+
 - `raw_user_meta_data->>'first_name'` → `profiles.first_name`
 - `raw_user_meta_data->>'last_name'` → `profiles.last_name`
 
@@ -496,11 +536,12 @@ Sets `cancelled_at` timestamp when subscription status changes to 'cancelled'.
 **Trigger:** BEFORE UPDATE ON user_subscriptions
 **Function:** set_subscription_cancelled_at()
 
-### update_*_updated_at
+### update\_\*\_updated_at
 
 Auto-updates `updated_at` timestamp on row modifications.
 
 **Tables:**
+
 - profiles
 - streaming_services
 - user_subscriptions
@@ -512,11 +553,13 @@ Auto-updates `updated_at` timestamp on row modifications.
 ### Regular Tasks
 
 1. **Update Expired Subscriptions** (Daily)
+
 ```sql
 SELECT update_expired_subscriptions();
 ```
 
 2. **Clean Old Transactions** (Monthly)
+
 ```sql
 DELETE FROM transactions
 WHERE created_at < NOW() - INTERVAL '1 year'
@@ -524,6 +567,7 @@ WHERE created_at < NOW() - INTERVAL '1 year'
 ```
 
 3. **Refresh Content Metadata** (Weekly)
+
 ```sql
 -- Re-fetch popular content from TMDB
 -- Implement in application code
@@ -532,6 +576,7 @@ WHERE created_at < NOW() - INTERVAL '1 year'
 ### Monitoring Queries
 
 **Active Subscriptions Count:**
+
 ```sql
 SELECT COUNT(*) as active_subscriptions
 FROM user_subscriptions
@@ -539,12 +584,14 @@ WHERE status = 'active';
 ```
 
 **Total Monthly Revenue:**
+
 ```sql
 SELECT SUM(calculate_monthly_spending(id)) as total_monthly
 FROM profiles;
 ```
 
 **Most Popular Services:**
+
 ```sql
 SELECT
   ss.name,
@@ -570,20 +617,22 @@ Supabase automatically backs up your database. To create manual backups:
 ### Point-in-Time Recovery
 
 Supabase Pro plan offers point-in-time recovery:
+
 - Database > Backups > Point in Time Recovery
 - Restore to any point in the last 7 days
 
 ## Migration History
 
-| Migration | Date | Description |
-|-----------|------|-------------|
-| 20250101000000 | 2025-01-01 | Initial schema with core tables |
-| 20250101000001 | 2025-01-01 | Row Level Security policies |
+| Migration      | Date       | Description                        |
+| -------------- | ---------- | ---------------------------------- |
+| 20250101000000 | 2025-01-01 | Initial schema with core tables    |
+| 20250101000001 | 2025-01-01 | Row Level Security policies        |
 | 20250101000002 | 2025-01-01 | Triggers, functions, and seed data |
 
 ## Support
 
 For issues or questions:
+
 - Check Supabase docs: https://supabase.com/docs
 - Review migration files in `/supabase/migrations/`
 - Check TypeScript types in `/src/types/database.ts`
