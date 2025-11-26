@@ -34,10 +34,11 @@ function getRequiredEnvVar(key: string): string {
 
 /**
  * Validate environment configuration
- * Returns array of validation errors
+ * Returns object with required errors and optional warnings
  */
-function validateEnv(): EnvValidationError[] {
+function validateEnv(): { errors: EnvValidationError[]; warnings: string[] } {
   const errors: EnvValidationError[] = [];
+  const warnings: string[] = [];
 
   // Required: Supabase URL
   const supabaseUrl = getEnvVar('EXPO_PUBLIC_SUPABASE_URL');
@@ -62,30 +63,25 @@ function validateEnv(): EnvValidationError[] {
     });
   }
 
-  // Optional but validate if present: Plaid
+  // Optional: Plaid (warn if partially configured)
   const plaidClientId = getEnvVar('EXPO_PUBLIC_PLAID_CLIENT_ID');
   const plaidSecret = getEnvVar('EXPO_PUBLIC_PLAID_SECRET');
   const plaidEnv = getEnvVar('EXPO_PUBLIC_PLAID_ENV');
 
-  if (plaidClientId || plaidSecret || plaidEnv) {
-    if (!plaidClientId) {
-      errors.push({
-        variable: 'EXPO_PUBLIC_PLAID_CLIENT_ID',
-        message: 'Plaid client ID is required when using Plaid',
-      });
-    }
-    if (!plaidSecret) {
-      errors.push({
-        variable: 'EXPO_PUBLIC_PLAID_SECRET',
-        message: 'Plaid secret is required when using Plaid',
-      });
-    }
-    if (plaidEnv && !['sandbox', 'development', 'production'].includes(plaidEnv)) {
-      errors.push({
-        variable: 'EXPO_PUBLIC_PLAID_ENV',
-        message: 'Plaid environment must be sandbox, development, or production',
-      });
-    }
+  if (!plaidClientId && !plaidSecret) {
+    warnings.push('⚠️  Plaid credentials not configured - bank connection features will be disabled');
+  } else if (plaidClientId && !plaidSecret) {
+    warnings.push('⚠️  EXPO_PUBLIC_PLAID_SECRET is missing - Plaid features will be disabled');
+  } else if (!plaidClientId && plaidSecret) {
+    warnings.push('⚠️  EXPO_PUBLIC_PLAID_CLIENT_ID is missing - Plaid features will be disabled');
+  } else if (plaidEnv && !['sandbox', 'development', 'production'].includes(plaidEnv)) {
+    warnings.push(`⚠️  EXPO_PUBLIC_PLAID_ENV must be sandbox, development, or production (got: ${plaidEnv})`);
+  }
+
+  // Optional: TMDB
+  const tmdbApiKey = getEnvVar('EXPO_PUBLIC_TMDB_API_KEY');
+  if (!tmdbApiKey) {
+    warnings.push('⚠️  TMDB API key not configured - content search features will use fallback data');
   }
 
   // Validate app environment
@@ -97,16 +93,18 @@ function validateEnv(): EnvValidationError[] {
     });
   }
 
-  return errors;
+  return { errors, warnings };
 }
 
 /**
  * Load and validate environment configuration
  * Throws error if required variables are missing
+ * Logs warnings for optional missing variables
  */
 function loadEnv(): EnvironmentConfig {
-  const errors = validateEnv();
+  const { errors, warnings } = validateEnv();
 
+  // Only throw for REQUIRED configuration errors
   if (errors.length > 0) {
     const errorMessage = errors.map(err => `  - ${err.variable}: ${err.message}`).join('\n');
 
@@ -115,6 +113,13 @@ function loadEnv(): EnvironmentConfig {
         `Please check your .env file and ensure all required variables are set.\n` +
         `See .env.example for reference.`
     );
+  }
+
+  // Log warnings for optional missing configuration (don't throw)
+  if (warnings.length > 0) {
+    console.warn('📝 Environment Configuration Warnings:');
+    warnings.forEach(warning => console.warn(`   ${warning}`));
+    console.warn(''); // Empty line for readability
   }
 
   // Build configuration object
@@ -140,6 +145,7 @@ function loadEnv(): EnvironmentConfig {
       secret: plaidSecret,
       env: plaidEnv || 'sandbox',
     };
+    console.log('✅ Plaid configuration loaded');
   }
 
   // Add optional TMDB config if present
@@ -148,6 +154,7 @@ function loadEnv(): EnvironmentConfig {
     config.tmdb = {
       apiKey: tmdbApiKey,
     };
+    console.log('✅ TMDB configuration loaded');
   }
 
   return config;

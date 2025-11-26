@@ -4,11 +4,31 @@
  */
 
 import { supabase } from '@/config/supabase';
+import { env, isFeatureEnabled } from '@/config/env';
 import type {
   CreateLinkTokenResponse,
   ExchangePublicTokenResponse,
   SyncTransactionsResponse,
 } from '@/types';
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Check if Plaid is configured and throw friendly error if not
+ */
+function checkPlaidConfigured(): void {
+  if (!isFeatureEnabled('plaid')) {
+    throw new Error(
+      'Bank connection is not configured yet.\n\n' +
+      'To enable this feature, please add your Plaid credentials to the .env file:\n' +
+      '- EXPO_PUBLIC_PLAID_CLIENT_ID\n' +
+      '- EXPO_PUBLIC_PLAID_SECRET\n' +
+      '- EXPO_PUBLIC_PLAID_ENV (sandbox, development, or production)'
+    );
+  }
+}
 
 // ============================================================================
 // LINK TOKEN MANAGEMENT
@@ -19,6 +39,8 @@ import type {
  * This calls the Supabase Edge Function which securely handles Plaid API calls
  */
 export async function createLinkToken(userId: string): Promise<string> {
+  checkPlaidConfigured();
+
   try {
     const { data, error } = await supabase.functions.invoke<CreateLinkTokenResponse>(
       'plaid-create-link-token',
@@ -66,6 +88,8 @@ export async function exchangePublicToken(
     }>;
   }
 ): Promise<ExchangePublicTokenResponse> {
+  checkPlaidConfigured();
+
   try {
     const { data, error } = await supabase.functions.invoke<ExchangePublicTokenResponse>(
       'plaid-exchange-token',
@@ -107,6 +131,8 @@ export async function syncTransactions(
   cursor?: string,
   count?: number
 ): Promise<SyncTransactionsResponse> {
+  checkPlaidConfigured();
+
   try {
     const { data, error } = await supabase.functions.invoke<SyncTransactionsResponse>(
       'plaid-sync-transactions',
@@ -146,6 +172,8 @@ export async function syncAllPlaidItems(): Promise<{
   totalSubscriptions: number;
   errors: Array<{ itemId: string; error: string }>;
 }> {
+  checkPlaidConfigured();
+
   try {
     const items = await getPlaidItems();
     const errors: Array<{ itemId: string; error: string }> = [];
@@ -189,6 +217,8 @@ export async function syncAllPlaidItems(): Promise<{
  * Gets all Plaid items for the current user
  */
 export async function getPlaidItems() {
+  checkPlaidConfigured();
+
   try {
     const {
       data: { user },
@@ -220,6 +250,8 @@ export async function getPlaidItems() {
  * Deletes a Plaid item and removes the connection
  */
 export async function deletePlaidItem(itemId: string): Promise<void> {
+  checkPlaidConfigured();
+
   try {
     const { error } = await supabase.functions.invoke('plaid-delete-item', {
       body: { itemId },
