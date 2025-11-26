@@ -9,6 +9,7 @@ import { MainNavigator } from './MainNavigator';
 import { OnboardingNavigator } from '@/features/onboarding';
 import { supabase } from '@/config/supabase';
 import { logger } from '@/utils';
+import { navigationTheme } from '@/providers/ThemeProvider';
 
 /**
  * Root Navigator
@@ -94,6 +95,7 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer
+      theme={navigationTheme}
       onStateChange={state => {
         logger.debug('[RootNavigator] Navigation state changed', state);
       }}

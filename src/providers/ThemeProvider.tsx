@@ -1,15 +1,12 @@
 import React from 'react';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { MD3LightTheme, PaperProvider } from 'react-native-paper';
 
-// Customize the Material Design 3 theme
 const paperTheme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
     primary: '#2563EB',
     secondary: '#7C3AED',
-    tertiary: '#3B82F6',
     error: '#EF4444',
     background: '#F9FAFB',
     surface: '#FFFFFF',
@@ -22,11 +19,10 @@ const paperTheme = {
   },
 };
 
-// Navigation theme that matches React Native Paper
-const navigationTheme = {
-  ...DefaultTheme,
+// Export for use in RootNavigator
+export const navigationTheme = {
+  dark: false,
   colors: {
-    ...DefaultTheme.colors,
     primary: '#2563EB',
     background: '#F9FAFB',
     card: '#FFFFFF',
@@ -34,18 +30,17 @@ const navigationTheme = {
     border: '#E5E7EB',
     notification: '#EF4444',
   },
+  fonts: MD3LightTheme.fonts,
 };
 
 interface ThemeProviderProps {
   children: React.ReactNode;
 }
 
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+export function ThemeProvider({ children }: ThemeProviderProps) {
   return (
     <PaperProvider theme={paperTheme}>
-      <NavigationContainer theme={navigationTheme}>{children}</NavigationContainer>
+      {children}
     </PaperProvider>
   );
-};
-
-export { paperTheme as theme };
+}
