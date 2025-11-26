@@ -1,36 +1,35 @@
 import { enableScreens } from 'react-native-screens';
 enableScreens(false);
 
-import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
-import { AppProviders } from './src/providers';
-import { RootNavigator } from './src/navigation';
-import { ErrorBoundary, ToastProvider, OfflineBanner } from './src/components';
-import { markAppStart } from './src/utils';
-import { initializeSentry } from './src/services/sentry';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 
-// Initialize Sentry as early as possible
-initializeSentry();
+const queryClient = new QueryClient();
 
-/**
- * StreamSense App
- * Subscription tracking application with authentication and navigation
- */
+const theme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#2563EB',
+  },
+};
+
+const Tab = createBottomTabNavigator();
+
 export default function App() {
-  useEffect(() => {
-    // Mark app startup for performance tracking
-    markAppStart();
-  }, []);
-
   return (
-    <ErrorBoundary>
-      <AppProviders>
-        <ToastProvider>
-          <StatusBar style="auto" />
-          <OfflineBanner />
-          <RootNavigator />
-        </ToastProvider>
-      </AppProviders>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <PaperProvider theme={theme}>
+        <NavigationContainer>
+          <Tab.Navigator screenOptions={{ headerShown: false }}>
+            <Tab.Screen name="Login" component={LoginScreen} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </PaperProvider>
+    </QueryClientProvider>
   );
 }
