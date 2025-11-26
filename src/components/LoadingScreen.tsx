@@ -6,14 +6,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
-
-// Color scheme
-const COLORS = {
-  primary: '#2563EB',
-  gray: '#6B7280',
-  white: '#FFFFFF',
-  background: '#F9FAFB',
-};
+import { COLORS } from './theme';
 
 export interface LoadingScreenProps {
   message?: string;

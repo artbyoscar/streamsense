@@ -7,14 +7,7 @@ import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
 import { Button } from './Button';
-
-// Color scheme
-const COLORS = {
-  gray: '#6B7280',
-  lightGray: '#9CA3AF',
-  darkGray: '#374151',
-  primary: '#2563EB',
-};
+import { COLORS } from './theme';
 
 export interface EmptyStateProps {
   icon?: string;

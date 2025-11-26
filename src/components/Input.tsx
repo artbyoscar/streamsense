@@ -6,15 +6,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { TextInput, Text, HelperText } from 'react-native-paper';
-
-// Color scheme
-const COLORS = {
-  primary: '#2563EB',
-  error: '#EF4444',
-  gray: '#6B7280',
-  lightGray: '#E5E7EB',
-  darkGray: '#374151',
-};
+import { COLORS } from './theme';
 
 export interface InputProps {
   label: string;

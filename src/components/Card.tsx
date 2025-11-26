@@ -6,15 +6,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { Card as PaperCard, Text } from 'react-native-paper';
-
-// Color scheme
-const COLORS = {
-  white: '#FFFFFF',
-  gray: '#6B7280',
-  darkGray: '#374151',
-  lightGray: '#F9FAFB',
-  border: '#E5E7EB',
-};
+import { COLORS } from './theme';
 
 export interface CardProps {
   children: React.ReactNode;

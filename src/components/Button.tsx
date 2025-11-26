@@ -6,16 +6,7 @@
 import React from 'react';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Button as PaperButton, ActivityIndicator } from 'react-native-paper';
-
-// Color scheme
-const COLORS = {
-  primary: '#2563EB',
-  success: '#10B981',
-  error: '#EF4444',
-  white: '#FFFFFF',
-  gray: '#6B7280',
-  lightGray: '#F3F4F6',
-};
+import { COLORS } from './theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'success' | 'error';
 
