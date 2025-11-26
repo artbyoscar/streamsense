@@ -1,6 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { enableScreens } from 'react-native-screens';
+
+// Disable native screens - fall back to JS implementation
+enableScreens(false);
 
 const theme = {
   ...MD3LightTheme,
@@ -10,13 +16,33 @@ const theme = {
   },
 };
 
+const Tab = createBottomTabNavigator();
+
+function HomeScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Home</Text>
+    </View>
+  );
+}
+
+function SettingsScreen() {
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Settings</Text>
+    </View>
+  );
+}
+
 export default function App() {
   return (
     <PaperProvider theme={theme}>
-      <View style={styles.container}>
-        <Text style={styles.text}>StreamSense Test</Text>
-        <Text style={styles.subtext}>ThemeProvider works!</Text>
-      </View>
+      <NavigationContainer>
+        <Tab.Navigator>
+          <Tab.Screen name="Home" component={HomeScreen} />
+          <Tab.Screen name="Settings" component={SettingsScreen} />
+        </Tab.Navigator>
+      </NavigationContainer>
     </PaperProvider>
   );
 }
@@ -32,10 +58,5 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: 'bold',
     color: 'white',
-  },
-  subtext: {
-    fontSize: 16,
-    color: 'white',
-    marginTop: 10,
   },
 });
