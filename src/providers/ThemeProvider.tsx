@@ -71,6 +71,24 @@ export const getNavigationTheme = (isDark: boolean) => ({
     border: LIGHT_COLORS.border,
     notification: LIGHT_COLORS.error,
   },
+  fonts: {
+    regular: {
+      fontFamily: 'System',
+      fontWeight: '400',
+    },
+    medium: {
+      fontFamily: 'System',
+      fontWeight: '500',
+    },
+    bold: {
+      fontFamily: 'System',
+      fontWeight: '700',
+    },
+    heavy: {
+      fontFamily: 'System',
+      fontWeight: '900',
+    },
+  },
 });
 
 interface ThemeProviderProps {

@@ -4,7 +4,7 @@ enableScreens(false);
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PaperProvider, MD3LightTheme, Text } from 'react-native-paper';
+import { Text } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -17,16 +17,9 @@ import { SettingsScreen } from './src/features/settings/screens/SettingsScreen';
 import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
+import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/ThemeProvider';
 
 const queryClient = new QueryClient();
-
-const theme = {
-  ...MD3LightTheme,
-  colors: {
-    ...MD3LightTheme.colors,
-    primary: '#2563EB',
-  },
-};
 
 const Tab = createBottomTabNavigator();
 
@@ -54,19 +47,21 @@ function AuthFlow() {
 
 // Main app navigator with bottom tabs
 function MainNavigator() {
+  const { colors, isDark } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#2563EB',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.gray,
         tabBarStyle: {
           paddingBottom: 8,
           paddingTop: 8,
           height: 65,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
-          backgroundColor: '#FFFFFF',
+          borderTopColor: colors.border,
+          backgroundColor: colors.card,
         },
         tabBarLabelStyle: {
           fontSize: 12,
@@ -138,6 +133,7 @@ function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { colors, isDark } = useTheme();
 
   useEffect(() => {
     console.log('[App] Starting auth initialization...');
@@ -149,9 +145,9 @@ function AppContent() {
   // Show loading while initializing
   if (!isInitialized) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
-        <ActivityIndicator size="large" color="#2563EB" />
-        <Text variant="bodyLarge" style={{ marginTop: 16, opacity: 0.7 }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text variant="bodyLarge" style={{ marginTop: 16, opacity: 0.7, color: colors.text }}>
           Loading StreamSense...
         </Text>
       </View>
@@ -161,7 +157,7 @@ function AppContent() {
   // Show main app if authenticated
   if (isAuthenticated) {
     return (
-      <NavigationContainer>
+      <NavigationContainer theme={getNavigationTheme(isDark)}>
         <MainNavigator />
       </NavigationContainer>
     );
@@ -169,7 +165,7 @@ function AppContent() {
 
   // Show auth flow if not authenticated
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={getNavigationTheme(isDark)}>
       <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
         <Tab.Screen name="Auth" component={AuthFlow} />
       </Tab.Navigator>
@@ -181,11 +177,11 @@ export default function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <PaperProvider theme={theme}>
+        <ThemeProvider>
           <ToastProvider>
             <AppContent />
           </ToastProvider>
-        </PaperProvider>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );

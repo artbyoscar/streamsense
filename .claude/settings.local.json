@@ -20,7 +20,8 @@
       "Bash(npx react-native start --reset-cache)",
       "Bash(cat:*)",
       "Bash(taskkill:*)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(ls:*)"
     ],
     "deny": [],
     "ask": []
