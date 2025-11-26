@@ -1,6 +1,6 @@
 /**
- * Main Tab Navigator
- * Bottom tab navigation with stack navigators for each tab
+ * Main Navigator with Root Stack
+ * Root stack wraps tab navigation with globally accessible modal screens
  */
 
 import React, { useState, useEffect } from 'react';
@@ -29,6 +29,7 @@ import type {
   WatchlistStackParamList,
   RecommendationsStackParamList,
   SettingsStackParamList,
+  RootStackParamList,
 } from './types';
 
 // Colors
@@ -36,6 +37,7 @@ import { COLORS } from '@/components';
 import { useTheme } from '@/providers/ThemeProvider';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
+const RootStack = createStackNavigator<RootStackParamList>();
 const DashboardStack = createStackNavigator<DashboardStackParamList>();
 const WatchlistStack = createStackNavigator<WatchlistStackParamList>();
 const RecommendationsStack = createStackNavigator<RecommendationsStackParamList>();
@@ -47,6 +49,7 @@ const SettingsStack = createStackNavigator<SettingsStackParamList>();
 
 /**
  * Dashboard Stack Navigator
+ * Removed SubscriptionForm - now in RootStack
  */
 const DashboardStackNavigator: React.FC = () => {
   const { colors } = useTheme();
@@ -76,20 +79,13 @@ const DashboardStackNavigator: React.FC = () => {
           headerBackTitle: 'Back',
         }}
       />
-      <DashboardStack.Screen
-        name="SubscriptionForm"
-        component={SubscriptionFormScreen}
-        options={({ route }) => ({
-          title: route.params?.subscriptionId ? 'Edit Subscription' : 'Add Subscription',
-          headerBackTitle: 'Back',
-        })}
-      />
     </DashboardStack.Navigator>
   );
 };
 
 /**
  * Watchlist Stack Navigator
+ * Removed ContentSearch - now in RootStack
  */
 const WatchlistStackNavigator: React.FC = () => {
   const { colors } = useTheme();
@@ -111,14 +107,6 @@ const WatchlistStackNavigator: React.FC = () => {
         component={WatchlistScreen}
         options={{
           title: 'My Watchlist',
-        }}
-      />
-      <WatchlistStack.Screen
-        name="ContentSearch"
-        component={ContentSearchScreen}
-        options={{
-          title: 'Search Content',
-          headerBackTitle: 'Back',
         }}
       />
     </WatchlistStack.Navigator>
@@ -235,10 +223,14 @@ const TabBarBadge: React.FC<TabBarBadgeProps> = ({ count }) => {
 };
 
 // ============================================================================
-// MAIN TAB NAVIGATOR
+// TAB NAVIGATOR
 // ============================================================================
 
-export const MainNavigator: React.FC = () => {
+/**
+ * Tab Navigator Component
+ * Bottom tabs with stack navigators for each tab
+ */
+const TabNavigator: React.FC = () => {
   const { colors } = useTheme();
   const [recommendationCount, setRecommendationCount] = useState(0);
   const subscriptions = useSubscriptionsStore((state) => state.subscriptions);
@@ -345,6 +337,62 @@ export const MainNavigator: React.FC = () => {
         }}
       />
     </Tab.Navigator>
+  );
+};
+
+// ============================================================================
+// ROOT STACK NAVIGATOR
+// ============================================================================
+
+/**
+ * Root Stack Navigator
+ * Wraps tab navigator and provides globally accessible modal screens
+ */
+export const MainNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
+  return (
+    <RootStack.Navigator
+      screenOptions={{
+        headerStyle: {
+          backgroundColor: colors.primary,
+        },
+        headerTintColor: colors.white,
+        headerTitleStyle: {
+          fontWeight: '700',
+        },
+      }}
+    >
+      {/* Main Tab Navigator */}
+      <RootStack.Screen
+        name="MainTabs"
+        component={TabNavigator}
+        options={{
+          headerShown: false,
+        }}
+      />
+
+      {/* Global Modal Screens - Accessible from anywhere */}
+      <RootStack.Screen
+        name="SubscriptionForm"
+        component={SubscriptionFormScreen}
+        options={({ route }) => ({
+          title: route.params?.subscriptionId ? 'Edit Subscription' : 'Add Subscription',
+          presentation: 'modal',
+          headerBackTitle: 'Cancel',
+        })}
+      />
+
+      <RootStack.Screen
+        name="ContentSearch"
+        component={ContentSearchScreen}
+        options={{
+          title: 'Search Content',
+          presentation: 'modal',
+          headerBackTitle: 'Cancel',
+        }}
+      />
+    </RootStack.Navigator>
   );
 };
 

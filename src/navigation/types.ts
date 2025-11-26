@@ -55,12 +55,21 @@ export type MainTabParamList = {
 };
 
 /**
+ * Root Stack Parameter List
+ * Wraps the main tab navigator and provides globally accessible screens
+ */
+export type RootStackParamList = {
+  MainTabs: undefined;
+  SubscriptionForm: { subscriptionId?: string };
+  ContentSearch: undefined;
+};
+
+/**
  * Dashboard Stack Parameter List
  */
 export type DashboardStackParamList = {
   Dashboard: undefined;
   SubscriptionDetail: { subscriptionId: string };
-  SubscriptionForm: { subscriptionId?: string };
 };
 
 /**
@@ -68,7 +77,6 @@ export type DashboardStackParamList = {
  */
 export type WatchlistStackParamList = {
   Watchlist: undefined;
-  ContentSearch: undefined;
   ContentDetail: { contentId: number; contentType: 'movie' | 'tv' };
 };
 
