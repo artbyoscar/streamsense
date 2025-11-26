@@ -35,3 +35,6 @@ export {
 
 // Services
 export * as subscriptionsService from './services/subscriptionsService';
+
+// Screens
+export { SubscriptionDetailScreen } from './screens/SubscriptionDetailScreen';
