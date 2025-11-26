@@ -1,12 +1,23 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+
+const theme = {
+  ...MD3LightTheme,
+  colors: {
+    ...MD3LightTheme.colors,
+    primary: '#2563EB',
+  },
+};
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>StreamSense Test</Text>
-      <Text style={styles.subtext}>If you see this, basic rendering works!</Text>
-    </View>
+    <PaperProvider theme={theme}>
+      <View style={styles.container}>
+        <Text style={styles.text}>StreamSense Test</Text>
+        <Text style={styles.subtext}>ThemeProvider works!</Text>
+      </View>
+    </PaperProvider>
   );
 }
 
