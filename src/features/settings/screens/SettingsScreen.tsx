@@ -21,6 +21,7 @@ import type { SettingsStackParamList } from '@/navigation/types';
 import { useAuth } from '@/features/auth';
 import { usePremiumStore } from '@/features/premium';
 import { COLORS, Card } from '@/components';
+import { useTheme } from '@/providers/ThemeProvider';
 
 // ============================================================================
 // TYPES
@@ -144,6 +145,7 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<StackNavigationProp<SettingsStackParamList>>();
   const { user, logout } = useAuth();
   const { isPremium, expirationDate } = usePremiumStore();
+  const { themeMode, setThemeMode } = useTheme();
 
   // Preferences state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -151,7 +153,6 @@ export const SettingsScreen: React.FC = () => {
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [emailReports, setEmailReports] = useState(isPremium);
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
-  const [selectedTheme, setSelectedTheme] = useState('system');
 
   // Get user info
   const userName = user?.user_metadata?.first_name
@@ -212,9 +213,9 @@ export const SettingsScreen: React.FC = () => {
       'Select Theme',
       'Choose your preferred theme',
       [
-        { text: 'Light', onPress: () => setSelectedTheme('light') },
-        { text: 'Dark', onPress: () => setSelectedTheme('dark') },
-        { text: 'System', onPress: () => setSelectedTheme('system') },
+        { text: 'Light', onPress: () => setThemeMode('light') },
+        { text: 'Dark', onPress: () => setThemeMode('dark') },
+        { text: 'System', onPress: () => setThemeMode('system') },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -418,7 +419,7 @@ export const SettingsScreen: React.FC = () => {
         <SettingItem
           icon="theme-light-dark"
           title="Theme"
-          value={selectedTheme.charAt(0).toUpperCase() + selectedTheme.slice(1)}
+          value={themeMode.charAt(0).toUpperCase() + themeMode.slice(1)}
           onPress={handleThemeSelect}
         />
       </Card>

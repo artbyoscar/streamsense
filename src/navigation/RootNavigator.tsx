@@ -9,7 +9,7 @@ import { MainNavigator } from './MainNavigator';
 import { OnboardingNavigator } from '@/features/onboarding';
 import { supabase } from '@/config/supabase';
 import { logger } from '@/utils';
-import { navigationTheme } from '@/providers/ThemeProvider';
+import { getNavigationTheme, useTheme } from '@/providers/ThemeProvider';
 
 /**
  * Root Navigator
@@ -20,6 +20,7 @@ import { navigationTheme } from '@/providers/ThemeProvider';
  */
 export const RootNavigator: React.FC = () => {
   const { user, isAuthenticated, isInitialized } = useAuth();
+  const { isDark } = useTheme();
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
 
@@ -95,7 +96,7 @@ export const RootNavigator: React.FC = () => {
 
   return (
     <NavigationContainer
-      theme={navigationTheme}
+      theme={getNavigationTheme(isDark)}
       onStateChange={state => {
         logger.debug('[RootNavigator] Navigation state changed', state);
       }}

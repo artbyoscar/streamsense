@@ -178,10 +178,10 @@ export const FirstInsightsScreen: React.FC<FirstInsightsScreenProps> = ({
       <Text style={styles.sectionTitle}>Recommended Next Steps</Text>
       <Card style={styles.recommendationsCard}>
         {recommendations.map((recommendation, index) => (
-          <React.Fragment key={index}>
+          <View key={index}>
             <RecommendationItem {...recommendation} />
             {index < recommendations.length - 1 && <View style={styles.divider} />}
-          </React.Fragment>
+          </View>
         ))}
       </Card>
 
