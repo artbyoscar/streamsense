@@ -1,19 +1,9 @@
 import React from 'react';
-import { createStackNavigator, StackNavigationProp } from '@react-navigation/stack';
+import { createStackNavigator } from '@react-navigation/stack';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
 import { LoginScreen, RegisterScreen } from '@/features/auth';
-
-/**
- * Auth Stack Navigator Params
- */
-export type AuthStackParamList = {
-  Login: undefined;
-  Register: undefined;
-  ForgotPassword: undefined;
-};
-
-export type AuthNavigationProp = StackNavigationProp<AuthStackParamList>;
+import type { AuthStackParamList } from './types';
 
 const Stack = createStackNavigator<AuthStackParamList>();
 

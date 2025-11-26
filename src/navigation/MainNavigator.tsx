@@ -3,16 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
 import { Text, useTheme } from 'react-native-paper';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-/**
- * Main Tab Navigator Params
- */
-export type MainTabParamList = {
-  Dashboard: undefined;
-  Subscriptions: undefined;
-  Analytics: undefined;
-  Profile: undefined;
-};
+import type { MainTabParamList } from './types';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
