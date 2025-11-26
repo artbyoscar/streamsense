@@ -23,7 +23,8 @@
       "Bash(pkill:*)",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(netstat:*)"
     ],
     "deny": [],
     "ask": []
