@@ -29,6 +29,16 @@ function AppContent() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
+    // Debug: Check if Supabase env vars are loaded
+    console.log('[App] Checking Supabase config...');
+    try {
+      const { env } = require('./src/config/env');
+      console.log('[App] Supabase URL:', env.supabase.url ? 'SET' : 'MISSING');
+      console.log('[App] Supabase Anon Key:', env.supabase.anonKey ? 'SET' : 'MISSING');
+    } catch (error) {
+      console.error('[App] Error loading env config:', error);
+    }
+
     console.log('[App] Starting auth initialization...');
     console.log('[App] Before init - isLoading:', isLoading, 'isInitialized:', isInitialized);
 

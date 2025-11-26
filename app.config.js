@@ -27,6 +27,10 @@ export default {
       favicon: "./assets/favicon.png"
     },
     extra: {
+      EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+      EXPO_PUBLIC_APP_ENV: process.env.EXPO_PUBLIC_APP_ENV,
+      EXPO_PUBLIC_DEBUG: process.env.EXPO_PUBLIC_DEBUG,
       tmdbApiKey: process.env.EXPO_PUBLIC_TMDB_API_KEY,
       tmdbAccessToken: process.env.EXPO_PUBLIC_TMDB_ACCESS_TOKEN,
       revenueCatIosApiKey: process.env.REVENUECAT_IOS_API_KEY,
