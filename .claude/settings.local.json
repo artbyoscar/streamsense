@@ -22,7 +22,8 @@
       "Bash(taskkill:*)",
       "Bash(pkill:*)",
       "Bash(ls:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
