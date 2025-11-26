@@ -25,6 +25,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "tmdbApiKey": process.env.EXPO_PUBLIC_TMDB_API_KEY,
+      "tmdbAccessToken": process.env.EXPO_PUBLIC_TMDB_ACCESS_TOKEN
     }
   }
 }

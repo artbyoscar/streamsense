@@ -63,6 +63,26 @@ export type {
 } from './database';
 
 // ============================================================================
+// TMDB TYPES
+// ============================================================================
+
+export type {
+  TMDbMovie,
+  TMDbMovieDetails,
+  TMDbTVShow,
+  TMDbTVDetails,
+  TMDbMovieListResponse,
+  TMDbTVListResponse,
+  TMDbMultiSearchResponse,
+  TMDbMultiSearchResult,
+  UnifiedContent,
+  TMDbGenre,
+  TMDbImage,
+  TMDbConfiguration,
+  TMDbError,
+} from './tmdb';
+
+// ============================================================================
 // API TYPES
 // ============================================================================
 
