@@ -399,3 +399,50 @@ export async function getOnTheAirTVShows(page: number = 1): Promise<TMDbTVListRe
 export async function getConfiguration(): Promise<TMDbConfiguration> {
   return tmdbFetch<TMDbConfiguration>('/configuration');
 }
+
+// ============================================================================
+// WATCH PROVIDERS
+// ============================================================================
+
+export interface WatchProvider {
+  logo_path: string;
+  provider_id: number;
+  provider_name: string;
+  display_priority: number;
+}
+
+export interface WatchProviderResults {
+  link: string;
+  flatrate?: WatchProvider[];
+  rent?: WatchProvider[];
+  buy?: WatchProvider[];
+}
+
+export interface WatchProvidersResponse {
+  id: number;
+  results: {
+    [countryCode: string]: WatchProviderResults;
+  };
+}
+
+/**
+ * Get streaming providers for content (where to watch)
+ */
+export async function getWatchProviders(
+  id: number,
+  type: 'movie' | 'tv'
+): Promise<WatchProvidersResponse> {
+  const endpoint = type === 'movie' ? `/movie/${id}/watch/providers` : `/tv/${id}/watch/providers`;
+  return tmdbFetch<WatchProvidersResponse>(endpoint);
+}
+
+/**
+ * Get US streaming providers (helper)
+ */
+export async function getUSWatchProviders(
+  id: number,
+  type: 'movie' | 'tv'
+): Promise<WatchProviderResults | null> {
+  const response = await getWatchProviders(id, type);
+  return response.results.US || null;
+}

@@ -260,13 +260,13 @@ export const WatchlistScreen: React.FC = () => {
       return;
     }
 
-    // TODO: Implement content search as modal/dialog
-    Alert.alert('Add to Watchlist', 'Content search coming soon!');
+    // Navigate to content search
+    navigation.navigate('ContentSearch');
   };
 
   const handleBrowseTrending = () => {
-    // TODO: Implement content search as modal/dialog
-    Alert.alert('Browse Trending', 'Content search coming soon!');
+    // Navigate to content search
+    navigation.navigate('ContentSearch');
   };
 
   const handleUpgrade = () => {
