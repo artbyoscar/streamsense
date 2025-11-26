@@ -10,3 +10,17 @@ export {
   type ParsedError,
   type ErrorCategory,
 } from './errorHandling';
+export {
+  debounce,
+  throttle,
+  measurePerformance,
+  useDebounce,
+  useThrottle,
+  useDebouncedCallback,
+  useRenderPerformance,
+  useWhyDidYouUpdate,
+  deepEqual,
+  shallowEqual,
+  markAppStart,
+  measureTimeToInteractive,
+} from './performance';

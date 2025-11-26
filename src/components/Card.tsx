@@ -27,7 +27,7 @@ export interface CardProps {
   testID?: string;
 }
 
-export const Card: React.FC<CardProps> = ({
+export const Card: React.FC<CardProps> = React.memo(({
   children,
   title,
   subtitle,
@@ -74,7 +74,7 @@ export const Card: React.FC<CardProps> = ({
       {CardContent}
     </PaperCard>
   );
-};
+});
 
 const styles = StyleSheet.create({
   card: {

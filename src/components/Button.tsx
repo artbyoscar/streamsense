@@ -32,7 +32,7 @@ export interface ButtonProps {
   testID?: string;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button: React.FC<ButtonProps> = React.memo(({
   children,
   onPress,
   variant = 'primary',
@@ -99,7 +99,7 @@ export const Button: React.FC<ButtonProps> = ({
       {children}
     </PaperButton>
   );
-};
+});
 
 const styles = StyleSheet.create({
   button: {
