@@ -1,18 +1,14 @@
 /**
- * Custom State-Based Navigation - No Libraries
- * Testing without @react-navigation to isolate the issue
+ * Custom State-Based Navigation
+ * Adding real screens incrementally
  */
 
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { DashboardScreen } from '@/features/dashboard';
 
-const HomeScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Home Screen</Text>
-    <Text>Welcome to StreamSense!</Text>
-  </View>
-);
-
+// Placeholder screens - will replace with real ones incrementally
 const WatchlistScreen = () => (
   <View style={styles.screen}>
     <Text style={styles.title}>Watchlist</Text>
@@ -39,11 +35,11 @@ export const MainNavigator: React.FC = () => {
 
   const renderScreen = () => {
     switch (activeTab) {
-      case 'Home': return <HomeScreen />;
+      case 'Home': return <DashboardScreen />;
       case 'Watchlist': return <WatchlistScreen />;
       case 'Tips': return <TipsScreen />;
       case 'Settings': return <SettingsScreen />;
-      default: return <HomeScreen />;
+      default: return <DashboardScreen />;
     }
   };
 
@@ -53,14 +49,24 @@ export const MainNavigator: React.FC = () => {
         {renderScreen()}
       </View>
       <View style={styles.tabBar}>
-        {['Home', 'Watchlist', 'Tips', 'Settings'].map((tab) => (
+        {[
+          { name: 'Home', icon: 'home' },
+          { name: 'Watchlist', icon: 'bookmark' },
+          { name: 'Tips', icon: 'lightbulb' },
+          { name: 'Settings', icon: 'cog' },
+        ].map((tab) => (
           <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
+            key={tab.name}
+            style={[styles.tab, activeTab === tab.name && styles.activeTab]}
+            onPress={() => setActiveTab(tab.name)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab}
+            <MaterialCommunityIcons
+              name={activeTab === tab.name ? tab.icon : `${tab.icon}-outline`}
+              size={24}
+              color={activeTab === tab.name ? '#2563eb' : '#9ca3af'}
+            />
+            <Text style={[styles.tabText, activeTab === tab.name && styles.activeTabText]}>
+              {tab.name}
             </Text>
           </TouchableOpacity>
         ))}
@@ -108,6 +114,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 12,
     color: '#9ca3af',
+    marginTop: 4,
   },
   activeTabText: {
     color: '#2563eb',
