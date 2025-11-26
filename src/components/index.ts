@@ -3,6 +3,9 @@
  * Reusable UI components for the application
  */
 
+// Color Scheme Constants - MUST BE FIRST to avoid circular dependencies
+export * from './theme';
+
 // Base UI Components
 export { Button } from './Button';
 export type { ButtonProps, ButtonVariant } from './Button';
@@ -38,6 +41,3 @@ export { ToastProvider, useToast } from './Toast';
 export type { ToastType, ToastOptions } from './Toast';
 
 export { OfflineBanner } from './OfflineBanner';
-
-// Color Scheme Constants
-export * from './theme';

@@ -14,7 +14,8 @@ import {
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { FeatureKey } from '@/hooks/usePremiumFeature';
-import { COLORS, Button } from '@/components';
+import { COLORS } from './theme';
+import { Button } from './Button';
 
 // ============================================================================
 // TYPES
