@@ -5,11 +5,13 @@ import React, { useEffect } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createStackNavigator } from '@react-navigation/stack';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
+import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
 import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
+import Constants from 'expo-constants';
 
 const queryClient = new QueryClient();
 
@@ -21,7 +23,7 @@ const theme = {
   },
 };
 
-const Tab = createBottomTabNavigator();
+const Stack = createStackNavigator();
 
 function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
@@ -29,35 +31,26 @@ function AppContent() {
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
-    // Debug: Check if Supabase env vars are loaded
     console.log('[App] Checking Supabase config...');
-    try {
-      const { env } = require('./src/config/env');
-      console.log('[App] Supabase URL:', env.supabase.url ? 'SET' : 'MISSING');
-      console.log('[App] Supabase Anon Key:', env.supabase.anonKey ? 'SET' : 'MISSING');
-    } catch (error) {
-      console.error('[App] Error loading env config:', error);
-    }
+    const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL;
+    const supabaseKey = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+    console.log('[App] Supabase URL:', supabaseUrl ? 'SET' : 'NOT SET');
+    console.log('[App] Supabase Anon Key:', supabaseKey ? 'SET' : 'NOT SET');
 
     console.log('[App] Starting auth initialization...');
-    console.log('[App] Before init - isLoading:', isLoading, 'isInitialized:', isInitialized);
-
     initialize().then(() => {
       console.log('[App] Auth initialization completed');
-      const state = useAuthStore.getState();
-      console.log('[App] After init - isLoading:', state.isLoading, 'isInitialized:', state.isInitialized);
-    }).catch((error) => {
-      console.error('[App] Auth initialization failed:', error);
     });
   }, [initialize]);
 
-  console.log('[App] Rendering - isLoading:', isLoading, 'isInitialized:', isInitialized);
+  console.log(`[App] Rendering - isLoading: ${isLoading} isInitialized: ${isInitialized}`);
 
   return (
     <NavigationContainer>
-      <Tab.Navigator screenOptions={{ headerShown: false }}>
-        <Tab.Screen name="Login" component={LoginScreen} />
-      </Tab.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }
