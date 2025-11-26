@@ -16,7 +16,8 @@
       "Bash(if [ -f .env ])",
       "Bash(then grep -E \"^(EXPO_PUBLIC_|SUPABASE_)\" .env)",
       "Bash(else echo \"No .env file found\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(npx react-native start --reset-cache)"
     ],
     "deny": [],
     "ask": []
