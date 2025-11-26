@@ -1,6 +1,3 @@
-// CRITICAL: Import screen config FIRST to disable screens before any navigator imports
-import './src/navigation/screenConfig';
-
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, LogBox } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
