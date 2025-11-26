@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 
 export interface LoadingScreenProps {
@@ -16,17 +17,20 @@ export interface LoadingScreenProps {
 
 export const LoadingScreen: React.FC<LoadingScreenProps> = ({
   message = 'Loading...',
-  backgroundColor = COLORS.background,
+  backgroundColor,
   testID,
 }) => {
+  const { colors } = useTheme();
+  const bgColor = backgroundColor || colors.background;
+
   return (
-    <View style={[styles.container, { backgroundColor }]} testID={testID}>
+    <View style={[styles.container, { backgroundColor: bgColor }]} testID={testID}>
       <ActivityIndicator
         size="large"
-        color={COLORS.primary}
+        color={colors.primary}
         style={styles.spinner}
       />
-      {message && <Text style={styles.message}>{message}</Text>}
+      {message && <Text style={[styles.message, { color: colors.gray }]}>{message}</Text>}
     </View>
   );
 };

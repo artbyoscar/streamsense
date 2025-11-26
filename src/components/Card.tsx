@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { Card as PaperCard, Text } from 'react-native-paper';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 
 export interface CardProps {
@@ -29,15 +30,16 @@ export const Card: React.FC<CardProps> = React.memo(({
   elevation = 2,
   testID,
 }) => {
+  const { colors } = useTheme();
   const hasHeader = title || subtitle || headerRight;
 
   const CardContent = (
     <>
       {hasHeader && (
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            {title && <Text style={styles.title}>{title}</Text>}
-            {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            {title && <Text style={[styles.title, { color: colors.darkGray }]}>{title}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: colors.gray }]}>{subtitle}</Text>}
           </View>
           {headerRight && <View style={styles.headerRight}>{headerRight}</View>}
         </View>
@@ -51,7 +53,7 @@ export const Card: React.FC<CardProps> = React.memo(({
   if (onPress) {
     return (
       <PaperCard
-        style={[styles.card, style]}
+        style={[styles.card, { backgroundColor: colors.white }, style]}
         elevation={elevation}
         onPress={onPress}
         testID={testID}
@@ -62,7 +64,7 @@ export const Card: React.FC<CardProps> = React.memo(({
   }
 
   return (
-    <PaperCard style={[styles.card, style]} elevation={elevation} testID={testID}>
+    <PaperCard style={[styles.card, { backgroundColor: colors.white }, style]} elevation={elevation} testID={testID}>
       {CardContent}
     </PaperCard>
   );

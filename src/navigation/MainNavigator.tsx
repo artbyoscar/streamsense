@@ -33,6 +33,7 @@ import type {
 
 // Colors
 import { COLORS } from '@/components';
+import { useTheme } from '@/providers/ThemeProvider';
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const DashboardStack = createStackNavigator<DashboardStackParamList>();
@@ -48,13 +49,15 @@ const SettingsStack = createStackNavigator<SettingsStackParamList>();
  * Dashboard Stack Navigator
  */
 const DashboardStackNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <DashboardStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: COLORS.white,
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: '700',
         },
@@ -89,13 +92,15 @@ const DashboardStackNavigator: React.FC = () => {
  * Watchlist Stack Navigator
  */
 const WatchlistStackNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <WatchlistStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: COLORS.white,
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: '700',
         },
@@ -124,13 +129,15 @@ const WatchlistStackNavigator: React.FC = () => {
  * Recommendations Stack Navigator
  */
 const RecommendationsStackNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <RecommendationsStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: COLORS.white,
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: '700',
         },
@@ -151,13 +158,15 @@ const RecommendationsStackNavigator: React.FC = () => {
  * Settings Stack Navigator
  */
 const SettingsStackNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <SettingsStack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: COLORS.primary,
+          backgroundColor: colors.primary,
         },
-        headerTintColor: COLORS.white,
+        headerTintColor: colors.white,
         headerTitleStyle: {
           fontWeight: '700',
         },
@@ -230,6 +239,7 @@ const TabBarBadge: React.FC<TabBarBadgeProps> = ({ count }) => {
 // ============================================================================
 
 export const MainNavigator: React.FC = () => {
+  const { colors } = useTheme();
   const [recommendationCount, setRecommendationCount] = useState(0);
   const subscriptions = useSubscriptionsStore((state) => state.subscriptions);
 
@@ -253,15 +263,15 @@ export const MainNavigator: React.FC = () => {
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.gray,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.gray,
         tabBarStyle: {
           paddingBottom: 8,
           paddingTop: 8,
           height: 65,
           borderTopWidth: 1,
-          borderTopColor: COLORS.lightGray,
-          backgroundColor: COLORS.white,
+          borderTopColor: colors.lightGray,
+          backgroundColor: colors.white,
         },
         tabBarLabelStyle: {
           fontSize: 12,

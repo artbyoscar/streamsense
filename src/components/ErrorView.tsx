@@ -7,6 +7,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 import { Button } from './Button';
 
@@ -56,6 +57,8 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
   fullScreen = false,
   icon = 'alert-circle-outline',
 }) => {
+  const { colors } = useTheme();
+
   // Determine the error message to display
   const getErrorMessage = (): string => {
     if (message) return message;
@@ -74,13 +77,13 @@ export const ErrorView: React.FC<ErrorViewProps> = ({
   const containerStyle = fullScreen ? styles.fullScreenContainer : styles.container;
 
   return (
-    <View style={containerStyle}>
-      <View style={styles.iconContainer}>
-        <MaterialCommunityIcons name={icon} size={64} color={COLORS.error} />
+    <View style={[containerStyle, fullScreen && { backgroundColor: colors.background }]}>
+      <View style={[styles.iconContainer, { backgroundColor: `${colors.error}15` }]}>
+        <MaterialCommunityIcons name={icon} size={64} color={colors.error} />
       </View>
 
-      <Text style={styles.title}>{errorTitle}</Text>
-      <Text style={styles.message}>{errorMessage}</Text>
+      <Text style={[styles.title, { color: colors.darkGray }]}>{errorTitle}</Text>
+      <Text style={[styles.message, { color: colors.gray }]}>{errorMessage}</Text>
 
       {onRetry && (
         <Button

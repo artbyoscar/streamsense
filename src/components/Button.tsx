@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleSheet, ViewStyle, TextStyle } from 'react-native';
 import { Button as PaperButton, ActivityIndicator } from 'react-native-paper';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'success' | 'error';
@@ -34,6 +35,8 @@ export const Button: React.FC<ButtonProps> = React.memo(({
   style,
   testID,
 }) => {
+  const { colors } = useTheme();
+
   const getButtonMode = (): 'text' | 'outlined' | 'contained' => {
     if (variant === 'outline') return 'outlined';
     if (variant === 'secondary') return 'text';
@@ -43,25 +46,25 @@ export const Button: React.FC<ButtonProps> = React.memo(({
   const getButtonColor = (): string => {
     switch (variant) {
       case 'primary':
-        return COLORS.primary;
+        return colors.primary;
       case 'success':
-        return COLORS.success;
+        return colors.success;
       case 'error':
-        return COLORS.error;
+        return colors.error;
       case 'secondary':
-        return COLORS.gray;
+        return colors.gray;
       case 'outline':
-        return COLORS.primary;
+        return colors.primary;
       default:
-        return COLORS.primary;
+        return colors.primary;
     }
   };
 
   const getTextColor = (): string => {
     if (variant === 'outline' || variant === 'secondary') {
-      return variant === 'outline' ? COLORS.primary : COLORS.gray;
+      return variant === 'outline' ? colors.primary : colors.gray;
     }
-    return COLORS.white;
+    return colors.white;
   };
 
   const buttonMode = getButtonMode();

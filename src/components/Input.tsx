@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { TextInput, Text, HelperText } from 'react-native-paper';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 
 export interface InputProps {
@@ -57,6 +58,7 @@ export const Input: React.FC<InputProps> = ({
   style,
   testID,
 }) => {
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -86,11 +88,12 @@ export const Input: React.FC<InputProps> = ({
         numberOfLines={multiline ? numberOfLines : 1}
         maxLength={maxLength}
         mode="outlined"
-        outlineColor={COLORS.lightGray}
-        activeOutlineColor={error ? COLORS.error : COLORS.primary}
-        textColor={COLORS.darkGray}
+        outlineColor={colors.lightGray}
+        activeOutlineColor={error ? colors.error : colors.primary}
+        textColor={colors.darkGray}
         style={[
           styles.input,
+          { backgroundColor: colors.white },
           multiline && { minHeight: numberOfLines * 20 + 30 },
         ]}
         onFocus={() => setIsFocused(true)}
@@ -98,14 +101,14 @@ export const Input: React.FC<InputProps> = ({
         testID={testID}
         theme={{
           colors: {
-            primary: COLORS.primary,
-            error: COLORS.error,
+            primary: colors.primary,
+            error: colors.error,
           },
           roundness: 8,
         }}
       />
       {error && (
-        <HelperText type="error" visible={!!error} style={styles.errorText}>
+        <HelperText type="error" visible={!!error} style={[styles.errorText, { color: colors.error }]}>
           {error}
         </HelperText>
       )}

@@ -36,9 +36,12 @@ import {
   addUserActionBreadcrumb,
   isSentryEnabled,
 } from '@/services/sentry';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from '@/components/theme';
 
 export const TestScreen = () => {
+  const { colors } = useTheme();
+
   // Track render performance
   useRenderPerformance('TestScreen');
 
@@ -114,21 +117,21 @@ export const TestScreen = () => {
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>StreamSense Testing</Text>
-      <Text style={styles.subtitle}>Test error handling, performance, and Sentry</Text>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.text }]}>StreamSense Testing</Text>
+      <Text style={[styles.subtitle, { color: colors.gray }]}>Test error handling, performance, and Sentry</Text>
 
       {/* Network Status */}
       <Card title="Network Status">
         <View style={styles.networkInfo}>
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, { color: colors.text }]}>
             Connected: {network.isConnected ? '✅' : '❌'}
           </Text>
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, { color: colors.text }]}>
             Internet: {network.isInternetReachable ? '✅' : '❌'}
           </Text>
-          <Text style={styles.infoText}>Type: {network.type || 'Unknown'}</Text>
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, { color: colors.text }]}>Type: {network.type || 'Unknown'}</Text>
+          <Text style={[styles.infoText, { color: colors.text }]}>
             Offline: {network.isOffline ? '⚠️ Yes' : '✅ No'}
           </Text>
         </View>
@@ -214,7 +217,7 @@ export const TestScreen = () => {
             size={40}
           />
         </View>
-        <Text style={styles.helpText}>
+        <Text style={[styles.helpText, { color: colors.gray }]}>
           Images use expo-image with memory+disk caching
         </Text>
       </Card>
@@ -225,7 +228,7 @@ export const TestScreen = () => {
           <Button onPress={testPerformanceMeasurement}>
             Test Performance Measurement (1s)
           </Button>
-          <Text style={styles.helpText}>
+          <Text style={[styles.helpText, { color: colors.gray }]}>
             Check console for: [Performance] testAsyncOperation: 1000ms
           </Text>
         </View>
@@ -234,7 +237,7 @@ export const TestScreen = () => {
       {/* Sentry Tests */}
       <Card title="Sentry Integration">
         <View style={styles.buttonGroup}>
-          <Text style={styles.infoText}>
+          <Text style={[styles.infoText, { color: colors.text }]}>
             Sentry Status: {isSentryEnabled() ? '✅ Enabled' : '⚠️ Disabled (Dev Mode)'}
           </Text>
 
@@ -258,7 +261,7 @@ export const TestScreen = () => {
             Clear User Context
           </Button>
 
-          <Text style={styles.helpText}>
+          <Text style={[styles.helpText, { color: colors.gray }]}>
             Note: Sentry only sends events in production builds. In development, check
             console logs.
           </Text>
@@ -268,13 +271,13 @@ export const TestScreen = () => {
       {/* Instructions */}
       <Card title="Testing Tips">
         <View style={styles.tipsContainer}>
-          <Text style={styles.tipText}>• Turn on Airplane Mode to test offline banner</Text>
-          <Text style={styles.tipText}>• Check console for performance measurements</Text>
-          <Text style={styles.tipText}>• Use React DevTools Profiler for render tracking</Text>
-          <Text style={styles.tipText}>
+          <Text style={[styles.tipText, { color: colors.text }]}>• Turn on Airplane Mode to test offline banner</Text>
+          <Text style={[styles.tipText, { color: colors.text }]}>• Check console for performance measurements</Text>
+          <Text style={[styles.tipText, { color: colors.text }]}>• Use React DevTools Profiler for render tracking</Text>
+          <Text style={[styles.tipText, { color: colors.text }]}>
             • Create production build to test Sentry fully
           </Text>
-          <Text style={styles.tipText}>
+          <Text style={[styles.tipText, { color: colors.text }]}>
             • Check docs/TESTING_GUIDE.md for detailed instructions
           </Text>
         </View>

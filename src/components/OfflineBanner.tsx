@@ -8,9 +8,11 @@ import { StyleSheet, Animated, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
+import { useTheme } from '@/providers/ThemeProvider';
 import { COLORS } from './theme';
 
 export const OfflineBanner: React.FC = () => {
+  const { colors } = useTheme();
   const [isOffline, setIsOffline] = useState(false);
   const [slideAnim] = useState(new Animated.Value(-60));
 
@@ -40,6 +42,7 @@ export const OfflineBanner: React.FC = () => {
       style={[
         styles.banner,
         {
+          backgroundColor: colors.error,
           transform: [{ translateY: slideAnim }],
         },
       ]}
@@ -48,10 +51,10 @@ export const OfflineBanner: React.FC = () => {
         <MaterialCommunityIcons
           name="wifi-off"
           size={20}
-          color={COLORS.white}
+          color={colors.white}
           style={styles.icon}
         />
-        <Text style={styles.text}>No internet connection</Text>
+        <Text style={[styles.text, { color: colors.white }]}>No internet connection</Text>
       </View>
     </Animated.View>
   );

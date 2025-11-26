@@ -6,6 +6,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 import { Text, IconButton } from 'react-native-paper';
+import { useTheme } from '@/providers/ThemeProvider';
 import { Button } from './Button';
 import { COLORS } from './theme';
 
@@ -28,17 +29,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   style,
   testID,
 }) => {
+  const { colors } = useTheme();
+
   return (
     <View style={[styles.container, style]} testID={testID}>
       <IconButton
         icon={icon}
         size={64}
-        iconColor={COLORS.lightGray}
+        iconColor={colors.lightGray}
         style={styles.icon}
         disabled
       />
-      <Text style={styles.title}>{title}</Text>
-      {message && <Text style={styles.message}>{message}</Text>}
+      <Text style={[styles.title, { color: colors.darkGray }]}>{title}</Text>
+      {message && <Text style={[styles.message, { color: colors.gray }]}>{message}</Text>}
       {actionLabel && onActionPress && (
         <Button
           variant="primary"
