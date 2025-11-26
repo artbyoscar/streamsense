@@ -14,6 +14,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../hooks';
 import { loginSchema, type LoginFormData } from '../schemas/validation';
 import { logger } from '@/utils';
+import { useAuthScreen } from '../../../../App';
 
 interface LoginScreenProps {
   onForgotPassword?: () => void;
@@ -29,6 +30,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const theme = useTheme();
   const { login, isLoading, error, clearError } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
+  const { setShowRegister } = useAuthScreen();
 
   const {
     control,
@@ -78,6 +80,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
   const handleRegister = () => {
     clearError();
+    setShowRegister(true);
     onRegister?.();
   };
 

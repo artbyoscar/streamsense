@@ -1,11 +1,11 @@
 import { enableScreens } from 'react-native-screens';
 enableScreens(false);
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PaperProvider, MD3LightTheme } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
 import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
 import { ToastProvider } from './src/components/Toast';
@@ -23,7 +23,29 @@ const theme = {
   },
 };
 
-const Stack = createStackNavigator();
+const Tab = createBottomTabNavigator();
+
+// Auth context for switching between Login/Register
+const AuthScreenContext = React.createContext<{
+  showRegister: boolean;
+  setShowRegister: (show: boolean) => void;
+}>({
+  showRegister: false,
+  setShowRegister: () => {},
+});
+
+export const useAuthScreen = () => React.useContext(AuthScreenContext);
+
+// Wrapper component that handles Login/Register switching
+function AuthFlow() {
+  const [showRegister, setShowRegister] = useState(false);
+
+  return (
+    <AuthScreenContext.Provider value={{ showRegister, setShowRegister }}>
+      {showRegister ? <RegisterScreen /> : <LoginScreen />}
+    </AuthScreenContext.Provider>
+  );
+}
 
 function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
@@ -47,10 +69,9 @@ function AppContent() {
 
   return (
     <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-      </Stack.Navigator>
+      <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
+        <Tab.Screen name="Auth" component={AuthFlow} />
+      </Tab.Navigator>
     </NavigationContainer>
   );
 }

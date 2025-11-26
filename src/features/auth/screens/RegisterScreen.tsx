@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useAuth } from '../hooks';
 import { registerSchema, type RegisterFormData } from '../schemas/validation';
 import { logger } from '@/utils';
+import { useAuthScreen } from '../../../../App';
 
 interface RegisterScreenProps {
   onLogin?: () => void;
@@ -30,6 +31,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onLogin, onRegis
   const [termsError, setTermsError] = useState(false);
   const [registrationSuccess, setRegistrationSuccess] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  const { setShowRegister } = useAuthScreen();
 
   const {
     control,
@@ -94,6 +96,7 @@ export const RegisterScreen: React.FC<RegisterScreenProps> = ({ onLogin, onRegis
   const handleLogin = () => {
     clearError();
     setRegistrationSuccess(false);
+    setShowRegister(false);
     onLogin?.();
   };
 
