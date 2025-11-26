@@ -15,7 +15,7 @@ import { Text } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import type { DashboardStackParamList } from '@/navigation/types';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionsData, formatCurrency } from '@/features/subscriptions';
 import { syncAllPlaidItems } from '@/services/plaid';
 import { COLORS, EmptyState, LoadingScreen, Card, PaywallModal } from '@/components';

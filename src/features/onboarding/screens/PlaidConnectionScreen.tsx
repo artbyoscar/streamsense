@@ -14,7 +14,7 @@ import {
 } from 'react-native-plaid-link-sdk';
 import { useNavigation } from '@react-navigation/native';
 import { Button, Card, COLORS } from '@/components';
-import { useAuthStore } from '@/store/authStore';
+import { useAuthStore } from '@/stores/authStore';
 import {
   createLinkToken,
   exchangePublicToken,
