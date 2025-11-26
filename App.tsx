@@ -2,8 +2,9 @@ import { enableScreens } from 'react-native-screens';
 enableScreens(false);
 
 import React, { useEffect, useState } from 'react';
+import { View, ActivityIndicator } from 'react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PaperProvider, MD3LightTheme } from 'react-native-paper';
+import { PaperProvider, MD3LightTheme, Text, Button } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { LoginScreen } from './src/features/auth/screens/LoginScreen';
@@ -11,8 +12,6 @@ import { RegisterScreen } from './src/features/auth/screens/RegisterScreen';
 import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
-import Constants from 'expo-constants';
-import { supabase } from './src/config/supabase';
 
 const queryClient = new QueryClient();
 
@@ -52,41 +51,47 @@ function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
   const isLoading = useAuthStore((state) => state.isLoading);
   const isInitialized = useAuthStore((state) => state.isInitialized);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
+  const logout = useAuthStore((state) => state.logout);
 
   useEffect(() => {
-    console.log('[App] Checking Supabase config...');
-    const supabaseUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_URL;
-    const supabaseKey = Constants.expoConfig?.extra?.EXPO_PUBLIC_SUPABASE_ANON_KEY;
-    console.log('[App] Supabase URL from extra:', supabaseUrl);
-    console.log('[App] Supabase Anon Key:', supabaseKey ? 'SET (length: ' + supabaseKey.length + ')' : 'NOT SET');
-
-    // Also check process.env directly
-    console.log('[App] process.env.EXPO_PUBLIC_SUPABASE_URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-
-    // Test Supabase connection
-    const testConnection = async () => {
-      try {
-        console.log('[App] Testing Supabase connection...');
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error('[App] Supabase connection error:', error.message);
-        } else {
-          console.log('[App] Supabase connection successful!');
-        }
-      } catch (e: any) {
-        console.error('[App] Supabase connection failed:', e.message || e);
-      }
-    };
-
     console.log('[App] Starting auth initialization...');
     initialize().then(() => {
       console.log('[App] Auth initialization completed');
-      testConnection();
     });
   }, [initialize]);
 
-  console.log(`[App] Rendering - isLoading: ${isLoading} isInitialized: ${isInitialized}`);
+  // Show loading while initializing
+  if (!isInitialized) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' }}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text variant="bodyLarge" style={{ marginTop: 16, opacity: 0.7 }}>
+          Loading StreamSense...
+        </Text>
+      </View>
+    );
+  }
 
+  // Show main app if authenticated
+  if (isAuthenticated) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#FFFFFF' }}>
+        <Text variant="displaySmall" style={{ fontWeight: 'bold', marginBottom: 10 }}>
+          Welcome to StreamSense!
+        </Text>
+        <Text variant="bodyLarge" style={{ marginBottom: 20, opacity: 0.7 }}>
+          Logged in as: {user?.email}
+        </Text>
+        <Button mode="contained" onPress={logout}>
+          Logout
+        </Button>
+      </View>
+    );
+  }
+
+  // Show auth flow if not authenticated
   return (
     <NavigationContainer>
       <Tab.Navigator screenOptions={{ headerShown: false, tabBarStyle: { display: 'none' } }}>
