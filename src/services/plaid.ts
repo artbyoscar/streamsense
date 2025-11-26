@@ -99,13 +99,13 @@ export async function exchangePublicToken(
 // ============================================================================
 
 /**
- * Syncs transactions for a Plaid item
+ * Syncs transactions for a Plaid item using cursor-based incremental updates
  * This calls the Supabase Edge Function to fetch and store transactions
  */
 export async function syncTransactions(
   plaidItemId: string,
-  startDate?: string,
-  endDate?: string
+  cursor?: string,
+  count?: number
 ): Promise<SyncTransactionsResponse> {
   try {
     const { data, error } = await supabase.functions.invoke<SyncTransactionsResponse>(
@@ -113,8 +113,8 @@ export async function syncTransactions(
       {
         body: {
           plaidItemId,
-          startDate,
-          endDate,
+          cursor,
+          count,
         },
       }
     );
@@ -132,6 +132,51 @@ export async function syncTransactions(
     );
   } catch (error) {
     console.error('Error in syncTransactions:', error);
+    throw error;
+  }
+}
+
+/**
+ * Performs a full sync of all Plaid items for the current user
+ * Useful for background sync or manual refresh
+ */
+export async function syncAllPlaidItems(): Promise<{
+  itemsSynced: number;
+  totalTransactions: number;
+  totalSubscriptions: number;
+  errors: Array<{ itemId: string; error: string }>;
+}> {
+  try {
+    const items = await getPlaidItems();
+    const errors: Array<{ itemId: string; error: string }> = [];
+    let totalTransactions = 0;
+    let totalSubscriptions = 0;
+
+    for (const item of items) {
+      // Skip inactive items
+      if (!item.is_active) continue;
+
+      try {
+        const result = await syncTransactions(item.id);
+        totalTransactions += result.transactionsSynced || 0;
+        totalSubscriptions += result.subscriptionsDetected || 0;
+      } catch (error: any) {
+        console.error(`Error syncing item ${item.id}:`, error);
+        errors.push({
+          itemId: item.id,
+          error: error.message || 'Unknown error',
+        });
+      }
+    }
+
+    return {
+      itemsSynced: items.length - errors.length,
+      totalTransactions,
+      totalSubscriptions,
+      errors,
+    };
+  } catch (error) {
+    console.error('Error in syncAllPlaidItems:', error);
     throw error;
   }
 }
