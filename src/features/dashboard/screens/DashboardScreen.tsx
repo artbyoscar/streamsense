@@ -75,8 +75,8 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // TODO: Implement subscription form as modal/dialog
-    Alert.alert('Add Subscription', 'Subscription form coming soon!');
+    // Navigate to subscription form
+    navigation.navigate('SubscriptionForm');
   };
 
   const handleUpgrade = () => {
@@ -105,8 +105,8 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    // TODO: Implement subscription detail as modal/dialog
-    Alert.alert('Subscription Details', `Viewing subscription ${subscriptionId}`);
+    // Navigate to subscription form in edit mode
+    navigation.navigate('SubscriptionForm', { subscriptionId });
   };
 
   // Get greeting based on time of day
