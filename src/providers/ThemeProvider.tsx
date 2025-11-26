@@ -30,7 +30,6 @@ export const navigationTheme = {
     border: '#E5E7EB',
     notification: '#EF4444',
   },
-  fonts: MD3LightTheme.fonts,
 };
 
 interface ThemeProviderProps {
