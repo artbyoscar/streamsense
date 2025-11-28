@@ -4,6 +4,7 @@
  */
 
 import React, { createContext, useContext, useState } from 'react';
+import type { UnifiedContent } from '@/types';
 
 type TabName = 'Home' | 'Watchlist' | 'Tips' | 'Settings';
 
@@ -13,6 +14,12 @@ interface NavigationContextType {
   navigateToScreen: (screen: string, params?: any) => void;
   showSubscriptionForm: boolean;
   setShowSubscriptionForm: (show: boolean) => void;
+  showContentSearch: boolean;
+  setShowContentSearch: (show: boolean) => void;
+  showContentDetail: boolean;
+  setShowContentDetail: (show: boolean) => void;
+  selectedContent: UnifiedContent | null;
+  setSelectedContent: (content: UnifiedContent | null) => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
@@ -27,6 +34,12 @@ export const useCustomNavigation = () => {
       navigateToScreen: (screen: string) => console.log('[Navigation] Would open:', screen),
       showSubscriptionForm: false,
       setShowSubscriptionForm: (show: boolean) => console.log('[Navigation] Would show subscription form:', show),
+      showContentSearch: false,
+      setShowContentSearch: (show: boolean) => console.log('[Navigation] Would show content search:', show),
+      showContentDetail: false,
+      setShowContentDetail: (show: boolean) => console.log('[Navigation] Would show content detail:', show),
+      selectedContent: null,
+      setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
     };
   }
   return context;
@@ -35,6 +48,9 @@ export const useCustomNavigation = () => {
 export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<TabName>('Home');
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false);
+  const [showContentSearch, setShowContentSearch] = useState(false);
+  const [showContentDetail, setShowContentDetail] = useState(false);
+  const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
 
   const navigateToScreen = (screen: string, params?: any) => {
     // Handle modal screens or sub-screens here
@@ -44,7 +60,11 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       console.log('[Navigation] Opening SubscriptionForm modal');
       setShowSubscriptionForm(true);
     } else if (screen === 'ContentSearch') {
-      console.log('[Navigation] Would open ContentSearch modal');
+      console.log('[Navigation] Opening ContentSearch modal');
+      setShowContentSearch(true);
+    } else if (screen === 'ContentDetail') {
+      console.log('[Navigation] Opening ContentDetail modal');
+      setShowContentDetail(true);
     } else if (screen === 'SettingsTab' || screen === 'Settings') {
       setActiveTab('Settings');
     } else if (screen === 'WatchlistTab' || screen === 'Watchlist') {
@@ -55,7 +75,21 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   return (
-    <NavigationContext.Provider value={{ activeTab, setActiveTab, navigateToScreen, showSubscriptionForm, setShowSubscriptionForm }}>
+    <NavigationContext.Provider
+      value={{
+        activeTab,
+        setActiveTab,
+        navigateToScreen,
+        showSubscriptionForm,
+        setShowSubscriptionForm,
+        showContentSearch,
+        setShowContentSearch,
+        showContentDetail,
+        setShowContentDetail,
+        selectedContent,
+        setSelectedContent,
+      }}
+    >
       {children}
     </NavigationContext.Provider>
   );

@@ -11,12 +11,25 @@ import { WatchlistScreen } from '@/features/watchlist';
 import { SettingsScreen } from '@/features/settings';
 import { RecommendationsScreen } from '@/features/recommendations';
 import { SubscriptionForm } from '@/features/subscriptions/components/SubscriptionForm';
+import { ContentSearchModal } from '@/features/watchlist/components/ContentSearchModal';
+import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 import { useTheme } from '@/providers/ThemeProvider';
 
 // Navigator component - uses the context
 const Navigator: React.FC = () => {
-  const { activeTab, setActiveTab, showSubscriptionForm, setShowSubscriptionForm } = useCustomNavigation();
+  const {
+    activeTab,
+    setActiveTab,
+    showSubscriptionForm,
+    setShowSubscriptionForm,
+    showContentSearch,
+    setShowContentSearch,
+    showContentDetail,
+    setShowContentDetail,
+    selectedContent,
+    setSelectedContent,
+  } = useCustomNavigation();
   const { colors, isDark } = useTheme();
 
   const renderScreen = () => {
@@ -76,6 +89,31 @@ const Navigator: React.FC = () => {
           />
         </SafeAreaView>
       </Modal>
+
+      {/* Content Search Modal */}
+      <ContentSearchModal
+        visible={showContentSearch}
+        onClose={() => setShowContentSearch(false)}
+        onSelectContent={(content) => {
+          setSelectedContent(content);
+          setShowContentSearch(false);
+          setShowContentDetail(true);
+        }}
+      />
+
+      {/* Content Detail Modal */}
+      <ContentDetailModal
+        visible={showContentDetail}
+        content={selectedContent}
+        onClose={() => {
+          setShowContentDetail(false);
+          setSelectedContent(null);
+        }}
+        onAddedToWatchlist={() => {
+          // Optionally refresh watchlist data
+          console.log('[Navigation] Content added to watchlist');
+        }}
+      />
     </SafeAreaView>
   );
 };
