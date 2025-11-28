@@ -16,7 +16,7 @@ import {
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/config/supabase';
 import { useAuth } from '@/features/auth';
 
 // Common streaming services
