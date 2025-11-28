@@ -38,8 +38,8 @@ export const Card: React.FC<CardProps> = React.memo(({
       {hasHeader && (
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <View style={styles.headerLeft}>
-            {title && <Text style={[styles.title, { color: colors.darkGray }]}>{title}</Text>}
-            {subtitle && <Text style={[styles.subtitle, { color: colors.gray }]}>{subtitle}</Text>}
+            {title && <Text style={[styles.title, { color: colors.text }]}>{title}</Text>}
+            {subtitle && <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>}
           </View>
           {headerRight && <View style={styles.headerRight}>{headerRight}</View>}
         </View>
@@ -53,7 +53,7 @@ export const Card: React.FC<CardProps> = React.memo(({
   if (onPress) {
     return (
       <PaperCard
-        style={[styles.card, { backgroundColor: colors.white }, style]}
+        style={[styles.card, { backgroundColor: colors.card }, style]}
         elevation={elevation}
         onPress={onPress}
         testID={testID}
@@ -64,7 +64,7 @@ export const Card: React.FC<CardProps> = React.memo(({
   }
 
   return (
-    <PaperCard style={[styles.card, { backgroundColor: colors.white }, style]} elevation={elevation} testID={testID}>
+    <PaperCard style={[styles.card, { backgroundColor: colors.card }, style]} elevation={elevation} testID={testID}>
       {CardContent}
     </PaperCard>
   );
@@ -72,7 +72,6 @@ export const Card: React.FC<CardProps> = React.memo(({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
     borderRadius: 12,
     marginVertical: 6,
     marginHorizontal: 0,
@@ -86,7 +85,6 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 8,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
   },
   headerLeft: {
     flex: 1,
@@ -97,12 +95,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '600',
-    color: COLORS.darkGray,
     marginBottom: 2,
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.gray,
     marginTop: 2,
   },
   contentWithHeader: {
