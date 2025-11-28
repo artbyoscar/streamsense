@@ -473,3 +473,25 @@ export async function getUSWatchProviders(
   const response = await getWatchProviders(id, type);
   return response.results.US || null;
 }
+
+// ============================================================================
+// TEMPORARY TEST - Remove after debugging
+// ============================================================================
+(async () => {
+  try {
+    console.log('[TMDb Test] Testing API directly...');
+    console.log('[TMDb Test] tmdbApi is:', typeof tmdbApi);
+    if (tmdbApi) {
+      const response = await tmdbApi.get('/trending/all/day');
+      console.log('[TMDb Test] ✅ SUCCESS! Got', response.data.results?.length, 'trending items');
+    } else {
+      console.log('[TMDb Test] ❌ FAILED - tmdbApi is undefined');
+    }
+  } catch (error: any) {
+    console.log('[TMDb Test] ❌ ERROR:', error.message);
+    if (error.response) {
+      console.log('[TMDb Test] Response status:', error.response.status);
+      console.log('[TMDb Test] Response data:', error.response.data);
+    }
+  }
+})();
