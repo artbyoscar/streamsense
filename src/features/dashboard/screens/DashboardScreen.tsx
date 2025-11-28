@@ -120,7 +120,11 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleConnectBank = () => {
-    setActiveTab('Settings');
+    Alert.alert(
+      'Coming Soon',
+      'Bank connection will be available once Plaid approval is received.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleViewRecommendations = () => {

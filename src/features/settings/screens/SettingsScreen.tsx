@@ -141,7 +141,7 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { isPremium, expirationDate } = usePremiumStore();
-  const { themeMode, setThemeMode } = useTheme();
+  const { themeMode, setThemeMode, colors } = useTheme();
 
   // Preferences state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -305,7 +305,7 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
       {/* Account Section */}
       <SectionHeader title="Account" />
       <Card style={styles.card}>
@@ -528,7 +528,6 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   contentContainer: {
     paddingTop: 20,
