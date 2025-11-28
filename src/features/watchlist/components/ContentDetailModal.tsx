@@ -258,8 +258,8 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
         Alert.alert('Success', 'Added to watchlist!');
       }
 
+      // Let parent handle modal closure via onAddedToWatchlist callback
       onAddedToWatchlist?.();
-      onClose();
     } catch (error) {
       console.error('[ContentDetail] Error saving to watchlist:', error);
       Alert.alert('Error', 'Failed to save to watchlist. Please try again.');

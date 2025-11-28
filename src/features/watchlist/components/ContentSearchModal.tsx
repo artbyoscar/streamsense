@@ -347,9 +347,10 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
           content={selectedContent}
           visible={showDetailModal}
           onClose={() => {
+            // User closed detail modal, return to browse
             setShowDetailModal(false);
             setSelectedContent(null);
-            onClose(); // Close entire search modal
+            // Stay in search modal - do NOT call onClose()
           }}
           onAddedToWatchlist={() => {
             // Content was added, stay in search modal
