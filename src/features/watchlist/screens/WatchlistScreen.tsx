@@ -20,6 +20,8 @@ import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { supabase } from '@/config/supabase';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { useTheme } from '@/providers/ThemeProvider';
+import { getMixedRecommendations } from '@/services/personalizedRecommendations';
+import { getUserTopGenres } from '@/services/genreAffinity';
 import { COLORS, EmptyState } from '@/components';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
@@ -64,6 +66,9 @@ export const WatchlistScreen: React.FC = () => {
   const [watching, setWatching] = useState<WatchlistItemWithContent[]>([]);
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
+  const [forYouContent, setForYouContent] = useState<UnifiedContent[]>([]);
+  const [topGenres, setTopGenres] = useState<string[]>([]);
+  const [loadingForYou, setLoadingForYou] = useState(false);
 
   // Fetch trending for suggestions
   const { data: trending } = useTrending('week', 1);
@@ -124,6 +129,32 @@ export const WatchlistScreen: React.FC = () => {
     fetchWatchlist();
   }, [fetchWatchlist]);
 
+  // Load personalized recommendations
+  useEffect(() => {
+    if (user?.id) {
+      loadPersonalizedContent();
+    }
+  }, [user?.id]);
+
+  const loadPersonalizedContent = async () => {
+    if (!user?.id) return;
+
+    setLoadingForYou(true);
+    try {
+      const [recommendations, genres] = await Promise.all([
+        getMixedRecommendations(user.id, 10),
+        getUserTopGenres(user.id, 3),
+      ]);
+
+      setForYouContent(recommendations);
+      setTopGenres(genres.map(g => g.genreName));
+    } catch (error) {
+      console.error('[Watchlist] Error loading personalized content:', error);
+    } finally {
+      setLoadingForYou(false);
+    }
+  };
+
   const handleRefresh = () => {
     setIsRefreshing(true);
     fetchWatchlist();
@@ -172,6 +203,12 @@ export const WatchlistScreen: React.FC = () => {
       popularity: item.popularity || 0,
       language: item.original_language || '',
     };
+    setSelectedContent(content);
+    setShowContentDetail(true);
+  };
+
+  // Handle personalized content press
+  const handleContentPress = (content: UnifiedContent) => {
     setSelectedContent(content);
     setShowContentDetail(true);
   };
@@ -342,6 +379,76 @@ export const WatchlistScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Personalized For You Section */}
+        {forYouContent.length > 0 ? (
+          <View style={styles.section}>
+            <View style={styles.sectionHeaderWithSubtitle}>
+              <View>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                  ✨ For You
+                </Text>
+                {topGenres.length > 0 && (
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    Based on {topGenres.slice(0, 2).join(' & ')}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {forYouContent.map(item => (
+                <TouchableOpacity
+                  key={`foryou-${item.id}-${item.type}`}
+                  onPress={() => handleContentPress(item)}
+                  style={styles.posterCard}
+                >
+                  <Image
+                    source={{
+                      uri: item.posterPath
+                        ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
+                        : 'https://via.placeholder.com/120x180'
+                    }}
+                    style={[styles.poster, { backgroundColor: colors.card }]}
+                  />
+                  <Text
+                    numberOfLines={2}
+                    style={[styles.posterTitle, { color: colors.text }]}
+                  >
+                    {item.title}
+                  </Text>
+                  <View style={styles.contentMeta}>
+                    <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
+                      {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        ) : !loadingForYou && totalItems > 0 ? (
+          <View style={[styles.onboardingCard, { backgroundColor: colors.card }]}>
+            <MaterialCommunityIcons name="star-four-points" size={32} color={colors.primary} />
+            <Text style={[styles.onboardingTitle, { color: colors.text }]}>
+              Personalized picks coming soon
+            </Text>
+            <Text style={[styles.onboardingText, { color: colors.textSecondary }]}>
+              Add shows and movies to your watchlist to get recommendations tailored to your taste
+            </Text>
+          </View>
+        ) : null}
+
+        {loadingForYou && forYouContent.length === 0 && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Finding recommendations...
+            </Text>
+          </View>
+        )}
+
         {/* Currently Watching Section */}
         {renderHorizontalSection('Currently Watching', watching)}
 
@@ -455,6 +562,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 12,
   },
+  sectionHeaderWithSubtitle: {
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    marginTop: 2,
+    paddingLeft: 0,
+  },
   horizontalScroll: {
     paddingHorizontal: 20,
     gap: 12,
@@ -541,5 +657,38 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 100,
+  },
+  contentMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  contentMetaText: {
+    fontSize: 11,
+  },
+  onboardingCard: {
+    padding: 20,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  onboardingTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  onboardingText: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+    gap: 8,
   },
 });
