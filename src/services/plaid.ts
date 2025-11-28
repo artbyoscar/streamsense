@@ -42,10 +42,20 @@ export async function createLinkToken(userId: string): Promise<string> {
   checkPlaidConfigured();
 
   try {
+    // Get the current session for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No active session. Please log in again.');
+    }
+
     const { data, error } = await supabase.functions.invoke<CreateLinkTokenResponse>(
       'plaid-create-link-token',
       {
         body: { userId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
       }
     );
 
@@ -91,6 +101,13 @@ export async function exchangePublicToken(
   checkPlaidConfigured();
 
   try {
+    // Get the current session for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No active session. Please log in again.');
+    }
+
     const { data, error } = await supabase.functions.invoke<ExchangePublicTokenResponse>(
       'plaid-exchange-token',
       {
@@ -98,6 +115,9 @@ export async function exchangePublicToken(
           publicToken,
           institutionName: metadata?.institution?.name,
           institutionId: metadata?.institution?.institution_id,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       }
     );
@@ -134,6 +154,13 @@ export async function syncTransactions(
   checkPlaidConfigured();
 
   try {
+    // Get the current session for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No active session. Please log in again.');
+    }
+
     const { data, error } = await supabase.functions.invoke<SyncTransactionsResponse>(
       'plaid-sync-transactions',
       {
@@ -141,6 +168,9 @@ export async function syncTransactions(
           plaidItemId,
           cursor,
           count,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
       }
     );
@@ -253,8 +283,18 @@ export async function deletePlaidItem(itemId: string): Promise<void> {
   checkPlaidConfigured();
 
   try {
+    // Get the current session for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session) {
+      throw new Error('No active session. Please log in again.');
+    }
+
     const { error } = await supabase.functions.invoke('plaid-delete-item', {
       body: { itemId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
     });
 
     if (error) {
