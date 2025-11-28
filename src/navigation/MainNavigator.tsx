@@ -32,6 +32,7 @@ const Navigator: React.FC = () => {
     setShowPlaidConnection,
     selectedContent,
     setSelectedContent,
+    triggerRefresh,
   } = useCustomNavigation();
   const { colors, isDark } = useTheme();
 
@@ -87,7 +88,10 @@ const Navigator: React.FC = () => {
             </TouchableOpacity>
           </View>
           <SubscriptionForm
-            onSuccess={() => setShowSubscriptionForm(false)}
+            onSuccess={() => {
+              triggerRefresh();
+              setShowSubscriptionForm(false);
+            }}
             onCancel={() => setShowSubscriptionForm(false)}
           />
         </SafeAreaView>

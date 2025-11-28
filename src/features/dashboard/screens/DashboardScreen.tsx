@@ -30,7 +30,7 @@ import { SuggestionsAlert } from '../components/SuggestionsAlert';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export const DashboardScreen: React.FC = () => {
-  const { setActiveTab, navigateToScreen } = useCustomNavigation();
+  const { setActiveTab, navigateToScreen, refreshKey } = useCustomNavigation();
   const user = useAuthStore((state) => state.user);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -81,6 +81,14 @@ export const DashboardScreen: React.FC = () => {
     };
     calculateSavings();
   }, [activeSubscriptions]);
+
+  // Refresh when refreshKey changes (e.g., after adding a subscription)
+  useEffect(() => {
+    if (refreshKey > 0) {
+      console.log('[Dashboard] Refreshing data due to refreshKey change');
+      refetch();
+    }
+  }, [refreshKey, refetch]);
 
   // Pull-to-refresh handler
   const handleRefresh = useCallback(async () => {

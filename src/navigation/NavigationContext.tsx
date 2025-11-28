@@ -22,6 +22,8 @@ interface NavigationContextType {
   setShowPlaidConnection: (show: boolean) => void;
   selectedContent: UnifiedContent | null;
   setSelectedContent: (content: UnifiedContent | null) => void;
+  refreshKey: number;
+  triggerRefresh: () => void;
 }
 
 const NavigationContext = createContext<NavigationContextType | null>(null);
@@ -44,6 +46,8 @@ export const useCustomNavigation = () => {
       setShowPlaidConnection: (show: boolean) => console.log('[Navigation] Would show plaid connection:', show),
       selectedContent: null,
       setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
+      refreshKey: 0,
+      triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
     };
   }
   return context;
@@ -56,6 +60,11 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [showContentDetail, setShowContentDetail] = useState(false);
   const [showPlaidConnection, setShowPlaidConnection] = useState(false);
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const triggerRefresh = () => {
+    setRefreshKey((prev) => prev + 1);
+  };
 
   const navigateToScreen = (screen: string, params?: any) => {
     // Handle modal screens or sub-screens here
@@ -98,6 +107,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowPlaidConnection,
         selectedContent,
         setSelectedContent,
+        refreshKey,
+        triggerRefresh,
       }}
     >
       {children}
