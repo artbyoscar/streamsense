@@ -1,473 +1,406 @@
 /**
  * Watchlist Screen
- * Manage and view watchlist with filters, sorting, and swipe actions
+ * User's watchlist grouped by status with content search integration
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
-  Animated,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
-import { Text, FAB, Menu, Divider } from 'react-native-paper';
+import { Text, FAB } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Swipeable } from 'react-native-gesture-handler';
-import { useWatchlistStore, SortOption, FilterOption } from '../store/watchlistStore';
+import { useAuth } from '@/features/auth';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
+import { supabase } from '@/config/supabase';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
-import { COLORS, Card, LoadingScreen, EmptyState, PaywallModal } from '@/components';
-import { usePremiumFeature } from '@/hooks/usePremiumFeature';
-import type { WatchlistItem, WatchlistPriority } from '@/types';
+import { useTheme } from '@/providers/ThemeProvider';
+import { COLORS, EmptyState } from '@/components';
+import type { UnifiedContent, WatchlistStatus } from '@/types';
 
 // ============================================================================
-// CONSTANTS
+// TYPES
 // ============================================================================
 
-const PRIORITY_COLORS: Record<WatchlistPriority, string> = {
-  high: COLORS.error,
-  medium: COLORS.warning,
-  low: COLORS.success,
-};
-
-const PRIORITY_LABELS: Record<WatchlistPriority, string> = {
-  high: 'High Priority',
-  medium: 'Medium Priority',
-  low: 'Low Priority',
-};
-
-const SORT_OPTIONS: Array<{ value: SortOption; label: string; icon: string }> = [
-  { value: 'date', label: 'Date Added', icon: 'calendar' },
-  { value: 'priority', label: 'Priority', icon: 'flag' },
-  { value: 'title', label: 'Title (A-Z)', icon: 'sort-alphabetical-ascending' },
-];
-
-// ============================================================================
-// SWIPEABLE ITEM COMPONENT
-// ============================================================================
-
-interface SwipeableWatchlistItemProps {
-  item: WatchlistItem;
-  onPress: () => void;
-  onMarkWatched: () => void;
-  onRemove: () => void;
-}
-
-const SwipeableWatchlistItem: React.FC<SwipeableWatchlistItemProps> = ({
-  item,
-  onPress,
-  onMarkWatched,
-  onRemove,
-}) => {
-  const renderRightActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>
-  ) => {
-    return (
-      <View style={styles.swipeActionsContainer}>
-        {/* Mark as Watched */}
-        {!item.watched && (
-          <TouchableOpacity style={styles.swipeActionWatched} onPress={onMarkWatched}>
-            <MaterialCommunityIcons name="check" size={24} color={COLORS.white} />
-            <Text style={styles.swipeActionText}>Watched</Text>
-          </TouchableOpacity>
-        )}
-
-        {/* Remove */}
-        <TouchableOpacity style={styles.swipeActionDelete} onPress={onRemove}>
-          <MaterialCommunityIcons name="delete" size={24} color={COLORS.white} />
-          <Text style={styles.swipeActionText}>Remove</Text>
-        </TouchableOpacity>
-      </View>
-    );
+interface WatchlistItemWithContent {
+  id: string;
+  user_id: string;
+  content_id: string;
+  status: WatchlistStatus;
+  priority: string;
+  rating: number | null;
+  streaming_services: any;
+  added_at: string;
+  content: {
+    id: string;
+    tmdb_id: number;
+    title: string;
+    type: 'movie' | 'tv';
+    poster_url: string | null;
+    overview: string | null;
   };
-
-  const posterUrl = item.content?.poster_path
-    ? getPosterUrl(item.content.poster_path, 'small')
-    : null;
-
-  return (
-    <Swipeable renderRightActions={renderRightActions}>
-      <TouchableOpacity
-        style={[styles.itemContainer, item.watched && styles.itemContainerWatched]}
-        onPress={onPress}
-        activeOpacity={0.7}
-      >
-        {/* Poster */}
-        {posterUrl ? (
-          <Image source={{ uri: posterUrl }} style={styles.itemPoster} />
-        ) : (
-          <View style={[styles.itemPoster, styles.itemPosterPlaceholder]}>
-            <MaterialCommunityIcons name="image-off" size={32} color={COLORS.gray} />
-          </View>
-        )}
-
-        {/* Info */}
-        <View style={styles.itemInfo}>
-          <Text style={styles.itemTitle} numberOfLines={2}>
-            {item.content?.title || 'Unknown Title'}
-          </Text>
-
-          <View style={styles.itemMeta}>
-            {/* Type Badge */}
-            <View
-              style={[
-                styles.typeBadge,
-                item.content?.type === 'movie'
-                  ? styles.typeBadgeMovie
-                  : styles.typeBadgeTV,
-              ]}
-            >
-              <Text style={styles.typeBadgeText}>
-                {item.content?.type === 'movie' ? 'MOVIE' : 'TV SHOW'}
-              </Text>
-            </View>
-
-            {/* Year */}
-            {item.content?.release_date && (
-              <Text style={styles.itemYear}>
-                {new Date(item.content.release_date).getFullYear()}
-              </Text>
-            )}
-          </View>
-
-          {/* Priority Badge */}
-          <View
-            style={[
-              styles.priorityBadge,
-              { backgroundColor: PRIORITY_COLORS[item.priority] + '20' },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="flag"
-              size={12}
-              color={PRIORITY_COLORS[item.priority]}
-            />
-            <Text
-              style={[styles.priorityText, { color: PRIORITY_COLORS[item.priority] }]}
-            >
-              {PRIORITY_LABELS[item.priority]}
-            </Text>
-          </View>
-
-          {/* Watched Badge */}
-          {item.watched && (
-            <View style={styles.watchedBadge}>
-              <MaterialCommunityIcons name="check-circle" size={14} color={COLORS.success} />
-              <Text style={styles.watchedText}>Watched</Text>
-            </View>
-          )}
-        </View>
-
-        {/* Chevron */}
-        <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.gray} />
-      </TouchableOpacity>
-    </Swipeable>
-  );
-};
+}
 
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
 export const WatchlistScreen: React.FC = () => {
-  const [sortMenuVisible, setSortMenuVisible] = useState(false);
-  const [showPaywall, setShowPaywall] = useState(false);
-
-  // Premium feature check
-  const { canAddWatchlistItem, isPremium } = usePremiumFeature();
-
+  const { colors } = useTheme();
+  const { user } = useAuth();
   const {
-    isLoading,
-    error,
-    sortBy,
-    filterBy,
-    fetchWatchlist,
-    markAsWatched,
-    removeFromWatchlist,
-    setSortBy,
-    setFilterBy,
-    getFilteredAndSortedWatchlist,
-    getUnwatchedCount,
-  } = useWatchlistStore();
+    setShowContentSearch,
+    setShowContentDetail,
+    setSelectedContent,
+  } = useCustomNavigation();
 
-  const watchlist = getFilteredAndSortedWatchlist();
-  const unwatchedCount = getUnwatchedCount();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [watching, setWatching] = useState<WatchlistItemWithContent[]>([]);
+  const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
+  const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
 
-  // Fetch trending for empty state
-  const { data: trending } = useTrending('week', 1, {
-    enabled: watchlist.length === 0 && !isLoading,
-  });
+  // Fetch trending for suggestions
+  const { data: trending } = useTrending('week', 1);
 
-  // Load watchlist on mount
+  // Fetch watchlist from Supabase
+  const fetchWatchlist = useCallback(async () => {
+    if (!user) return;
+
+    try {
+      const { data, error } = await supabase
+        .from('watchlist_items')
+        .select(`
+          id,
+          user_id,
+          content_id,
+          status,
+          priority,
+          rating,
+          streaming_services,
+          added_at,
+          content!inner (
+            id,
+            tmdb_id,
+            title,
+            type,
+            poster_url,
+            overview
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('added_at', { ascending: false });
+
+      if (error) throw error;
+
+      // Transform data: Supabase joins return content as array, convert to object
+      const transformedData = data?.map((item: any) => ({
+        ...item,
+        content: Array.isArray(item.content) ? item.content[0] : item.content,
+      })) as WatchlistItemWithContent[];
+
+      // Group by status
+      const watchingItems = transformedData?.filter((item) => item.status === 'watching') || [];
+      const wantToWatchItems = transformedData?.filter((item) => item.status === 'want_to_watch') || [];
+      const watchedItems = transformedData?.filter((item) => item.status === 'watched') || [];
+
+      setWatching(watchingItems);
+      setWantToWatch(wantToWatchItems);
+      setWatched(watchedItems);
+    } catch (error) {
+      console.error('[Watchlist] Error fetching watchlist:', error);
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [user]);
+
   useEffect(() => {
     fetchWatchlist();
   }, [fetchWatchlist]);
 
-  // Handlers
-  const handleItemPress = (item: WatchlistItem) => {
-    // TODO: Implement content detail as modal/dialog
-    Alert.alert(
-      'Content Details',
-      `Viewing details for "${item.content?.title}"\n\nContent detail view coming soon!`
-    );
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchWatchlist();
   };
 
-  const handleMarkWatched = async (item: WatchlistItem) => {
-    try {
-      await markAsWatched(item.id);
-    } catch (error) {
-      Alert.alert('Error', 'Failed to mark as watched');
-    }
+  // Convert watchlist item to UnifiedContent for detail modal
+  const convertToUnifiedContent = (item: WatchlistItemWithContent): UnifiedContent => {
+    return {
+      id: item.content.tmdb_id,
+      title: item.content.title,
+      originalTitle: item.content.title,
+      type: item.content.type,
+      overview: item.content.overview || '',
+      posterPath: item.content.poster_url,
+      backdropPath: null,
+      releaseDate: null,
+      genres: [],
+      rating: 0,
+      voteCount: 0,
+      popularity: 0,
+      language: '',
+    };
   };
 
-  const handleRemove = (item: WatchlistItem) => {
-    Alert.alert(
-      'Remove from Watchlist',
-      `Remove "${item.content?.title}" from your watchlist?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeFromWatchlist(item.id);
-            } catch (error) {
-              Alert.alert('Error', 'Failed to remove from watchlist');
-            }
-          },
-        },
-      ]
-    );
+  // Handle item press - open detail modal
+  const handleItemPress = (item: WatchlistItemWithContent) => {
+    const content = convertToUnifiedContent(item);
+    setSelectedContent(content);
+    setShowContentDetail(true);
   };
 
-  const handleAddContent = () => {
-    // Check if user can add more watchlist items
-    const check = canAddWatchlistItem(watchlist.length);
-
-    if (!check.allowed) {
-      // Show paywall if limit reached
-      setShowPaywall(true);
-      return;
-    }
-
-    // Navigate to content search (will be implemented as modal)
-    console.log('[Watchlist] Would navigate to: ContentSearch');
-    Alert.alert('Content Search', 'Content search modal coming soon!');
+  // Handle trending item press
+  const handleTrendingPress = (item: any) => {
+    const content: UnifiedContent = {
+      id: item.id,
+      title: item.media_type === 'movie' ? item.title : item.name,
+      originalTitle: item.media_type === 'movie' ? item.original_title : item.original_name,
+      type: item.media_type as 'movie' | 'tv',
+      overview: item.overview,
+      posterPath: item.poster_path,
+      backdropPath: item.backdrop_path,
+      releaseDate: item.media_type === 'movie' ? item.release_date : item.first_air_date,
+      genres: [],
+      rating: item.vote_average || 0,
+      voteCount: item.vote_count || 0,
+      popularity: item.popularity || 0,
+      language: item.original_language || '',
+    };
+    setSelectedContent(content);
+    setShowContentDetail(true);
   };
 
-  const handleBrowseTrending = () => {
-    // Navigate to content search (will be implemented as modal)
-    console.log('[Watchlist] Would navigate to: ContentSearch');
-    Alert.alert('Content Search', 'Content search modal coming soon!');
-  };
+  const totalItems = watching.length + wantToWatch.length + watched.length;
 
-  const handleUpgrade = () => {
-    setShowPaywall(false);
-    // Navigate to settings tab (will be implemented with useCustomNavigation)
-    console.log('[Watchlist] Would navigate to: Settings');
-    Alert.alert('Upgrade', 'Navigate to Settings tab to upgrade. Tab switching coming soon!');
-  };
+  // ============================================================================
+  // RENDER HORIZONTAL SECTION
+  // ============================================================================
 
-  // Get current sort label
-  const currentSortLabel =
-    SORT_OPTIONS.find((opt) => opt.value === sortBy)?.label || 'Date Added';
+  const renderHorizontalSection = (
+    title: string,
+    items: WatchlistItemWithContent[],
+    showRating: boolean = false
+  ) => {
+    if (items.length === 0) return null;
 
-  // Loading state
-  if (isLoading && watchlist.length === 0) {
-    return <LoadingScreen message="Loading your watchlist..." />;
-  }
-
-  // Error state
-  if (error && watchlist.length === 0) {
     return (
-      <View style={styles.errorContainer}>
-        <MaterialCommunityIcons name="alert-circle" size={64} color={COLORS.error} />
-        <Text style={styles.errorText}>Failed to load watchlist</Text>
-        <Text style={styles.errorSubtext}>{error}</Text>
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>{title}</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.horizontalScroll}
+        >
+          {items.map((item) => {
+            const posterUrl = item.content.poster_url
+              ? getPosterUrl(item.content.poster_url, 'small')
+              : null;
+
+            return (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.posterCard}
+                onPress={() => handleItemPress(item)}
+              >
+                {posterUrl ? (
+                  <Image source={{ uri: posterUrl }} style={styles.poster} />
+                ) : (
+                  <View style={[styles.poster, styles.posterPlaceholder, { backgroundColor: colors.border }]}>
+                    <MaterialCommunityIcons name="image-off" size={32} color={colors.textSecondary} />
+                  </View>
+                )}
+                <Text style={[styles.posterTitle, { color: colors.text }]} numberOfLines={2}>
+                  {item.content.title}
+                </Text>
+                {showRating && item.rating && (
+                  <View style={styles.ratingContainer}>
+                    <MaterialCommunityIcons name="star" size={14} color={COLORS.warning} />
+                    <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
+                      {item.rating}/10
+                    </Text>
+                  </View>
+                )}
+                {item.streaming_services && Array.isArray(item.streaming_services) && item.streaming_services.length > 0 && (
+                  <View style={styles.serviceContainer}>
+                    <MaterialCommunityIcons name="play-circle" size={12} color={colors.primary} />
+                    <Text style={[styles.serviceText, { color: colors.primary }]} numberOfLines={1}>
+                      {item.streaming_services[0]}
+                    </Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // ============================================================================
+  // LOADING STATE
+  // ============================================================================
+
+  if (isLoading) {
+    return (
+      <View style={[styles.container, styles.centerContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          Loading your watchlist...
+        </Text>
       </View>
     );
   }
 
-  // Empty state
-  if (watchlist.length === 0) {
+  // ============================================================================
+  // EMPTY STATE
+  // ============================================================================
+
+  if (totalItems === 0) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
         <EmptyState
           icon="playlist-plus"
           title="Your Watchlist is Empty"
           message="Start adding movies and TV shows you want to watch"
-          actionLabel="Browse Trending"
-          onActionPress={handleBrowseTrending}
+          actionLabel="Browse Content"
+          onActionPress={() => setShowContentSearch(true)}
         />
 
         {/* Trending Suggestions */}
         {trending && trending.results.length > 0 && (
           <View style={styles.trendingSection}>
-            <Text style={styles.trendingTitle}>🔥 Trending Now</Text>
-            <View style={styles.trendingGrid}>
-              {trending.results.slice(0, 6).map((item) => {
+            <Text style={[styles.trendingTitle, { color: colors.text }]}>🔥 Trending Now</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingScroll}>
+              {trending.results.slice(0, 10).map((item) => {
                 const title = item.media_type === 'movie' ? item.title : item.name;
+                const posterUrl = item.poster_path ? getPosterUrl(item.poster_path, 'small') : null;
+
                 return (
-                  <View key={`${item.media_type}-${item.id}`} style={styles.trendingItem}>
-                    {item.poster_path ? (
-                      <Image
-                        source={{ uri: getPosterUrl(item.poster_path, 'small')! }}
-                        style={styles.trendingPoster}
-                      />
+                  <TouchableOpacity
+                    key={`${item.media_type}-${item.id}`}
+                    style={styles.trendingCard}
+                    onPress={() => handleTrendingPress(item)}
+                  >
+                    {posterUrl ? (
+                      <Image source={{ uri: posterUrl }} style={styles.trendingPoster} />
                     ) : (
-                      <View style={[styles.trendingPoster, styles.itemPosterPlaceholder]}>
-                        <MaterialCommunityIcons
-                          name="image-off"
-                          size={24}
-                          color={COLORS.gray}
-                        />
+                      <View style={[styles.trendingPoster, styles.posterPlaceholder, { backgroundColor: colors.border }]}>
+                        <MaterialCommunityIcons name="image-off" size={24} color={colors.textSecondary} />
                       </View>
                     )}
-                    <Text style={styles.trendingItemTitle} numberOfLines={2}>
+                    <Text style={[styles.trendingText, { color: colors.text }]} numberOfLines={2}>
                       {title}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               })}
-            </View>
+            </ScrollView>
           </View>
         )}
 
         <FAB
+          style={[styles.fab, { backgroundColor: colors.primary }]}
           icon="plus"
-          label="Add to Watchlist"
-          style={styles.fab}
-          onPress={handleAddContent}
+          onPress={() => setShowContentSearch(true)}
+          color={COLORS.white}
         />
       </View>
     );
   }
 
+  // ============================================================================
+  // WATCHLIST WITH ITEMS
+  // ============================================================================
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>My Watchlist</Text>
-          <Text style={styles.headerSubtitle}>
-            {unwatchedCount} unwatched • {watchlist.length} total
-          </Text>
-        </View>
-
-        {/* Sort Menu */}
-        <Menu
-          visible={sortMenuVisible}
-          onDismiss={() => setSortMenuVisible(false)}
-          anchor={
-            <TouchableOpacity
-              style={styles.sortButton}
-              onPress={() => setSortMenuVisible(true)}
-            >
-              <MaterialCommunityIcons name="sort" size={20} color={COLORS.primary} />
-              <Text style={styles.sortButtonText}>{currentSortLabel}</Text>
-            </TouchableOpacity>
-          }
-        >
-          {SORT_OPTIONS.map((option) => (
-            <Menu.Item
-              key={option.value}
-              onPress={() => {
-                setSortBy(option.value);
-                setSortMenuVisible(false);
-              }}
-              title={option.label}
-              leadingIcon={option.icon}
-              titleStyle={sortBy === option.value ? styles.selectedMenuItem : undefined}
-            />
-          ))}
-        </Menu>
-      </View>
-
-      {/* Filter Tabs */}
-      <View style={styles.filtersContainer}>
-        <TouchableOpacity
-          style={[styles.filterTab, filterBy === 'all' && styles.filterTabActive]}
-          onPress={() => setFilterBy('all')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              filterBy === 'all' && styles.filterTabTextActive,
-            ]}
-          >
-            All
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterTab, filterBy === 'movies' && styles.filterTabActive]}
-          onPress={() => setFilterBy('movies')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              filterBy === 'movies' && styles.filterTabTextActive,
-            ]}
-          >
-            Movies
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.filterTab, filterBy === 'tv' && styles.filterTabActive]}
-          onPress={() => setFilterBy('tv')}
-        >
-          <Text
-            style={[
-              styles.filterTabText,
-              filterBy === 'tv' && styles.filterTabTextActive,
-            ]}
-          >
-            TV Shows
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <Divider />
-
-      {/* Watchlist */}
-      <FlatList
-        data={watchlist}
-        renderItem={({ item }) => (
-          <SwipeableWatchlistItem
-            item={item}
-            onPress={() => handleItemPress(item)}
-            onMarkWatched={() => handleMarkWatched(item)}
-            onRemove={() => handleRemove(item)}
-          />
-        )}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.listContainer}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <EmptyState
-            icon="filter-off"
-            title="No items found"
-            message={`No ${filterBy === 'all' ? '' : filterBy} in your watchlist`}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
           />
         }
-      />
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>My Watchlist</Text>
+          <TouchableOpacity
+            style={[styles.searchButton, { backgroundColor: colors.card }]}
+            onPress={() => setShowContentSearch(true)}
+          >
+            <MaterialCommunityIcons name="magnify" size={20} color={colors.text} />
+            <Text style={[styles.searchButtonText, { color: colors.text }]}>Search</Text>
+          </TouchableOpacity>
+        </View>
 
-      {/* FAB */}
-      <FAB icon="plus" style={styles.fab} onPress={handleAddContent} />
+        {/* Currently Watching Section */}
+        {renderHorizontalSection('Currently Watching', watching)}
 
-      {/* Paywall Modal */}
-      <PaywallModal
-        visible={showPaywall}
-        onClose={() => setShowPaywall(false)}
-        onUpgrade={handleUpgrade}
-        feature="watchlist"
-        limit={10}
-        current={watchlist.length}
+        {/* Want to Watch Section */}
+        {renderHorizontalSection('Want to Watch', wantToWatch)}
+
+        {/* Watched Section */}
+        {renderHorizontalSection('Watched', watched, true)}
+
+        {/* Trending Now Section */}
+        {trending && trending.results.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.trendingHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>🔥 Trending Now</Text>
+              <TouchableOpacity onPress={() => setShowContentSearch(true)}>
+                <Text style={[styles.browseLink, { color: colors.primary }]}>Browse All</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScroll}
+            >
+              {trending.results.slice(0, 10).map((item) => {
+                const title = item.media_type === 'movie' ? item.title : item.name;
+                const posterUrl = item.poster_path ? getPosterUrl(item.poster_path, 'small') : null;
+
+                return (
+                  <TouchableOpacity
+                    key={`${item.media_type}-${item.id}`}
+                    style={styles.posterCard}
+                    onPress={() => handleTrendingPress(item)}
+                  >
+                    {posterUrl ? (
+                      <Image source={{ uri: posterUrl }} style={styles.poster} />
+                    ) : (
+                      <View style={[styles.poster, styles.posterPlaceholder, { backgroundColor: colors.border }]}>
+                        <MaterialCommunityIcons name="image-off" size={32} color={colors.textSecondary} />
+                      </View>
+                    )}
+                    <Text style={[styles.posterTitle, { color: colors.text }]} numberOfLines={2}>
+                      {title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        <View style={styles.bottomPadding} />
+      </ScrollView>
+
+      {/* Floating Action Button */}
+      <FAB
+        style={[styles.fab, { backgroundColor: colors.primary }]}
+        icon="plus"
+        onPress={() => setShowContentSearch(true)}
+        color={COLORS.white}
       />
     </View>
   );
@@ -480,236 +413,133 @@ export const WatchlistScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  centerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: COLORS.white,
-  },
-  headerLeft: {
-    flex: 1,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: COLORS.darkGray,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginTop: 4,
-  },
-  sortButton: {
+  searchButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: COLORS.primary + '10',
-    gap: 6,
-  },
-  sortButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  selectedMenuItem: {
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  filtersContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
-    gap: 8,
-  },
-  filterTab: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: COLORS.lightGray,
+    gap: 6,
   },
-  filterTabActive: {
-    backgroundColor: COLORS.primary,
-  },
-  filterTabText: {
+  searchButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: COLORS.gray,
   },
-  filterTabTextActive: {
-    color: COLORS.white,
+  section: {
+    marginBottom: 24,
   },
-  listContainer: {
-    paddingVertical: 8,
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    paddingHorizontal: 20,
+    marginBottom: 12,
   },
-  itemContainer: {
+  horizontalScroll: {
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  posterCard: {
+    width: 120,
+  },
+  poster: {
+    width: 120,
+    height: 180,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  posterPlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  posterTitle: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 16,
+  },
+  ratingContainer: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  ratingText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  serviceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  serviceText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  trendingSection: {
+    marginTop: 24,
+    paddingHorizontal: 20,
+  },
+  trendingTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  trendingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: COLORS.white,
+    marginBottom: 12,
   },
-  itemContainerWatched: {
-    opacity: 0.6,
+  browseLink: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  itemPoster: {
-    width: 60,
-    aspectRatio: 2 / 3,
+  trendingScroll: {
+    gap: 12,
+  },
+  trendingCard: {
+    width: 100,
+  },
+  trendingPoster: {
+    width: 100,
+    height: 150,
     borderRadius: 8,
-    backgroundColor: COLORS.lightGray,
+    marginBottom: 8,
   },
-  itemPosterPlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  itemInfo: {
-    flex: 1,
-    marginLeft: 16,
-    marginRight: 12,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    marginBottom: 6,
-  },
-  itemMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 8,
-  },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-  },
-  typeBadgeMovie: {
-    backgroundColor: COLORS.primary + '20',
-  },
-  typeBadgeTV: {
-    backgroundColor: COLORS.success + '20',
-  },
-  typeBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-  },
-  itemYear: {
-    fontSize: 13,
-    color: COLORS.gray,
-  },
-  priorityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: 4,
-  },
-  priorityText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  watchedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  watchedText: {
+  trendingText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.success,
-  },
-  separator: {
-    height: 1,
-    backgroundColor: COLORS.lightGray,
-    marginLeft: 96,
-  },
-  swipeActionsContainer: {
-    flexDirection: 'row',
-  },
-  swipeActionWatched: {
-    backgroundColor: COLORS.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    paddingHorizontal: 16,
-  },
-  swipeActionDelete: {
-    backgroundColor: COLORS.error,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 80,
-    paddingHorizontal: 16,
-  },
-  swipeActionText: {
-    color: COLORS.white,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
+    fontWeight: '500',
+    lineHeight: 14,
   },
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
-    backgroundColor: COLORS.primary,
+    right: 16,
+    bottom: 16,
   },
-  trendingSection: {
-    padding: 20,
-  },
-  trendingTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 16,
-  },
-  trendingGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginHorizontal: -8,
-  },
-  trendingItem: {
-    width: '33.33%',
-    padding: 8,
-  },
-  trendingPoster: {
-    width: '100%',
-    aspectRatio: 2 / 3,
-    borderRadius: 8,
-    backgroundColor: COLORS.lightGray,
-  },
-  trendingItemTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    marginTop: 6,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-    backgroundColor: COLORS.background,
-  },
-  errorText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: COLORS.darkGray,
-    marginTop: 16,
-  },
-  errorSubtext: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginTop: 8,
-    textAlign: 'center',
+  bottomPadding: {
+    height: 100,
   },
 });

@@ -54,16 +54,20 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
     const content: UnifiedContent = {
       id: result.id,
       title: result.media_type === 'movie' ? result.title! : result.name!,
+      originalTitle: result.media_type === 'movie' ? result.original_title! : result.original_name!,
       type: result.media_type as 'movie' | 'tv',
-      overview: result.overview,
-      poster_path: result.poster_path,
-      backdrop_path: result.backdrop_path,
-      vote_average: result.vote_average,
-      release_date:
+      overview: result.overview || '',
+      posterPath: result.poster_path,
+      backdropPath: result.backdrop_path,
+      releaseDate:
         result.media_type === 'movie'
           ? result.release_date
           : result.first_air_date,
       genres: [], // Will be filled in detail modal
+      rating: result.vote_average || 0,
+      voteCount: result.vote_count || 0,
+      popularity: result.popularity || 0,
+      language: result.original_language || '',
     };
     onSelectContent(content);
   };

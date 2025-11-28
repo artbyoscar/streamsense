@@ -149,11 +149,11 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             title: content.title,
             type: content.type,
             overview: content.overview || null,
-            poster_url: content.poster_path || null,
-            backdrop_url: content.backdrop_path || null,
+            poster_url: content.posterPath || null,
+            backdrop_url: content.backdropPath || null,
             genres: content.genres || [],
-            release_date: content.release_date || null,
-            vote_average: content.vote_average || null,
+            release_date: content.releaseDate || null,
+            vote_average: content.rating || null,
           })
           .select('id')
           .single();
@@ -207,9 +207,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
   if (!content) return null;
 
-  const backdropUrl = getBackdropUrl(content.backdrop_path, 'large');
-  const posterUrl = getPosterUrl(content.poster_path, 'large');
-  const year = content.release_date?.split('-')[0] || 'Unknown';
+  const backdropUrl = getBackdropUrl(content.backdropPath, 'large');
+  const posterUrl = getPosterUrl(content.posterPath, 'large');
+  const year = content.releaseDate?.split('-')[0] || 'Unknown';
 
   return (
     <Modal
@@ -251,11 +251,11 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                   {content.type === 'movie' ? 'Movie' : 'TV Show'}
                 </Text>
               </View>
-              {content.vote_average > 0 && (
+              {content.rating > 0 && (
                 <View style={styles.ratingContainer}>
                   <MaterialCommunityIcons name="star" size={16} color={COLORS.warning} />
                   <Text style={[styles.voteAverage, { color: colors.textSecondary }]}>
-                    {content.vote_average.toFixed(1)}
+                    {content.rating.toFixed(1)}
                   </Text>
                 </View>
               )}
