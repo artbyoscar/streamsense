@@ -1,6 +1,6 @@
 /**
- * Recommendations Screen
- * Display AI-powered subscription optimization recommendations
+ * Recommendations/Tips Screen
+ * Display personalized insights based on user's viewing preferences and subscriptions
  */
 
 import React, { useState, useEffect } from 'react';
@@ -8,724 +8,427 @@ import {
   StyleSheet,
   View,
   ScrollView,
+  RefreshControl,
   TouchableOpacity,
-  Alert,
-  Animated,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSubscriptionsStore } from '@/features/subscriptions';
-import {
-  generateRecommendations,
-  calculateTotalSavings,
-  type Recommendation,
-  type RecommendationType,
-} from '@/services/recommendations';
-import { COLORS, Card, LoadingScreen, EmptyState, Button } from '@/components';
+import { useTheme } from '@/providers/ThemeProvider';
+import { useAuth } from '@/features/auth';
+import { useSubscriptionsData, formatCurrency } from '@/features/subscriptions';
+import { getUserTopGenres } from '@/services/genreAffinity';
+import { COLORS, Card } from '@/components';
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
+// Streaming service metadata for recommendations
+const STREAMING_SERVICES = [
+  {
+    id: 'netflix',
+    name: 'Netflix',
+    price: 15.49,
+    genres: ['Drama', 'Comedy', 'Documentary', 'Sci-Fi & Fantasy', 'Mystery'],
+    strengths: 'Original series, International content, K-dramas',
+    icon: 'netflix',
+  },
+  {
+    id: 'hulu',
+    name: 'Hulu',
+    price: 7.99,
+    genres: ['Comedy', 'Drama', 'Reality', 'Animation'],
+    strengths: 'Next-day TV episodes, FX originals',
+    icon: 'hulu',
+  },
+  {
+    id: 'disney',
+    name: 'Disney+',
+    price: 7.99,
+    genres: ['Animation', 'Family', 'Adventure', 'Sci-Fi & Fantasy'],
+    strengths: 'Marvel, Star Wars, Pixar, Disney classics',
+    icon: 'disney',
+  },
+  {
+    id: 'max',
+    name: 'Max',
+    price: 15.99,
+    genres: ['Drama', 'Documentary', 'Comedy', 'Crime'],
+    strengths: 'HBO prestige TV, Warner Bros films',
+    icon: 'television-classic',
+  },
+  {
+    id: 'prime',
+    name: 'Prime Video',
+    price: 8.99,
+    genres: ['Action', 'Comedy', 'Drama', 'Thriller'],
+    strengths: 'Thursday Night Football, wide rental catalog',
+    icon: 'amazon',
+  },
+  {
+    id: 'apple',
+    name: 'Apple TV+',
+    price: 9.99,
+    genres: ['Drama', 'Comedy', 'Sci-Fi & Fantasy', 'Documentary'],
+    strengths: 'Award-winning originals, high production value',
+    icon: 'apple',
+  },
+  {
+    id: 'peacock',
+    name: 'Peacock',
+    price: 5.99,
+    genres: ['Comedy', 'Drama', 'Reality', 'Sports'],
+    strengths: 'The Office, NBC content, sports',
+    icon: 'bird',
+  },
+  {
+    id: 'paramount',
+    name: 'Paramount+',
+    price: 5.99,
+    genres: ['Drama', 'Reality', 'Comedy', 'Action'],
+    strengths: 'Star Trek, CBS shows, NFL games',
+    icon: 'star-circle',
+  },
+  {
+    id: 'crunchyroll',
+    name: 'Crunchyroll',
+    price: 7.99,
+    genres: ['Animation', 'Action & Adventure', 'Comedy', 'Drama'],
+    strengths: 'Largest anime library, simulcast new episodes',
+    icon: 'animation',
+  },
+];
 
-const RECOMMENDATION_ICONS: Record<RecommendationType, string> = {
-  BUNDLE_OPPORTUNITY: 'package-variant',
-  UNUSED_SERVICE: 'sleep',
-  PRICE_INCREASE: 'trending-up',
-  ROTATION_SUGGESTION: 'sync',
-};
-
-const RECOMMENDATION_COLORS: Record<RecommendationType, string> = {
-  BUNDLE_OPPORTUNITY: COLORS.success,
-  UNUSED_SERVICE: COLORS.warning,
-  PRICE_INCREASE: COLORS.error,
-  ROTATION_SUGGESTION: COLORS.primary,
-};
-
-const RECOMMENDATION_LABELS: Record<RecommendationType, string> = {
-  BUNDLE_OPPORTUNITY: 'Bundle Opportunity',
-  UNUSED_SERVICE: 'Unused Service',
-  PRICE_INCREASE: 'Price Increase',
-  ROTATION_SUGGESTION: 'Rotation Tip',
-};
-
-// ============================================================================
-// RECOMMENDATION CARD COMPONENT
-// ============================================================================
-
-interface RecommendationCardProps {
-  recommendation: Recommendation;
-  isExpanded: boolean;
-  onToggleExpand: () => void;
-  onAccept: () => void;
-  onDismiss: () => void;
+interface ServiceRecommendation {
+  service: typeof STREAMING_SERVICES[0];
+  matchScore: number;
+  matchingGenres: string[];
+  alreadyHave: boolean;
 }
 
-const RecommendationCard: React.FC<RecommendationCardProps> = ({
-  recommendation,
-  isExpanded,
-  onToggleExpand,
-  onAccept,
-  onDismiss,
-}) => {
-  const icon = RECOMMENDATION_ICONS[recommendation.type];
-  const color = RECOMMENDATION_COLORS[recommendation.type];
-  const label = RECOMMENDATION_LABELS[recommendation.type];
+export const RecommendationsScreen: React.FC = () => {
+  const { colors } = useTheme();
+  const { user } = useAuth();
+  const { activeSubscriptions, monthlySpend, annualSpend } = useSubscriptionsData();
 
-  // Get action steps based on type
-  const getActionSteps = (): string[] => {
-    switch (recommendation.type) {
-      case 'BUNDLE_OPPORTUNITY':
-        return [
-          `Visit ${recommendation.metadata.bundleName} official website`,
-          'Compare bundle features with your current subscriptions',
-          'Sign up for the bundle plan',
-          'Cancel individual subscriptions after bundle is active',
-          `Start saving $${recommendation.potentialSavings.toFixed(2)}/month!`,
-        ];
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [userGenres, setUserGenres] = useState<string[]>([]);
+  const [recommendations, setRecommendations] = useState<ServiceRecommendation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-      case 'UNUSED_SERVICE':
-        return [
-          `Review your ${recommendation.metadata.serviceName} account`,
-          'Check if you have any content you want to watch',
-          'Cancel or pause the subscription if not needed',
-          'Mark calendar to resubscribe when new content releases',
-          `Save $${recommendation.potentialSavings.toFixed(2)}/month!`,
-        ];
+  useEffect(() => {
+    if (user?.id) {
+      loadData();
+    }
+  }, [user?.id, activeSubscriptions]);
 
-      case 'PRICE_INCREASE':
-        return [
-          'Review if the price increase is justified',
-          'Check if there are cheaper alternatives',
-          'Consider downgrading to a lower tier',
-          'Contact customer service to negotiate',
-          'Cancel if value no longer matches cost',
-        ];
+  const loadData = async () => {
+    if (!user?.id) return;
 
-      case 'ROTATION_SUGGESTION':
-        return [
-          `Pause ${recommendation.metadata.pauseServiceName} subscription`,
-          `Focus on watching ${recommendation.metadata.unwatchedContentCount} items on ${recommendation.metadata.watchServiceName}`,
-          'Reactivate when you finish your watchlist',
-          'Rotate back when new content releases',
-          `Save $${recommendation.potentialSavings.toFixed(2)}/month during rotation!`,
-        ];
+    setLoading(true);
+    try {
+      const topGenres = await getUserTopGenres(user.id, 6);
+      const genreNames = topGenres.map(g => g.genreName);
+      setUserGenres(genreNames);
 
-      default:
-        return [];
+      // Get user's current service names (lowercase for matching)
+      const currentServices = activeSubscriptions.map(s =>
+        s.service_name?.toLowerCase().trim()
+      ).filter(Boolean);
+
+      // Score each streaming service
+      const scored: ServiceRecommendation[] = STREAMING_SERVICES.map(service => {
+        const matchingGenres = service.genres.filter(serviceGenre =>
+          genreNames.some(userGenre => {
+            const sg = serviceGenre.toLowerCase();
+            const ug = userGenre.toLowerCase();
+            return sg.includes(ug) || ug.includes(sg) ||
+                   sg.split(' ').some(w => ug.includes(w)) ||
+                   ug.split(' ').some(w => sg.includes(w));
+          })
+        );
+
+        const alreadyHave = currentServices.some(cs =>
+          cs?.includes(service.id) ||
+          cs?.includes(service.name.toLowerCase()) ||
+          service.name.toLowerCase().includes(cs || '')
+        );
+
+        return {
+          service,
+          matchScore: matchingGenres.length / service.genres.length,
+          matchingGenres,
+          alreadyHave,
+        };
+      });
+
+      // Sort: services user doesn't have first, then by match score
+      scored.sort((a, b) => {
+        if (a.alreadyHave !== b.alreadyHave) {
+          return a.alreadyHave ? 1 : -1;
+        }
+        return b.matchScore - a.matchScore;
+      });
+
+      setRecommendations(scored);
+    } catch (error) {
+      console.error('Error loading tips data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const actionSteps = getActionSteps();
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await loadData();
+    setIsRefreshing(false);
+  };
+
+  const potentialMonthlySavings = monthlySpend * 0.15; // Estimate 15% savings potential
 
   return (
-    <Card style={styles.recommendationCard}>
-      <TouchableOpacity
-        style={styles.cardHeader}
-        onPress={onToggleExpand}
-        activeOpacity={0.7}
-      >
-        {/* Icon */}
-        <View style={[styles.iconContainer, { backgroundColor: color + '20' }]}>
-          <MaterialCommunityIcons name={icon as any} size={24} color={color} />
-        </View>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          colors={[colors.primary]}
+        />
+      }
+    >
+      {/* Header */}
+      <Text style={[styles.title, { color: colors.text }]}>Tips & Insights</Text>
+      <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+        Personalized recommendations based on your viewing preferences
+      </Text>
 
-        {/* Content */}
-        <View style={styles.cardContent}>
-          <View style={styles.cardTopRow}>
-            <View style={[styles.typeBadge, { backgroundColor: color + '20' }]}>
-              <Text style={[styles.typeBadgeText, { color }]}>{label}</Text>
-            </View>
-            {recommendation.potentialSavings > 0 && (
-              <View style={styles.savingsBadge}>
-                <MaterialCommunityIcons name="arrow-down" size={14} color={COLORS.success} />
-                <Text style={styles.savingsText}>
-                  ${recommendation.potentialSavings.toFixed(2)}/mo
-                </Text>
-              </View>
-            )}
+      {/* Spending Overview */}
+      <Card style={styles.overviewCard}>
+        <Text style={[styles.cardTitle, { color: colors.text }]}>Your Spending</Text>
+        <View style={styles.statsRow}>
+          <View style={styles.stat}>
+            <Text style={[styles.statValue, { color: colors.primary }]}>
+              {formatCurrency(monthlySpend)}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              per month
+            </Text>
           </View>
-
-          <Text style={styles.cardTitle}>{recommendation.title}</Text>
-          <Text style={styles.cardDescription} numberOfLines={isExpanded ? undefined : 2}>
-            {recommendation.description}
-          </Text>
-
-          {/* Impact Score */}
-          <View style={styles.impactRow}>
-            <View style={styles.impactBar}>
-              <View
-                style={[
-                  styles.impactFill,
-                  {
-                    width: `${recommendation.impactScore}%`,
-                    backgroundColor:
-                      recommendation.impactScore >= 70
-                        ? COLORS.error
-                        : recommendation.impactScore >= 50
-                        ? COLORS.warning
-                        : COLORS.success,
-                  },
-                ]}
-              />
-            </View>
-            <Text style={styles.impactText}>
-              {recommendation.impactScore >= 70
-                ? 'High Impact'
-                : recommendation.impactScore >= 50
-                ? 'Medium Impact'
-                : 'Low Impact'}
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={[styles.statValue, { color: colors.text }]}>
+              {formatCurrency(annualSpend)}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              per year
+            </Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.stat}>
+            <Text style={[styles.statValue, { color: COLORS.success }]}>
+              {activeSubscriptions.length}
+            </Text>
+            <Text style={[styles.statLabel, { color: colors.textSecondary }]}>
+              services
             </Text>
           </View>
         </View>
+      </Card>
 
-        {/* Expand Icon */}
-        <MaterialCommunityIcons
-          name={isExpanded ? 'chevron-up' : 'chevron-down'}
-          size={24}
-          color={COLORS.gray}
-        />
-      </TouchableOpacity>
-
-      {/* Expanded Content */}
-      {isExpanded && (
-        <View style={styles.expandedContent}>
-          <View style={styles.divider} />
-
-          {/* Action Steps */}
-          <View style={styles.stepsSection}>
-            <Text style={styles.stepsTitle}>Action Steps:</Text>
-            {actionSteps.map((step, index) => (
-              <View key={index} style={styles.stepRow}>
-                <View style={styles.stepNumber}>
-                  <Text style={styles.stepNumberText}>{index + 1}</Text>
-                </View>
-                <Text style={styles.stepText}>{step}</Text>
+      {/* Your Interests */}
+      {userGenres.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            🎯 Your Interests
+          </Text>
+          <View style={styles.genreChips}>
+            {userGenres.map((genre, index) => (
+              <View
+                key={genre}
+                style={[
+                  styles.genreChip,
+                  { backgroundColor: index < 3 ? colors.primary + '25' : colors.card }
+                ]}
+              >
+                <Text style={[
+                  styles.genreChipText,
+                  { color: index < 3 ? colors.primary : colors.text }
+                ]}>
+                  {genre}
+                </Text>
               </View>
             ))}
           </View>
-
-          {/* Metadata */}
-          {recommendation.metadata.annualSavings && (
-            <View style={styles.metadataSection}>
-              <MaterialCommunityIcons
-                name="information"
-                size={16}
-                color={COLORS.primary}
-              />
-              <Text style={styles.metadataText}>
-                Annual savings: ${recommendation.metadata.annualSavings.toFixed(2)}
-              </Text>
-            </View>
-          )}
-
-          {/* Actions */}
-          <View style={styles.cardActions}>
-            <Button
-              variant="outline"
-              onPress={onDismiss}
-              style={styles.actionButton}
-            >
-              Dismiss
-            </Button>
-            <Button
-              variant="primary"
-              onPress={onAccept}
-              style={styles.actionButton}
-            >
-              <MaterialCommunityIcons name="check" size={18} color={COLORS.white} />
-              <Text style={styles.actionButtonText}>Got It</Text>
-            </Button>
-          </View>
         </View>
       )}
-    </Card>
-  );
-};
 
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
-export const RecommendationsScreen: React.FC = () => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  const subscriptions = useSubscriptionsStore((state) => state.subscriptions);
-
-  // Load recommendations
-  useEffect(() => {
-    loadRecommendations();
-  }, [subscriptions]);
-
-  const loadRecommendations = async () => {
-    try {
-      setIsLoading(true);
-      const recs = await generateRecommendations(subscriptions);
-      setRecommendations(recs);
-    } catch (error) {
-      console.error('Error loading recommendations:', error);
-      Alert.alert('Error', 'Failed to load recommendations');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Filter out dismissed recommendations
-  const visibleRecommendations = recommendations.filter(
-    (rec) => !dismissedIds.has(rec.id)
-  );
-
-  const totalSavings = calculateTotalSavings(visibleRecommendations);
-
-  // Handlers
-  const handleToggleExpand = (id: string) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
-
-  const handleAccept = (recommendation: Recommendation) => {
-    Alert.alert(
-      'Recommendation Accepted',
-      `Great! Follow the action steps to optimize your subscriptions.`,
-      [
-        {
-          text: 'OK',
-          onPress: () => {
-            setDismissedIds((prev) => new Set(prev).add(recommendation.id));
-            setExpandedId(null);
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDismiss = (recommendation: Recommendation) => {
-    Alert.alert(
-      'Dismiss Recommendation',
-      'Are you sure you want to dismiss this recommendation?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Dismiss',
-          style: 'destructive',
-          onPress: () => {
-            setDismissedIds((prev) => new Set(prev).add(recommendation.id));
-            setExpandedId(null);
-          },
-        },
-      ]
-    );
-  };
-
-  // Loading state
-  if (isLoading) {
-    return <LoadingScreen message="Analyzing your subscriptions..." />;
-  }
-
-  // Celebration state (no recommendations)
-  if (visibleRecommendations.length === 0) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.celebrationContainer}>
-          <View style={styles.celebrationIcon}>
-            <MaterialCommunityIcons
-              name="trophy"
-              size={80}
-              color={COLORS.warning}
-            />
-          </View>
-          <Text style={styles.celebrationTitle}>All Optimized! 🎉</Text>
-          <Text style={styles.celebrationMessage}>
-            Your subscriptions are fully optimized. We couldn't find any ways to
-            save money or improve your setup.
-          </Text>
-          <Text style={styles.celebrationSubtext}>
-            Keep it up! We'll let you know if we find new optimization
-            opportunities.
-          </Text>
-
-          <Card style={styles.celebrationStats}>
-            <View style={styles.statRow}>
-              <MaterialCommunityIcons
-                name="check-circle"
-                size={24}
-                color={COLORS.success}
-              />
-              <View style={styles.statContent}>
-                <Text style={styles.statLabel}>Active Subscriptions</Text>
-                <Text style={styles.statValue}>
-                  {subscriptions.filter((s) => s.status === 'active').length}
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.statRow}>
-              <MaterialCommunityIcons
-                name="cash-multiple"
-                size={24}
-                color={COLORS.primary}
-              />
-              <View style={styles.statContent}>
-                <Text style={styles.statLabel}>Monthly Spending</Text>
-                <Text style={styles.statValue}>
-                  $
-                  {subscriptions
-                    .filter((s) => s.status === 'active')
-                    .reduce((sum, s) => sum + s.price, 0)
-                    .toFixed(2)}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <MaterialCommunityIcons
-            name="lightbulb-on"
-            size={32}
-            color={COLORS.warning}
-          />
-          <Text style={styles.headerTitle}>Smart Recommendations</Text>
-        </View>
-
-        {totalSavings > 0 && (
-          <Card style={styles.savingsCard}>
-            <View style={styles.savingsContent}>
-              <View style={styles.savingsLeft}>
-                <Text style={styles.savingsLabel}>Potential Monthly Savings</Text>
-                <Text style={styles.savingsAmount}>${totalSavings.toFixed(2)}</Text>
-                <Text style={styles.savingsAnnual}>
-                  ${(totalSavings * 12).toFixed(2)}/year
-                </Text>
-              </View>
-              <View style={styles.savingsIcon}>
-                <MaterialCommunityIcons
-                  name="piggy-bank"
-                  size={48}
-                  color={COLORS.success}
-                  style={{ opacity: 0.8 }}
-                />
-              </View>
-            </View>
-          </Card>
-        )}
-
-        <Text style={styles.headerSubtitle}>
-          We found {visibleRecommendations.length} way
-          {visibleRecommendations.length !== 1 ? 's' : ''} to optimize your
-          subscriptions
+      {/* Service Recommendations */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          📺 Service Recommendations
         </Text>
+
+        {userGenres.length === 0 ? (
+          <Card style={styles.emptyCard}>
+            <MaterialCommunityIcons name="playlist-plus" size={40} color={colors.textSecondary} />
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              Add shows and movies to your watchlist to get personalized service recommendations
+            </Text>
+          </Card>
+        ) : (
+          recommendations.slice(0, 5).map(rec => (
+            <Card
+              key={rec.service.id}
+              style={[
+                styles.recCard,
+                rec.alreadyHave && { opacity: 0.7 }
+              ]}
+            >
+              <View style={styles.recHeader}>
+                <View style={styles.recLeft}>
+                  <MaterialCommunityIcons
+                    name={rec.service.icon as any}
+                    size={28}
+                    color={colors.primary}
+                  />
+                  <View style={styles.recInfo}>
+                    <View style={styles.recNameRow}>
+                      <Text style={[styles.recName, { color: colors.text }]}>
+                        {rec.service.name}
+                      </Text>
+                      {rec.alreadyHave && (
+                        <View style={[styles.haveBadge, { backgroundColor: COLORS.success + '20' }]}>
+                          <Text style={[styles.haveBadgeText, { color: COLORS.success }]}>
+                            ✓ You have this
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={[styles.recPrice, { color: colors.textSecondary }]}>
+                      {formatCurrency(rec.service.price)}/month
+                    </Text>
+                  </View>
+                </View>
+                <View style={[
+                  styles.matchBadge,
+                  { backgroundColor: rec.matchScore >= 0.5 ? COLORS.success + '20' : colors.card }
+                ]}>
+                  <Text style={[
+                    styles.matchText,
+                    { color: rec.matchScore >= 0.5 ? COLORS.success : colors.textSecondary }
+                  ]}>
+                    {Math.round(rec.matchScore * 100)}%
+                  </Text>
+                </View>
+              </View>
+
+              {rec.matchingGenres.length > 0 && (
+                <Text style={[styles.recMatch, { color: colors.primary }]}>
+                  Matches: {rec.matchingGenres.join(', ')}
+                </Text>
+              )}
+              <Text style={[styles.recStrengths, { color: colors.textSecondary }]}>
+                {rec.service.strengths}
+              </Text>
+            </Card>
+          ))
+        )}
       </View>
 
-      {/* Recommendations List */}
-      <View style={styles.recommendationsList}>
-        {visibleRecommendations.map((recommendation) => (
-          <RecommendationCard
-            key={recommendation.id}
-            recommendation={recommendation}
-            isExpanded={expandedId === recommendation.id}
-            onToggleExpand={() => handleToggleExpand(recommendation.id)}
-            onAccept={() => handleAccept(recommendation)}
-            onDismiss={() => handleDismiss(recommendation)}
-          />
-        ))}
+      {/* Money Saving Tips */}
+      <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          💡 Money-Saving Tips
+        </Text>
+
+        <Card style={styles.tipCard}>
+          <MaterialCommunityIcons name="calendar-sync" size={28} color={colors.primary} />
+          <View style={styles.tipContent}>
+            <Text style={[styles.tipTitle, { color: colors.text }]}>
+              Rotate Services Monthly
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              Subscribe to binge specific shows, then cancel. Most services have no cancellation fee.
+            </Text>
+          </View>
+        </Card>
+
+        <Card style={styles.tipCard}>
+          <MaterialCommunityIcons name="account-group" size={28} color={colors.primary} />
+          <View style={styles.tipContent}>
+            <Text style={[styles.tipTitle, { color: colors.text }]}>
+              Consider Family Plans
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              Family plans cost 30-50% more but support 4-6 users. Split costs with family.
+            </Text>
+          </View>
+        </Card>
+
+        <Card style={styles.tipCard}>
+          <MaterialCommunityIcons name="sale" size={28} color={colors.primary} />
+          <View style={styles.tipContent}>
+            <Text style={[styles.tipTitle, { color: colors.text }]}>
+              Look for Annual Discounts
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              Annual plans save 15-20% vs monthly. Good for services you use year-round.
+            </Text>
+          </View>
+        </Card>
+
+        <Card style={styles.tipCard}>
+          <MaterialCommunityIcons name="link-variant" size={28} color={colors.primary} />
+          <View style={styles.tipContent}>
+            <Text style={[styles.tipTitle, { color: colors.text }]}>
+              Check for Bundles
+            </Text>
+            <Text style={[styles.tipText, { color: colors.textSecondary }]}>
+              Disney Bundle (Disney+, Hulu, ESPN+) saves ~$7/month. Check your phone carrier for free streaming perks.
+            </Text>
+          </View>
+        </Card>
       </View>
 
-      {/* Bottom Padding */}
-      <View style={styles.bottomPadding} />
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 };
 
-// ============================================================================
-// STYLES
-// ============================================================================
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  contentContainer: {
-    paddingBottom: 20,
-  },
-  header: {
-    padding: 20,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.lightGray,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.gray,
-    marginTop: 8,
-  },
-  savingsCard: {
-    marginVertical: 16,
-    padding: 16,
-    backgroundColor: COLORS.success + '10',
-    borderWidth: 1,
-    borderColor: COLORS.success + '40',
-  },
-  savingsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  savingsLeft: {
-    flex: 1,
-  },
-  savingsLabel: {
-    fontSize: 13,
-    color: COLORS.gray,
-    marginBottom: 4,
-  },
-  savingsAmount: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: COLORS.success,
-    marginBottom: 2,
-  },
-  savingsAnnual: {
-    fontSize: 14,
-    color: COLORS.gray,
-  },
-  savingsIcon: {
-    marginLeft: 16,
-  },
-  recommendationsList: {
-    padding: 16,
-    gap: 12,
-  },
-  recommendationCard: {
-    padding: 0,
-    overflow: 'hidden',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 16,
-  },
-  iconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardContent: {
-    flex: 1,
-    marginRight: 12,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
-  },
-  typeBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  typeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  savingsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: COLORS.success + '20',
-    gap: 2,
-  },
-  savingsText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.success,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 6,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: COLORS.gray,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  impactRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  impactBar: {
-    flex: 1,
-    height: 6,
-    backgroundColor: COLORS.lightGray,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  impactFill: {
-    height: '100%',
-    borderRadius: 3,
-  },
-  impactText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.gray,
-  },
-  expandedContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.lightGray,
-    marginVertical: 16,
-  },
-  stepsSection: {
-    marginBottom: 16,
-  },
-  stepsTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 12,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  stepNumberText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: COLORS.white,
-  },
-  stepText: {
-    flex: 1,
-    fontSize: 14,
-    color: COLORS.darkGray,
-    lineHeight: 20,
-  },
-  metadataSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: COLORS.primary + '10',
-    borderRadius: 8,
-    marginBottom: 16,
-    gap: 8,
-  },
-  metadataText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: COLORS.primary,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  actionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: COLORS.white,
-  },
-  celebrationContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 40,
-  },
-  celebrationIcon: {
-    marginBottom: 24,
-  },
-  celebrationTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  celebrationMessage: {
-    fontSize: 16,
-    color: COLORS.gray,
-    textAlign: 'center',
-    marginBottom: 12,
-    lineHeight: 24,
-  },
-  celebrationSubtext: {
-    fontSize: 14,
-    color: COLORS.gray,
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  celebrationStats: {
-    width: '100%',
-    padding: 20,
-  },
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  statContent: {
-    flex: 1,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: COLORS.gray,
-    marginBottom: 4,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: COLORS.darkGray,
-  },
-  bottomPadding: {
-    height: 40,
-  },
+  container: { flex: 1 },
+  content: { padding: 20 },
+  title: { fontSize: 28, fontWeight: '700', marginBottom: 4 },
+  subtitle: { fontSize: 15, marginBottom: 20 },
+  overviewCard: { marginBottom: 24 },
+  cardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 16 },
+  statsRow: { flexDirection: 'row', alignItems: 'center' },
+  stat: { flex: 1, alignItems: 'center' },
+  statDivider: { width: 1, height: 40, backgroundColor: '#E5E5E5' },
+  statValue: { fontSize: 22, fontWeight: '700' },
+  statLabel: { fontSize: 12, marginTop: 2 },
+  section: { marginBottom: 24 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginBottom: 12 },
+  genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  genreChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
+  genreChipText: { fontSize: 14, fontWeight: '600' },
+  emptyCard: { alignItems: 'center', padding: 24 },
+  emptyText: { fontSize: 14, textAlign: 'center', marginTop: 12, lineHeight: 20 },
+  recCard: { marginBottom: 12 },
+  recHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  recLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  recInfo: { flex: 1 },
+  recNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  recName: { fontSize: 17, fontWeight: '700' },
+  recPrice: { fontSize: 14, marginTop: 2 },
+  haveBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  haveBadgeText: { fontSize: 11, fontWeight: '600' },
+  matchBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  matchText: { fontSize: 14, fontWeight: '700' },
+  recMatch: { fontSize: 13, fontWeight: '600', marginTop: 10 },
+  recStrengths: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  tipCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 10 },
+  tipContent: { flex: 1 },
+  tipTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  tipText: { fontSize: 13, lineHeight: 18 },
 });
+
+export default RecommendationsScreen;
