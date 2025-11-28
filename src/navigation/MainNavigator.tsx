@@ -1,43 +1,26 @@
 /**
- * Custom State-Based Navigation
- * Adding real screens incrementally
+ * Custom State-Based Navigation with Context
+ * Real screens integrated incrementally
  */
 
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DashboardScreen } from '@/features/dashboard';
+import { WatchlistScreen } from '@/features/watchlist';
+import { SettingsScreen } from '@/features/settings';
+import { RecommendationsScreen } from '@/features/recommendations';
+import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 
-// Placeholder screens - will replace with real ones incrementally
-const WatchlistScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Watchlist</Text>
-    <Text>Your watchlist will appear here</Text>
-  </View>
-);
-
-const TipsScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Tips</Text>
-    <Text>Recommendations will appear here</Text>
-  </View>
-);
-
-const SettingsScreen = () => (
-  <View style={styles.screen}>
-    <Text style={styles.title}>Settings</Text>
-    <Text>Settings will appear here</Text>
-  </View>
-);
-
-export const MainNavigator: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('Home');
+// Navigator component - uses the context
+const Navigator: React.FC = () => {
+  const { activeTab, setActiveTab } = useCustomNavigation();
 
   const renderScreen = () => {
     switch (activeTab) {
       case 'Home': return <DashboardScreen />;
       case 'Watchlist': return <WatchlistScreen />;
-      case 'Tips': return <TipsScreen />;
+      case 'Tips': return <RecommendationsScreen />;
       case 'Settings': return <SettingsScreen />;
       default: return <DashboardScreen />;
     }
@@ -50,10 +33,10 @@ export const MainNavigator: React.FC = () => {
       </View>
       <View style={styles.tabBar}>
         {[
-          { name: 'Home', icon: 'home' },
-          { name: 'Watchlist', icon: 'bookmark' },
-          { name: 'Tips', icon: 'lightbulb' },
-          { name: 'Settings', icon: 'cog' },
+          { name: 'Home' as const, icon: 'home' },
+          { name: 'Watchlist' as const, icon: 'bookmark' },
+          { name: 'Tips' as const, icon: 'lightbulb' },
+          { name: 'Settings' as const, icon: 'cog' },
         ].map((tab) => (
           <TouchableOpacity
             key={tab.name}
@@ -75,6 +58,15 @@ export const MainNavigator: React.FC = () => {
   );
 };
 
+// Main export - wraps Navigator with Provider
+export const MainNavigator: React.FC = () => {
+  return (
+    <NavigationProvider>
+      <Navigator />
+    </NavigationProvider>
+  );
+};
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -82,17 +74,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  screen: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 10,
   },
   tabBar: {
     flexDirection: 'row',

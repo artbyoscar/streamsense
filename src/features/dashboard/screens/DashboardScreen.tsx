@@ -14,10 +14,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-// TEMP: Commented out for custom navigation
-// import { useNavigation } from '@react-navigation/native';
-// import type { StackNavigationProp } from '@react-navigation/stack';
-// import type { DashboardStackParamList } from '@/navigation/types';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionsData, formatCurrency, useUpcomingRenewals } from '@/features/subscriptions';
 import { useWatchlistStore } from '@/features/watchlist';
@@ -32,12 +29,8 @@ import { QuickActionsCard } from '../components/QuickActionsCard';
 import { SuggestionsAlert } from '../components/SuggestionsAlert';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-// TEMP: Commented out for custom navigation
-// type DashboardNavigationProp = StackNavigationProp<DashboardStackParamList, 'Dashboard'>;
-
 export const DashboardScreen: React.FC = () => {
-  // TEMP: Commented out for custom navigation
-  // const navigation = useNavigation<DashboardNavigationProp>();
+  const { setActiveTab, navigateToScreen } = useCustomNavigation();
   const user = useAuthStore((state) => state.user);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -118,46 +111,32 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: SubscriptionForm');
-    // navigation.getParent()?.navigate('SubscriptionForm', {});
+    navigateToScreen('SubscriptionForm');
   };
 
   const handleUpgrade = () => {
     setShowPaywall(false);
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: SettingsTab');
-    // navigation.getParent()?.navigate('SettingsTab');
+    setActiveTab('Settings');
   };
 
   const handleConnectBank = () => {
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: SettingsTab');
-    // navigation.getParent()?.navigate('SettingsTab');
+    setActiveTab('Settings');
   };
 
   const handleViewRecommendations = () => {
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: RecommendationsTab');
-    // navigation.getParent()?.navigate('RecommendationsTab');
+    setActiveTab('Tips');
   };
 
   const handleViewSuggestions = () => {
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: RecommendationsTab');
-    // navigation.getParent()?.navigate('RecommendationsTab');
+    setActiveTab('Tips');
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: SubscriptionForm with ID:', subscriptionId);
-    // navigation.getParent()?.navigate('SubscriptionForm', { subscriptionId });
+    navigateToScreen('SubscriptionForm', { subscriptionId });
   };
 
   const handleFindContent = () => {
-    // TEMP: Commented out for custom navigation
-    console.log('[Navigation] Would navigate to: WatchlistTab -> ContentSearch');
-    // navigation.getParent()?.navigate('WatchlistTab', { screen: 'ContentSearch' });
+    setActiveTab('Watchlist');
   };
 
   // Get greeting based on time of day
@@ -381,7 +360,7 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Watchlist</Text>
-              <TouchableOpacity onPress={() => console.log('[Navigation] Would navigate to: WatchlistTab')}>
+              <TouchableOpacity onPress={() => setActiveTab('Watchlist')}>
                 <Text style={styles.seeAllLink}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -390,7 +369,7 @@ export const DashboardScreen: React.FC = () => {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.watchlistItem}
-                  onPress={() => console.log('[Navigation] Would navigate to: WatchlistTab')}
+                  onPress={() => setActiveTab('Watchlist')}
                 >
                   {item.content?.poster_path ? (
                     <Image
