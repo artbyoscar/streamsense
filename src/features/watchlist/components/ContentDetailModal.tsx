@@ -209,9 +209,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
           // Track rating change for watched content
           if (selectedStatus === 'watched' && rating !== previousRating) {
-            if (rating >= 7) {
+            if (rating >= 4) {
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
-            } else if (rating >= 1 && rating <= 3) {
+            } else if (rating >= 1 && rating <= 2) {
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
             }
           }
@@ -247,9 +247,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             await trackGenreInteraction(user.id, genreIds, content.type, 'COMPLETE_WATCHING');
 
             // Track rating if provided
-            if (rating >= 7) {
+            if (rating >= 4) {
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
-            } else if (rating >= 1 && rating <= 3) {
+            } else if (rating >= 1 && rating <= 2) {
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
             }
           }
@@ -399,7 +399,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Rating</Text>
                 <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                  {[1, 2, 3, 4, 5].map((star) => (
                     <TouchableOpacity
                       key={star}
                       onPress={() => setRating(star)}
@@ -407,14 +407,14 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                     >
                       <MaterialCommunityIcons
                         name={star <= rating ? 'star' : 'star-outline'}
-                        size={32}
+                        size={40}
                         color={star <= rating ? COLORS.warning : colors.border}
                       />
                     </TouchableOpacity>
                   ))}
                 </View>
                 <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
-                  {rating > 0 ? `${rating}/10` : 'Tap to rate'}
+                  {rating > 0 ? `${rating}/5` : 'Tap to rate'}
                 </Text>
               </View>
             )}
