@@ -15,17 +15,12 @@ import {
 } from 'react-native';
 import { Text, FAB, Menu, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { WatchlistStackParamList } from '@/navigation/types';
 import { Swipeable } from 'react-native-gesture-handler';
 import { useWatchlistStore, SortOption, FilterOption } from '../store/watchlistStore';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { COLORS, Card, LoadingScreen, EmptyState, PaywallModal } from '@/components';
 import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import type { WatchlistItem, WatchlistPriority } from '@/types';
-
-type WatchlistNavigationProp = StackNavigationProp<WatchlistStackParamList, 'Watchlist'>;
 
 // ============================================================================
 // CONSTANTS
@@ -178,7 +173,6 @@ const SwipeableWatchlistItem: React.FC<SwipeableWatchlistItemProps> = ({
 // ============================================================================
 
 export const WatchlistScreen: React.FC = () => {
-  const navigation = useNavigation<WatchlistNavigationProp>();
   const [sortMenuVisible, setSortMenuVisible] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
 
@@ -260,20 +254,22 @@ export const WatchlistScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to content search (RootStack level)
-    navigation.getParent()?.navigate('ContentSearch');
+    // Navigate to content search (will be implemented as modal)
+    console.log('[Watchlist] Would navigate to: ContentSearch');
+    Alert.alert('Content Search', 'Content search modal coming soon!');
   };
 
   const handleBrowseTrending = () => {
-    // Navigate to content search (RootStack level)
-    navigation.getParent()?.navigate('ContentSearch');
+    // Navigate to content search (will be implemented as modal)
+    console.log('[Watchlist] Would navigate to: ContentSearch');
+    Alert.alert('Content Search', 'Content search modal coming soon!');
   };
 
   const handleUpgrade = () => {
     setShowPaywall(false);
-    // Navigate to upgrade screen (in settings tab or dedicated upgrade screen)
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.getParent()?.navigate('SettingsTab');
+    // Navigate to settings tab (will be implemented with useCustomNavigation)
+    console.log('[Watchlist] Would navigate to: Settings');
+    Alert.alert('Upgrade', 'Navigate to Settings tab to upgrade. Tab switching coming soon!');
   };
 
   // Get current sort label

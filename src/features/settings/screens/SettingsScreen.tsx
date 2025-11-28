@@ -15,9 +15,6 @@ import {
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { SettingsStackParamList } from '@/navigation/types';
 import { useAuth } from '@/features/auth';
 import { usePremiumStore } from '@/features/premium';
 import { COLORS, Card } from '@/components';
@@ -142,7 +139,6 @@ const SectionHeader: React.FC<{ title: string }> = ({ title }) => (
 // ============================================================================
 
 export const SettingsScreen: React.FC = () => {
-  const navigation = useNavigation<StackNavigationProp<SettingsStackParamList>>();
   const { user, logout } = useAuth();
   const { isPremium, expirationDate } = usePremiumStore();
   const { themeMode, setThemeMode } = useTheme();
