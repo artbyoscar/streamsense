@@ -66,7 +66,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
 
   // Validate form
   const validate = (): boolean => {
-    const newErrors: Record<string, string>> = {};
+    const newErrors: Record<string, string> = {};
 
     // Service name validation
     if (!serviceName) {
