@@ -380,6 +380,43 @@ export interface Database {
           created_at?: string;
         };
       };
+
+      // ========================================
+      // USER GENRE AFFINITY
+      // ========================================
+      user_genre_affinity: {
+        Row: {
+          id: string;
+          user_id: string;
+          genre_id: number;
+          genre_name: string;
+          affinity_score: number;
+          interaction_count: number;
+          last_interaction_at: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          genre_id: number;
+          genre_name: string;
+          affinity_score?: number;
+          interaction_count?: number;
+          last_interaction_at?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          genre_id?: number;
+          genre_name?: string;
+          affinity_score?: number;
+          interaction_count?: number;
+          last_interaction_at?: string;
+          updated_at?: string;
+        };
+      };
     };
 
     Views: {
@@ -513,6 +550,10 @@ export type WatchlistItemUpdate = Database['public']['Tables']['watchlist_items'
 export type ViewingLog = Database['public']['Tables']['viewing_logs']['Row'];
 export type ViewingLogInsert = Database['public']['Tables']['viewing_logs']['Insert'];
 export type ViewingLogUpdate = Database['public']['Tables']['viewing_logs']['Update'];
+
+export type UserGenreAffinity = Database['public']['Tables']['user_genre_affinity']['Row'];
+export type UserGenreAffinityInsert = Database['public']['Tables']['user_genre_affinity']['Insert'];
+export type UserGenreAffinityUpdate = Database['public']['Tables']['user_genre_affinity']['Update'];
 
 // ============================================================================
 // PRICING TIER TYPE

@@ -24,7 +24,8 @@
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
       "Bash(xargs:*)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(node -e:*)"
     ],
     "deny": [],
     "ask": []
