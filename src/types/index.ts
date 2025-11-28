@@ -54,6 +54,7 @@ export type {
   DetectionSource,
   ContentType,
   WatchlistPriority,
+  WatchlistStatus,
   ViewingSource,
   PricingTier,
   SubscriptionWithService,

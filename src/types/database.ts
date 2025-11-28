@@ -14,6 +14,7 @@ export type BillingCycle = 'weekly' | 'monthly' | 'quarterly' | 'yearly';
 export type DetectionSource = 'manual' | 'plaid' | 'email';
 export type ContentType = 'movie' | 'tv';
 export type WatchlistPriority = 'low' | 'medium' | 'high';
+export type WatchlistStatus = 'want_to_watch' | 'watching' | 'watched';
 export type ViewingSource = 'self_report' | 'detected' | 'imported';
 
 // ============================================================================
@@ -305,8 +306,11 @@ export interface Database {
           user_id: string;
           content_id: string;
           priority: WatchlistPriority;
+          status: WatchlistStatus;
           notify_on_available: boolean;
           notes: string | null;
+          streaming_services: Json;
+          rating: number | null;
           added_at: string;
         };
         Insert: {
@@ -314,8 +318,11 @@ export interface Database {
           user_id: string;
           content_id: string;
           priority?: WatchlistPriority;
+          status?: WatchlistStatus;
           notify_on_available?: boolean;
           notes?: string | null;
+          streaming_services?: Json;
+          rating?: number | null;
           added_at?: string;
         };
         Update: {
@@ -323,8 +330,11 @@ export interface Database {
           user_id?: string;
           content_id?: string;
           priority?: WatchlistPriority;
+          status?: WatchlistStatus;
           notify_on_available?: boolean;
           notes?: string | null;
+          streaming_services?: Json;
+          rating?: number | null;
           added_at?: string;
         };
       };
