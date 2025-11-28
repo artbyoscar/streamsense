@@ -25,9 +25,13 @@ export const BROWSE_CATEGORIES: ContentCategory[] = [
 ];
 
 export const fetchCategoryContent = async (category: ContentCategory): Promise<UnifiedContent[]> => {
+  console.log('[ContentBrowse] Fetching category:', category.title);
+  console.log('[ContentBrowse] tmdbApi exists:', !!tmdbApi);
+
   try {
     const response = await tmdbApi.get(category.endpoint);
     const results = response.data.results || [];
+    console.log('[ContentBrowse] Got response:', results.length, 'items for', category.title);
 
     return results.slice(0, 10).map((item: any) => ({
       id: item.id,
@@ -45,7 +49,10 @@ export const fetchCategoryContent = async (category: ContentCategory): Promise<U
       genres: [],
     }));
   } catch (error) {
-    console.error(`Error fetching ${category.title}:`, error);
+    console.error(`[ContentBrowse] ❌ Error fetching ${category.title}:`, error);
+    if (error && typeof error === 'object' && 'response' in error) {
+      console.error('[ContentBrowse] Response error:', (error as any).response?.data);
+    }
     return [];
   }
 };

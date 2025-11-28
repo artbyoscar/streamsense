@@ -47,6 +47,13 @@ export const tmdbApi = axios.create({
   },
 });
 
+// Log TMDb API configuration status
+console.log('✅ TMDb API instance created:', {
+  hasApiKey: !!TMDB_API_KEY,
+  hasAccessToken: !!TMDB_ACCESS_TOKEN,
+  baseURL: TMDB_BASE_URL,
+});
+
 // ============================================================================
 // HELPERS
 // ============================================================================

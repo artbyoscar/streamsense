@@ -15,8 +15,12 @@ export const getPersonalizedRecommendations = async (
   mediaType: 'movie' | 'tv' = 'movie',
   limit: number = 20
 ): Promise<UnifiedContent[]> => {
+  console.log('[PersonalizedRecs] Starting for user:', userId, 'mediaType:', mediaType);
+  console.log('[PersonalizedRecs] tmdbApi exists:', !!tmdbApi);
+
   try {
     const topGenres = await getUserTopGenres(userId, 3);
+    console.log('[PersonalizedRecs] User top genres:', topGenres.map(g => g.genreName).join(', '));
 
     if (topGenres.length === 0) {
       console.log('[Recommendations] No genre preferences, returning popular content');
@@ -38,6 +42,7 @@ export const getPersonalizedRecommendations = async (
       },
     });
 
+    console.log('[PersonalizedRecs] Got', response.data.results?.length || 0, 'results from TMDb');
     return mapToUnifiedContent(response.data.results.slice(0, limit), mediaType);
   } catch (error) {
     console.error('[Recommendations] Error fetching personalized recommendations:', error);
