@@ -4,10 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Modal, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { DashboardScreen } from '@/features/dashboard';
 import { WatchlistScreen } from '@/features/watchlist';
 import { SettingsScreen } from '@/features/settings';
@@ -18,38 +16,6 @@ import { ContentDetailModal } from '@/features/watchlist/components/ContentDetai
 import { PlaidConnectionScreen } from '@/features/onboarding/screens/PlaidConnectionScreen';
 import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 import { useTheme } from '@/providers/ThemeProvider';
-
-const PlaidStack = createNativeStackNavigator();
-
-// Wrapper to provide navigation context to PlaidConnectionScreen
-const PlaidConnectionWrapper: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const navigationRef = createNavigationContainerRef();
-
-  React.useEffect(() => {
-    // Override goBack to call onClose instead
-    if (navigationRef.current) {
-      const nav = navigationRef.current as any;
-      nav.goBack = onClose;
-    }
-  }, [navigationRef, onClose]);
-
-  return (
-    <NavigationContainer ref={navigationRef}>
-      <PlaidStack.Navigator screenOptions={{ headerShown: false }}>
-        <PlaidStack.Screen
-          name="PlaidConnection"
-          component={PlaidConnectionScreen}
-          listeners={{
-            beforeRemove: (e) => {
-              e.preventDefault();
-              onClose();
-            },
-          }}
-        />
-      </PlaidStack.Navigator>
-    </NavigationContainer>
-  );
-};
 
 // Navigator component - uses the context
 const Navigator: React.FC = () => {
@@ -161,7 +127,18 @@ const Navigator: React.FC = () => {
               <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
-          <PlaidConnectionWrapper onClose={() => setShowPlaidConnection(false)} />
+          <PlaidConnectionScreen
+            onSuccess={() => {
+              setShowPlaidConnection(false);
+              console.log('[Navigation] Bank account connected successfully');
+            }}
+            onCancel={() => setShowPlaidConnection(false)}
+            onError={(error) => {
+              console.error('[Navigation] Plaid connection error:', error);
+              setShowPlaidConnection(false);
+              Alert.alert('Connection Error', 'Failed to connect bank account. Please try again.');
+            }}
+          />
         </SafeAreaView>
       </Modal>
     </SafeAreaView>

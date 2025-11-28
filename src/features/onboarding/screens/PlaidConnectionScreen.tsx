@@ -12,7 +12,6 @@ import {
   LinkExit,
   LinkLogLevel,
 } from 'react-native-plaid-link-sdk';
-import { useNavigation } from '@react-navigation/native';
 import { Button, Card, COLORS } from '@/components';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -23,8 +22,17 @@ import {
   isPlaidErrorRecoverable,
 } from '@/services/plaid';
 
-export const PlaidConnectionScreen: React.FC = () => {
-  const navigation = useNavigation();
+interface PlaidConnectionScreenProps {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+  onError?: (error: Error) => void;
+}
+
+export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
+  onSuccess,
+  onCancel,
+  onError,
+}) => {
   const user = useAuthStore((state) => state.user);
   const [linkToken, setLinkToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,7 +82,7 @@ export const PlaidConnectionScreen: React.FC = () => {
               text: 'Continue',
               onPress: () => {
                 // Navigate to next screen or dashboard
-                navigation.goBack();
+                onSuccess?.();
               },
             },
           ]
@@ -99,7 +107,7 @@ export const PlaidConnectionScreen: React.FC = () => {
         setIsLoading(false);
       }
     },
-    [navigation, initializePlaidLink]
+    [onSuccess, initializePlaidLink]
   );
 
   // Handle exit/error
@@ -211,7 +219,7 @@ export const PlaidConnectionScreen: React.FC = () => {
 
       <Button
         variant="outline"
-        onPress={() => navigation.goBack()}
+        onPress={() => onCancel?.()}
         fullWidth
         style={styles.skipButton}
       >
