@@ -10,6 +10,7 @@ import { DashboardScreen } from '@/features/dashboard';
 import { WatchlistScreen } from '@/features/watchlist';
 import { SettingsScreen } from '@/features/settings';
 import { RecommendationsScreen } from '@/features/recommendations';
+import { SubscriptionForm } from '@/features/subscriptions/components/SubscriptionForm';
 import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 import { useTheme } from '@/providers/ThemeProvider';
 
@@ -69,10 +70,10 @@ const Navigator: React.FC = () => {
               <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
-          <View style={styles.modalContent}>
-            <Text style={[styles.modalText, { color: colors.text }]}>Subscription form will go here</Text>
-            <Text style={[styles.modalSubtext, { color: colors.textSecondary }]}>This feature is coming soon!</Text>
-          </View>
+          <SubscriptionForm
+            onSuccess={() => setShowSubscriptionForm(false)}
+            onCancel={() => setShowSubscriptionForm(false)}
+          />
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -125,19 +126,5 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: '700',
-  },
-  modalContent: {
-    flex: 1,
-    padding: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  modalSubtext: {
-    fontSize: 14,
   },
 });
