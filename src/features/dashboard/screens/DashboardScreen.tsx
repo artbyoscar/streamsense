@@ -143,23 +143,47 @@ export const DashboardScreen: React.FC = () => {
     setActiveTab('Watchlist');
   };
 
-  // Get greeting based on time of day
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+  // Helper: Format billing date
+  const formatBillingDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return 'Not set';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Not set';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Not set';
+    }
   };
 
-  // Get user's first name
-  const getUserFirstName = () => {
-    if (user?.user_metadata?.first_name) {
-      return user.user_metadata.first_name;
+  // Helper: Get days until date
+  const getDaysUntil = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const now = new Date();
+      const diffTime = date.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays < 0) return 'Overdue';
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      return `in ${diffDays} days`;
+    } catch {
+      return '';
     }
-    if (user?.email) {
-      return user.email.split('@')[0];
-    }
-    return 'there';
+  };
+
+  // Get greeting with user's name
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
+                      user?.user_metadata?.first_name ||
+                      user?.email?.split('@')[0] ||
+                      'there';
+
+    if (hour < 12) return `Good morning, ${firstName}!`;
+    if (hour < 17) return `Good afternoon, ${firstName}!`;
+    return `Good evening, ${firstName}!`;
   };
 
   // Format current date
@@ -172,21 +196,28 @@ export const DashboardScreen: React.FC = () => {
     });
   };
 
-  // Format renewal date
+  // Format renewal date with error handling
   const formatRenewalDate = (date: string) => {
-    const renewalDate = new Date(date);
-    const now = new Date();
-    const diffTime = renewalDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (!date) return 'Not set';
+    try {
+      const renewalDate = new Date(date);
+      if (isNaN(renewalDate.getTime())) return 'Not set';
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Tomorrow';
-    if (diffDays < 7) return `in ${diffDays} days`;
+      const now = new Date();
+      const diffTime = renewalDate.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    return renewalDate.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+      if (diffDays === 0) return 'Today';
+      if (diffDays === 1) return 'Tomorrow';
+      if (diffDays < 7) return `in ${diffDays} days`;
+
+      return renewalDate.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      });
+    } catch {
+      return 'Not set';
+    }
   };
 
   // Show loading state
@@ -211,7 +242,7 @@ export const DashboardScreen: React.FC = () => {
       >
         <View style={styles.header}>
           <Text style={styles.greeting}>
-            {getGreeting()}, {getUserFirstName()}!
+            {getGreeting()}
           </Text>
           <Text style={styles.subtitle}>{getCurrentDate()}</Text>
         </View>
@@ -262,7 +293,7 @@ export const DashboardScreen: React.FC = () => {
       <View style={styles.header}>
         <View style={styles.greetingContainer}>
           <Text style={styles.greeting}>
-            {getGreeting()}, {getUserFirstName()}!
+            {getGreeting()}
           </Text>
           <Text style={styles.subtitle}>{getCurrentDate()}</Text>
         </View>
