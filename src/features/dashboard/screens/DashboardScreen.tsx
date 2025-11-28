@@ -14,9 +14,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { useNavigation } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { DashboardStackParamList } from '@/navigation/types';
+// TEMP: Commented out for custom navigation
+// import { useNavigation } from '@react-navigation/native';
+// import type { StackNavigationProp } from '@react-navigation/stack';
+// import type { DashboardStackParamList } from '@/navigation/types';
 import { useAuthStore } from '@/stores/authStore';
 import { useSubscriptionsData, formatCurrency, useUpcomingRenewals } from '@/features/subscriptions';
 import { useWatchlistStore } from '@/features/watchlist';
@@ -31,10 +32,12 @@ import { QuickActionsCard } from '../components/QuickActionsCard';
 import { SuggestionsAlert } from '../components/SuggestionsAlert';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
-type DashboardNavigationProp = StackNavigationProp<DashboardStackParamList, 'Dashboard'>;
+// TEMP: Commented out for custom navigation
+// type DashboardNavigationProp = StackNavigationProp<DashboardStackParamList, 'Dashboard'>;
 
 export const DashboardScreen: React.FC = () => {
-  const navigation = useNavigation<DashboardNavigationProp>();
+  // TEMP: Commented out for custom navigation
+  // const navigation = useNavigation<DashboardNavigationProp>();
   const user = useAuthStore((state) => state.user);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
@@ -115,44 +118,46 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to subscription form (RootStack level)
-    navigation.getParent()?.navigate('SubscriptionForm', {});
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: SubscriptionForm');
+    // navigation.getParent()?.navigate('SubscriptionForm', {});
   };
 
   const handleUpgrade = () => {
     setShowPaywall(false);
-    // Navigate to upgrade screen
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.navigate('SettingsTab');
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: SettingsTab');
+    // navigation.getParent()?.navigate('SettingsTab');
   };
 
   const handleConnectBank = () => {
-    // Navigate to settings tab for Plaid connection
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.navigate('SettingsTab');
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: SettingsTab');
+    // navigation.getParent()?.navigate('SettingsTab');
   };
 
   const handleViewRecommendations = () => {
-    // Navigate to recommendations tab
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.navigate('RecommendationsTab');
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: RecommendationsTab');
+    // navigation.getParent()?.navigate('RecommendationsTab');
   };
 
   const handleViewSuggestions = () => {
-    // Navigate to recommendations tab (same as recommendations for now)
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.navigate('RecommendationsTab');
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: RecommendationsTab');
+    // navigation.getParent()?.navigate('RecommendationsTab');
   };
 
   const handleSubscriptionPress = (subscriptionId: string) => {
-    // Navigate to subscription form in edit mode (RootStack level)
-    navigation.getParent()?.navigate('SubscriptionForm', { subscriptionId });
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: SubscriptionForm with ID:', subscriptionId);
+    // navigation.getParent()?.navigate('SubscriptionForm', { subscriptionId });
   };
 
   const handleFindContent = () => {
-    // Navigate to watchlist tab with content search
-    // @ts-ignore - Navigation to different tab
-    navigation.getParent()?.navigate('WatchlistTab', { screen: 'ContentSearch' });
+    // TEMP: Commented out for custom navigation
+    console.log('[Navigation] Would navigate to: WatchlistTab -> ContentSearch');
+    // navigation.getParent()?.navigate('WatchlistTab', { screen: 'ContentSearch' });
   };
 
   // Get greeting based on time of day
@@ -376,7 +381,7 @@ export const DashboardScreen: React.FC = () => {
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Watchlist</Text>
-              <TouchableOpacity onPress={() => navigation.getParent()?.navigate('WatchlistTab')}>
+              <TouchableOpacity onPress={() => console.log('[Navigation] Would navigate to: WatchlistTab')}>
                 <Text style={styles.seeAllLink}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -385,7 +390,7 @@ export const DashboardScreen: React.FC = () => {
                 <TouchableOpacity
                   key={item.id}
                   style={styles.watchlistItem}
-                  onPress={() => navigation.getParent()?.navigate('WatchlistTab')}
+                  onPress={() => console.log('[Navigation] Would navigate to: WatchlistTab')}
                 >
                   {item.content?.poster_path ? (
                     <Image
