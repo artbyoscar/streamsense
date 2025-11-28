@@ -3,6 +3,7 @@
  * The Movie Database API integration for content data
  */
 
+import axios from 'axios';
 import Constants from 'expo-constants';
 import type {
   TMDbMovie,
@@ -21,11 +22,30 @@ import type {
 // CONFIGURATION
 // ============================================================================
 
-const TMDB_API_KEY = Constants.expoConfig?.extra?.tmdbApiKey || process.env.TMDB_API_KEY;
+const TMDB_API_KEY = Constants.expoConfig?.extra?.tmdbApiKey || process.env.EXPO_PUBLIC_TMDB_API_KEY;
 const TMDB_ACCESS_TOKEN =
-  Constants.expoConfig?.extra?.tmdbAccessToken || process.env.TMDB_ACCESS_TOKEN;
+  Constants.expoConfig?.extra?.tmdbAccessToken || process.env.EXPO_PUBLIC_TMDB_ACCESS_TOKEN;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
+
+// ============================================================================
+// AXIOS INSTANCE (for external services)
+// ============================================================================
+
+/**
+ * Axios instance for TMDb API
+ * Used by other services like contentBrowse and personalizedRecommendations
+ */
+export const tmdbApi = axios.create({
+  baseURL: TMDB_BASE_URL,
+  params: {
+    api_key: TMDB_API_KEY,
+  },
+  headers: {
+    Accept: 'application/json',
+    Authorization: TMDB_ACCESS_TOKEN ? `Bearer ${TMDB_ACCESS_TOKEN}` : undefined,
+  },
+});
 
 // ============================================================================
 // HELPERS
