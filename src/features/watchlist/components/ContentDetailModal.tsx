@@ -19,7 +19,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/features/auth';
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '@/config/supabase';
 import { getBackdropUrl, getPosterUrl, getUSWatchProviders } from '@/services/tmdb';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 import { COLORS } from '@/components';
