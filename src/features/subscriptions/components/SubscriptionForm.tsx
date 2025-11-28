@@ -45,22 +45,26 @@ const BILLING_CYCLES = [
 interface SubscriptionFormProps {
   onSuccess: () => void;
   onCancel: () => void;
+  subscriptionId?: string | null;
+  subscription?: any;
 }
 
 export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   onSuccess,
   onCancel,
+  subscriptionId,
+  subscription,
 }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
 
   // Form state
-  const [serviceName, setServiceName] = useState('');
+  const [serviceName, setServiceName] = useState(subscription?.service_name || '');
   const [customServiceName, setCustomServiceName] = useState('');
-  const [price, setPrice] = useState('');
-  const [billingCycle, setBillingCycle] = useState('monthly');
-  const [billingDay, setBillingDay] = useState('1');
-  const [notes, setNotes] = useState('');
+  const [price, setPrice] = useState(subscription?.price?.toString() || '');
+  const [billingCycle, setBillingCycle] = useState(subscription?.billing_cycle || 'monthly');
+  const [billingDay, setBillingDay] = useState(subscription?.billing_day?.toString() || '1');
+  const [notes, setNotes] = useState(subscription?.notes || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -152,6 +156,45 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Handle delete subscription
+  const handleDelete = async () => {
+    if (!subscriptionId) return;
+
+    Alert.alert(
+      'Delete Subscription',
+      'Are you sure you want to delete this subscription? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsSubmitting(true);
+            try {
+              const { error } = await supabase
+                .from('user_subscriptions')
+                .delete()
+                .eq('id', subscriptionId);
+
+              if (error) throw error;
+
+              Alert.alert('Success', 'Subscription deleted successfully!');
+              onSuccess();
+            } catch (error) {
+              console.error('Error deleting subscription:', error);
+              Alert.alert('Error', 'Failed to delete subscription. Please try again.');
+            } finally {
+              setIsSubmitting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -330,6 +373,20 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         />
       </View>
 
+      {/* Delete Button (only show when editing) */}
+      {subscriptionId && (
+        <TouchableOpacity
+          style={[styles.deleteButton, { backgroundColor: colors.error }]}
+          onPress={handleDelete}
+          disabled={isSubmitting}
+        >
+          <MaterialCommunityIcons name="delete" size={20} color={colors.white} />
+          <Text style={[styles.deleteButtonText, { color: colors.white }]}>
+            Delete Subscription
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Buttons */}
       <View style={styles.buttonContainer}>
         <TouchableOpacity
@@ -349,7 +406,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
             <ActivityIndicator color={colors.white} />
           ) : (
             <Text style={[styles.buttonText, { color: colors.white }]}>
-              Add Subscription
+              {subscriptionId ? 'Update Subscription' : 'Add Subscription'}
             </Text>
           )}
         </TouchableOpacity>
@@ -458,6 +515,19 @@ const styles = StyleSheet.create({
   },
   submitButton: {},
   buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 8,
+    marginBottom: 16,
+    gap: 8,
+  },
+  deleteButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

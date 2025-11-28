@@ -500,7 +500,7 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: COLORS.primary,
     paddingTop: 60,
-    paddingBottom: 24,
+    paddingBottom: 40,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   spendingCard: {
     marginHorizontal: 20,
-    marginTop: -32,
+    marginTop: -16,
     marginBottom: 20,
     backgroundColor: COLORS.white,
     shadowColor: '#000',
