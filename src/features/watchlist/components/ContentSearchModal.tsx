@@ -20,27 +20,31 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useSearchContent } from '@/hooks/useTMDb';
-import { getPosterUrl } from '@/services/tmdb';
+import { tmdbApi, getPosterUrl } from '@/services/tmdb';
 import { BROWSE_CATEGORIES, fetchMultipleCategories } from '@/services/contentBrowse';
+import { ContentDetailModal } from './ContentDetailModal';
 import type { TMDbMultiSearchResult, UnifiedContent } from '@/types/tmdb';
 import { COLORS } from '@/components';
 
 interface ContentSearchModalProps {
   visible: boolean;
   onClose: () => void;
-  onSelectContent: (content: UnifiedContent) => void;
 }
 
 export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   visible,
   onClose,
-  onSelectContent,
 }) => {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [browseContent, setBrowseContent] = useState<Map<string, UnifiedContent[]>>(new Map());
   const [loadingBrowse, setLoadingBrowse] = useState(true);
+
+  // New state for nested modal
+  const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [loadingMore, setLoadingMore] = useState<string | null>(null);
 
   // Debounce search query
   React.useEffect(() => {
@@ -77,34 +81,85 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   // Search using TMDB
   const { data, isLoading } = useSearchContent(debouncedQuery);
 
-  const handleSelectContent = (result: TMDbMultiSearchResult | UnifiedContent) => {
-    // Check if already in UnifiedContent format
-    if ('type' in result && ('posterPath' in result || 'backdropPath' in result)) {
-      onSelectContent(result as UnifiedContent);
+  const handleSelectContent = (item: UnifiedContent | TMDbMultiSearchResult) => {
+    // Convert to UnifiedContent if needed
+    let content: UnifiedContent;
+
+    if ('media_type' in item) {
+      // TMDb search result
+      const searchResult = item as TMDbMultiSearchResult;
+      content = {
+        id: searchResult.id,
+        title: searchResult.media_type === 'movie' ? searchResult.title! : searchResult.name!,
+        originalTitle: searchResult.media_type === 'movie' ? searchResult.original_title! : searchResult.original_name!,
+        type: searchResult.media_type as 'movie' | 'tv',
+        overview: searchResult.overview || '',
+        posterPath: searchResult.poster_path ?? null,
+        backdropPath: searchResult.backdrop_path ?? null,
+        releaseDate: searchResult.media_type === 'movie'
+          ? (searchResult.release_date ?? null)
+          : (searchResult.first_air_date ?? null),
+        genres: [],
+        rating: searchResult.vote_average || 0,
+        voteCount: searchResult.vote_count || 0,
+        popularity: searchResult.popularity || 0,
+        language: searchResult.original_language || '',
+      };
+    } else {
+      content = item as UnifiedContent;
+    }
+
+    setSelectedContent(content);
+    setShowDetailModal(true);
+  };
+
+  // Load more content for a specific category
+  const loadMoreForCategory = async (categoryId: string) => {
+    setLoadingMore(categoryId);
+    const category = BROWSE_CATEGORIES.find(c => c.id === categoryId);
+    if (!category) {
+      setLoadingMore(null);
       return;
     }
 
-    // Convert from TMDbMultiSearchResult to UnifiedContent format
-    const searchResult = result as TMDbMultiSearchResult;
-    const content: UnifiedContent = {
-      id: searchResult.id,
-      title: searchResult.media_type === 'movie' ? searchResult.title! : searchResult.name!,
-      originalTitle: searchResult.media_type === 'movie' ? searchResult.original_title! : searchResult.original_name!,
-      type: searchResult.media_type as 'movie' | 'tv',
-      overview: searchResult.overview || '',
-      posterPath: searchResult.poster_path ?? null,
-      backdropPath: searchResult.backdrop_path ?? null,
-      releaseDate:
-        searchResult.media_type === 'movie'
-          ? (searchResult.release_date ?? null)
-          : (searchResult.first_air_date ?? null),
-      genres: [], // Will be filled in detail modal
-      rating: searchResult.vote_average || 0,
-      voteCount: searchResult.vote_count || 0,
-      popularity: searchResult.popularity || 0,
-      language: searchResult.original_language || '',
-    };
-    onSelectContent(content);
+    try {
+      const currentItems = browseContent.get(categoryId) || [];
+      const currentPage = Math.ceil(currentItems.length / 20) + 1;
+
+      const response = await tmdbApi.get(category.endpoint, {
+        params: { page: currentPage }
+      });
+
+      const newItems: UnifiedContent[] = response.data.results.map((item: any) => ({
+        id: item.id,
+        title: item.title || item.name,
+        originalTitle: item.original_title || item.original_name || item.title || item.name,
+        type: (category.mediaType === 'all' ? (item.media_type || 'movie') : category.mediaType) as 'movie' | 'tv',
+        posterPath: item.poster_path,
+        backdropPath: item.backdrop_path,
+        overview: item.overview || '',
+        releaseDate: item.release_date || item.first_air_date || null,
+        rating: item.vote_average || 0,
+        voteCount: item.vote_count || 0,
+        popularity: item.popularity || 0,
+        language: item.original_language || '',
+        genres: item.genre_ids || [],
+      }));
+
+      setBrowseContent(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(categoryId) || [];
+        // Filter duplicates
+        const existingIds = new Set(existing.map(i => i.id));
+        const uniqueNew = newItems.filter(i => !existingIds.has(i.id));
+        updated.set(categoryId, [...existing, ...uniqueNew]);
+        return updated;
+      });
+    } catch (error) {
+      console.error('Error loading more:', error);
+    } finally {
+      setLoadingMore(null);
+    }
   };
 
   const renderSearchResult = ({ item }: { item: TMDbMultiSearchResult }) => {
@@ -242,6 +297,22 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
                           </Text>
                         </TouchableOpacity>
                       ))}
+
+                      {/* Load More Button */}
+                      <TouchableOpacity
+                        style={[styles.loadMoreButton, { borderColor: colors.border }]}
+                        onPress={() => loadMoreForCategory(category.id)}
+                        disabled={loadingMore === category.id}
+                      >
+                        {loadingMore === category.id ? (
+                          <ActivityIndicator size="small" color={colors.primary} />
+                        ) : (
+                          <>
+                            <MaterialCommunityIcons name="plus-circle-outline" size={36} color={colors.primary} />
+                            <Text style={[styles.loadMoreText, { color: colors.primary }]}>More</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
                     </ScrollView>
                   </View>
                 ))}
@@ -270,6 +341,23 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
             </Text>
           </View>
         )}
+
+        {/* Content Detail Modal */}
+        <ContentDetailModal
+          content={selectedContent}
+          visible={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedContent(null);
+            onClose(); // Close entire search modal
+          }}
+          onAddedToWatchlist={() => {
+            // Content was added, stay in search modal
+            setShowDetailModal(false);
+            setSelectedContent(null);
+            // User can continue browsing
+          }}
+        />
       </SafeAreaView>
     </Modal>
   );
@@ -388,9 +476,9 @@ const styles = StyleSheet.create({
   },
   categoryScroll: {
     paddingRight: 16,
+    gap: 12,
   },
   browseCard: {
-    marginRight: 12,
     width: 120,
   },
   browsePoster: {
@@ -403,5 +491,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 6,
     lineHeight: 16,
+  },
+  loadMoreButton: {
+    width: 80,
+    height: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+  },
+  loadMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 6,
   },
 });

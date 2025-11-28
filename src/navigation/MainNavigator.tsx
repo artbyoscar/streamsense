@@ -101,11 +101,6 @@ const Navigator: React.FC = () => {
       <ContentSearchModal
         visible={showContentSearch}
         onClose={() => setShowContentSearch(false)}
-        onSelectContent={(content) => {
-          setSelectedContent(content);
-          setShowContentSearch(false);
-          setShowContentDetail(true);
-        }}
       />
 
       {/* Content Detail Modal */}
