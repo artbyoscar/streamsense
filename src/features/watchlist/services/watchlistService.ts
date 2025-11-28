@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/config/supabase';
+import { trackGenreInteraction } from '@/services/genreAffinity';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
 
 // ============================================================================
@@ -143,10 +144,48 @@ export async function updateWatchlistItem(
  * Remove item from watchlist
  */
 export async function removeFromWatchlist(id: string): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Fetch watchlist item with content to get genres before deleting
+  const { data: watchlistItem } = await supabase
+    .from('watchlist_items')
+    .select(`
+      *,
+      content:content(*)
+    `)
+    .eq('id', id)
+    .single();
+
+  // Delete the watchlist item
   const { error } = await supabase.from('watchlist_items').delete().eq('id', id);
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  // Track genre affinity for removal
+  if (watchlistItem?.content?.genres) {
+    const content = watchlistItem.content as any;
+    const genreIds = Array.isArray(content.genres)
+      ? content.genres.filter((g: any) => typeof g === 'number')
+      : [];
+
+    if (genreIds.length > 0) {
+      trackGenreInteraction(
+        user.id,
+        genreIds,
+        content.type || 'movie',
+        'REMOVE_FROM_WATCHLIST'
+      ).catch((error) => {
+        console.error('[Watchlist] Error tracking genre affinity on removal:', error);
+      });
+    }
   }
 }
 

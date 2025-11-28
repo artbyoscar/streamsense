@@ -21,6 +21,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/features/auth';
 import { supabase } from '@/config/supabase';
 import { getBackdropUrl, getPosterUrl, getUSWatchProviders } from '@/services/tmdb';
+import { trackGenreInteraction } from '@/services/genreAffinity';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 import { COLORS } from '@/components';
 
@@ -118,6 +119,20 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
     }
   };
 
+  // Helper to extract genre IDs from content
+  const extractGenreIds = (content: UnifiedContent): number[] => {
+    if (!content.genres || content.genres.length === 0) return [];
+
+    // Check if genres is an array of objects with id property or just numbers
+    const firstGenre = content.genres[0];
+    if (typeof firstGenre === 'object' && 'id' in firstGenre) {
+      return content.genres.map((g: any) => g.id);
+    }
+
+    // Already an array of numbers
+    return content.genres as number[];
+  };
+
   // Add or update watchlist item
   const handleAddToWatchlist = async () => {
     if (!content || !user) {
@@ -164,6 +179,8 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
       // Step 2: Insert or update watchlist item
       const streamingServices = watchProviders.map(p => p.provider_name);
+      const previousStatus = existingWatchlistItem?.status;
+      const previousRating = existingWatchlistItem?.rating || 0;
 
       if (existingWatchlistItem) {
         // Update existing
@@ -177,6 +194,29 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
           .eq('id', existingWatchlistItem.id);
 
         if (updateError) throw updateError;
+
+        // Track genre affinity for status changes
+        const genreIds = extractGenreIds(content);
+        if (genreIds.length > 0) {
+          // Track status change
+          if (previousStatus !== selectedStatus) {
+            if (selectedStatus === 'watching') {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'START_WATCHING');
+            } else if (selectedStatus === 'watched') {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'COMPLETE_WATCHING');
+            }
+          }
+
+          // Track rating change for watched content
+          if (selectedStatus === 'watched' && rating !== previousRating) {
+            if (rating >= 7) {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
+            } else if (rating >= 1 && rating <= 3) {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
+            }
+          }
+        }
+
         Alert.alert('Success', 'Watchlist updated!');
       } else {
         // Insert new
@@ -192,6 +232,29 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
           });
 
         if (insertError) throw insertError;
+
+        // Track genre affinity for new watchlist item
+        const genreIds = extractGenreIds(content);
+        if (genreIds.length > 0) {
+          // Track based on initial status
+          if (selectedStatus === 'want_to_watch') {
+            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
+          } else if (selectedStatus === 'watching') {
+            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
+            await trackGenreInteraction(user.id, genreIds, content.type, 'START_WATCHING');
+          } else if (selectedStatus === 'watched') {
+            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
+            await trackGenreInteraction(user.id, genreIds, content.type, 'COMPLETE_WATCHING');
+
+            // Track rating if provided
+            if (rating >= 7) {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
+            } else if (rating >= 1 && rating <= 3) {
+              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
+            }
+          }
+        }
+
         Alert.alert('Success', 'Added to watchlist!');
       }
 
