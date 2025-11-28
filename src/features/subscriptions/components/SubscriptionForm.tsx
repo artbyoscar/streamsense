@@ -17,7 +17,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/lib/supabase/client';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/features/auth';
 
 // Common streaming services
 const STREAMING_SERVICES = [
@@ -52,7 +52,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   onCancel,
 }) => {
   const { colors } = useTheme();
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
 
   // Form state
   const [serviceName, setServiceName] = useState('');
@@ -113,6 +113,9 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
 
   // Handle form submission
   const handleSubmit = async () => {
+    console.log('[SubscriptionForm] User from auth:', user);
+    console.log('[SubscriptionForm] User ID:', user?.id);
+
     if (!validate()) {
       return;
     }
