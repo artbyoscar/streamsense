@@ -134,18 +134,18 @@ function loadEnv(): EnvironmentConfig {
     },
   };
 
-  // Add optional Plaid config if all required fields are present
-  const plaidClientId = getEnvVar('EXPO_PUBLIC_PLAID_CLIENT_ID');
-  const plaidSecret = getEnvVar('EXPO_PUBLIC_PLAID_SECRET');
+  // Plaid configuration - credentials are kept server-side in Supabase Edge Functions
+  // Client only needs to know the environment and whether Plaid is enabled
   const plaidEnv = getEnvVar('EXPO_PUBLIC_PLAID_ENV', 'sandbox') as PlaidEnvironment;
+  const plaidEnabled = getEnvVar('EXPO_PUBLIC_PLAID_ENABLED', 'true');
 
-  if (plaidClientId && plaidSecret) {
+  if (plaidEnabled === 'true') {
     config.plaid = {
-      clientId: plaidClientId,
-      secret: plaidSecret,
+      clientId: '', // Kept server-side for security
+      secret: '',   // Kept server-side for security
       env: plaidEnv || 'sandbox',
     };
-    console.log('✅ Plaid configuration loaded');
+    console.log('✅ Plaid feature enabled (credentials server-side)');
   }
 
   // Add optional TMDB config if present

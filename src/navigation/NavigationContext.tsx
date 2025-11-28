@@ -18,6 +18,8 @@ interface NavigationContextType {
   setShowContentSearch: (show: boolean) => void;
   showContentDetail: boolean;
   setShowContentDetail: (show: boolean) => void;
+  showPlaidConnection: boolean;
+  setShowPlaidConnection: (show: boolean) => void;
   selectedContent: UnifiedContent | null;
   setSelectedContent: (content: UnifiedContent | null) => void;
 }
@@ -38,6 +40,8 @@ export const useCustomNavigation = () => {
       setShowContentSearch: (show: boolean) => console.log('[Navigation] Would show content search:', show),
       showContentDetail: false,
       setShowContentDetail: (show: boolean) => console.log('[Navigation] Would show content detail:', show),
+      showPlaidConnection: false,
+      setShowPlaidConnection: (show: boolean) => console.log('[Navigation] Would show plaid connection:', show),
       selectedContent: null,
       setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
     };
@@ -50,6 +54,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [showSubscriptionForm, setShowSubscriptionForm] = useState(false);
   const [showContentSearch, setShowContentSearch] = useState(false);
   const [showContentDetail, setShowContentDetail] = useState(false);
+  const [showPlaidConnection, setShowPlaidConnection] = useState(false);
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
 
   const navigateToScreen = (screen: string, params?: any) => {
@@ -65,6 +70,9 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } else if (screen === 'ContentDetail') {
       console.log('[Navigation] Opening ContentDetail modal');
       setShowContentDetail(true);
+    } else if (screen === 'PlaidConnection') {
+      console.log('[Navigation] Opening PlaidConnection modal');
+      setShowPlaidConnection(true);
     } else if (screen === 'SettingsTab' || screen === 'Settings') {
       setActiveTab('Settings');
     } else if (screen === 'WatchlistTab' || screen === 'Watchlist') {
@@ -86,6 +94,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowContentSearch,
         showContentDetail,
         setShowContentDetail,
+        showPlaidConnection,
+        setShowPlaidConnection,
         selectedContent,
         setSelectedContent,
       }}

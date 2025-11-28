@@ -120,11 +120,15 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleConnectBank = () => {
-    Alert.alert(
-      'Coming Soon',
-      'Bank connection will be available once Plaid approval is received.',
-      [{ text: 'OK' }]
-    );
+    if (!isFeatureEnabled('plaid')) {
+      Alert.alert(
+        'Feature Unavailable',
+        'Bank connection is not currently enabled. Please contact support.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    navigateToScreen('PlaidConnection');
   };
 
   const handleViewRecommendations = () => {
