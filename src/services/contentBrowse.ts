@@ -11,7 +11,15 @@ export interface ContentCategory {
   title: string;
   endpoint: string;
   mediaType: 'movie' | 'tv' | 'all';
+  params?: Record<string, string>; // Optional query params
 }
+
+// Helper to get date strings
+const getDateString = (daysFromNow: number = 0): string => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysFromNow);
+  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+};
 
 export const BROWSE_CATEGORIES: ContentCategory[] = [
   { id: 'trending', title: '🔥 Trending Today', endpoint: '/trending/all/day', mediaType: 'all' },
@@ -19,7 +27,17 @@ export const BROWSE_CATEGORIES: ContentCategory[] = [
   { id: 'popular-tv', title: '📺 Popular TV Shows', endpoint: '/tv/popular', mediaType: 'tv' },
   { id: 'top-movies', title: '⭐ Top Rated Movies', endpoint: '/movie/top_rated', mediaType: 'movie' },
   { id: 'top-tv', title: '⭐ Top Rated TV Shows', endpoint: '/tv/top_rated', mediaType: 'tv' },
-  { id: 'upcoming', title: '🎟️ Coming Soon', endpoint: '/movie/upcoming', mediaType: 'movie' },
+  {
+    id: 'upcoming',
+    title: '🎟️ Coming Soon',
+    endpoint: '/discover/movie',
+    mediaType: 'movie',
+    params: {
+      'primary_release_date.gte': getDateString(1), // Tomorrow onwards
+      'primary_release_date.lte': getDateString(90), // Next 90 days
+      'sort_by': 'primary_release_date.asc',
+    },
+  },
   { id: 'now-playing', title: '🍿 In Theaters', endpoint: '/movie/now_playing', mediaType: 'movie' },
   { id: 'airing-today', title: '📡 Airing Today', endpoint: '/tv/airing_today', mediaType: 'tv' },
 ];
@@ -29,7 +47,10 @@ export const fetchCategoryContent = async (category: ContentCategory): Promise<U
   console.log('[ContentBrowse] tmdbApi exists:', !!tmdbApi);
 
   try {
-    const response = await tmdbApi.get(category.endpoint);
+    // Include params if provided
+    const response = await tmdbApi.get(category.endpoint, {
+      params: category.params || {},
+    });
     const results = response.data.results || [];
     console.log('[ContentBrowse] Got response:', results.length, 'items for', category.title);
 
