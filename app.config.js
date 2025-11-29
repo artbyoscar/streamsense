@@ -15,6 +15,7 @@ export default {
       supportsTablet: true
     },
     android: {
+      package: "com.artbyoscar.streamsense",
       adaptiveIcon: {
         foregroundImage: "./assets/adaptive-icon.png",
         backgroundColor: "#ffffff"
