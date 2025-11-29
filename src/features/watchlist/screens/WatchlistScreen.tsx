@@ -3,7 +3,7 @@
  * User's watchlist grouped by status with content search integration
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -67,7 +67,8 @@ export const WatchlistScreen: React.FC = () => {
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
   const [forYouContent, setForYouContent] = useState<UnifiedContent[]>([]);
-  const [topGenres, setTopGenres] = useState<string[]>([]);
+  const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
+  const [selectedGenreFilter, setSelectedGenreFilter] = useState<number | null>(null);
   const [loadingForYou, setLoadingForYou] = useState(false);
 
   // Fetch trending for suggestions
@@ -142,18 +143,30 @@ export const WatchlistScreen: React.FC = () => {
     setLoadingForYou(true);
     try {
       const [recommendations, genres] = await Promise.all([
-        getMixedRecommendations(user.id, 10),
-        getUserTopGenres(user.id, 3),
+        getMixedRecommendations(user.id, 20),
+        getUserTopGenres(user.id, 6),
       ]);
 
       setForYouContent(recommendations);
-      setTopGenres(genres.map(g => g.genreName));
+      setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
     } catch (error) {
       console.error('[Watchlist] Error loading personalized content:', error);
     } finally {
       setLoadingForYou(false);
     }
   };
+
+  // Filter recommendations by selected genre
+  const filteredForYouContent = useMemo(() => {
+    if (!selectedGenreFilter) {
+      return forYouContent;
+    }
+    return forYouContent.filter(item =>
+      item.genres && Array.isArray(item.genres) && item.genres.some(g =>
+        typeof g === 'number' ? g === selectedGenreFilter : g.id === selectedGenreFilter
+      )
+    );
+  }, [forYouContent, selectedGenreFilter]);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
@@ -387,19 +400,78 @@ export const WatchlistScreen: React.FC = () => {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   ✨ For You
                 </Text>
-                {topGenres.length > 0 && (
+                {userTopGenres.length > 0 && !selectedGenreFilter && (
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                    Based on {topGenres.slice(0, 2).join(' & ')}
+                    Based on {userTopGenres.slice(0, 2).map(g => g.name).join(' & ')}
+                  </Text>
+                )}
+                {selectedGenreFilter && (
+                  <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+                    Filtered by {userTopGenres.find(g => g.id === selectedGenreFilter)?.name}
                   </Text>
                 )}
               </View>
             </View>
+
+            {/* Genre Filter Chips */}
+            {userTopGenres.length > 0 && (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.filterChipsContainer}
+              >
+                <TouchableOpacity
+                  style={[
+                    styles.filterChip,
+                    !selectedGenreFilter && styles.filterChipActive,
+                    {
+                      backgroundColor: !selectedGenreFilter ? colors.primary : colors.card,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  onPress={() => setSelectedGenreFilter(null)}
+                >
+                  <Text
+                    style={[
+                      styles.filterChipText,
+                      { color: !selectedGenreFilter ? COLORS.white : colors.text }
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+                {userTopGenres.map(genre => (
+                  <TouchableOpacity
+                    key={genre.id}
+                    style={[
+                      styles.filterChip,
+                      selectedGenreFilter === genre.id && styles.filterChipActive,
+                      {
+                        backgroundColor: selectedGenreFilter === genre.id ? colors.primary : colors.card,
+                        borderColor: colors.border
+                      }
+                    ]}
+                    onPress={() => setSelectedGenreFilter(genre.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.filterChipText,
+                        { color: selectedGenreFilter === genre.id ? COLORS.white : colors.text }
+                      ]}
+                    >
+                      {genre.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {forYouContent.map(item => (
+              {filteredForYouContent.map(item => (
                 <TouchableOpacity
                   key={`foryou-${item.id}-${item.type}`}
                   onPress={() => handleContentPress(item)}
@@ -690,5 +762,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
     gap: 8,
+  },
+  filterChipsContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  filterChipActive: {
+    // Active state is handled via backgroundColor in component
+  },
+  filterChipText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
