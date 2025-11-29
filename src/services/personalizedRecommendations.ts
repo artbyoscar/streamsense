@@ -1,12 +1,32 @@
 /**
  * Enhanced Personalized Recommendations Service
  * Smart algorithm that considers ratings, recency, media type preference, and more
+ * UPDATED: Now includes session-level tracking and random page selection for variety
  */
 
 import { tmdbApi } from './tmdb';
 import { supabase } from '@/config/supabase';
 import { MOVIE_GENRES, TV_GENRES } from '@/constants/genres';
 import type { UnifiedContent } from '@/types';
+
+// ============================================================================
+// SESSION-LEVEL TRACKING
+// ============================================================================
+
+/**
+ * Tracks content shown in current session to prevent repeats
+ * Cleared only when app restarts or clearRecommendationCache() is called
+ */
+const sessionShownContent = new Set<string>();
+
+/**
+ * Clear the session cache of shown content
+ * Use this to reset recommendations and allow previously shown content to appear again
+ */
+export const clearRecommendationCache = () => {
+  console.log('[SmartRecs] Clearing session cache, had', sessionShownContent.size, 'items');
+  sessionShownContent.clear();
+};
 
 // ============================================================================
 // TYPES
@@ -162,11 +182,23 @@ export const getUserPreferences = async (userId: string): Promise<UserPreference
   });
 
   // 6. Get existing watchlist content IDs to exclude from recommendations
+  // Also include session-shown content to prevent repeats
   const watchlistContentIds = new Set<string>();
   watchlistData?.forEach((item: any) => {
     if (item.content) {
       watchlistContentIds.add(`${item.content.type}-${item.content.tmdb_id}`);
     }
+  });
+
+  // Add session-shown content to exclusion set
+  sessionShownContent.forEach((id) => {
+    watchlistContentIds.add(id);
+  });
+
+  console.log('[SmartRecs] Excluding:', {
+    watchlistItems: watchlistData?.length || 0,
+    sessionShownItems: sessionShownContent.size,
+    totalExcluded: watchlistContentIds.size,
   });
 
   // 7. Sort genres by weighted score
@@ -208,11 +240,23 @@ export const getSmartRecommendations = async (
     mediaType?: 'movie' | 'tv' | 'mixed';
     limit?: number;
     includeDiscovery?: boolean;
+    forceRefresh?: boolean;
   } = {}
 ): Promise<SmartRecommendations> => {
-  const { mediaType = 'mixed', limit = 20, includeDiscovery = true } = options;
+  const { mediaType = 'mixed', limit = 20, includeDiscovery = true, forceRefresh = false } = options;
 
-  console.log('[SmartRecs] Getting smart recommendations:', { userId, mediaType, limit });
+  // Clear session cache if force refresh is requested
+  if (forceRefresh) {
+    clearRecommendationCache();
+  }
+
+  console.log('[SmartRecs] Getting smart recommendations:', {
+    userId,
+    mediaType,
+    limit,
+    sessionCacheSize: sessionShownContent.size,
+    forceRefresh,
+  });
 
   const prefs = await getUserPreferences(userId);
 
@@ -284,6 +328,7 @@ export const getSmartRecommendations = async (
 
 /**
  * Fetch content by genres with quality filters
+ * UPDATED: Uses random page selection (1-10) for variety and tracks shown content
  */
 const fetchByGenres = async (
   genreIds: number[],
@@ -298,7 +343,14 @@ const fetchByGenres = async (
 
     const endpoint = mediaType === 'tv' ? '/discover/tv' : '/discover/movie';
 
-    console.log(`[SmartRecs] Fetching ${mediaType} by genres:`, mappedIds);
+    // Use random page (1-10) for variety instead of always page 1
+    const randomPage = Math.floor(Math.random() * 10) + 1;
+
+    console.log(`[SmartRecs] Fetching ${mediaType} by genres:`, {
+      genres: mappedIds,
+      page: randomPage,
+      excludeCount: excludeIds.size,
+    });
 
     const response = await tmdbApi.get(endpoint, {
       params: {
@@ -306,16 +358,25 @@ const fetchByGenres = async (
         sort_by: 'popularity.desc',
         'vote_count.gte': 100,
         'vote_average.gte': 6.5,
-        page: 1,
+        page: randomPage, // Random page for variety
       },
     });
 
     const results = mapToUnifiedContent(response.data.results || [], mediaType);
 
-    // Filter out content already on watchlist
-    return results
-      .filter((item) => !excludeIds.has(`${item.type}-${item.id}`))
-      .slice(0, limit);
+    // Filter out content already on watchlist or shown this session
+    const filtered = results.filter((item) => !excludeIds.has(`${item.type}-${item.id}`));
+
+    // Take the limit and track what we're showing
+    const toShow = filtered.slice(0, limit);
+    toShow.forEach((item) => {
+      const key = `${item.type}-${item.id}`;
+      sessionShownContent.add(key);
+    });
+
+    console.log(`[SmartRecs] Returning ${toShow.length} items, session cache now has ${sessionShownContent.size} items`);
+
+    return toShow;
   } catch (error) {
     console.error('[SmartRecs] Error fetching by genres:', error);
     return [];
@@ -324,6 +385,7 @@ const fetchByGenres = async (
 
 /**
  * Get discovery content - genres the user hasn't explored much
+ * UPDATED: Tracks shown content and uses random page selection
  */
 const getDiscoveryContent = async (
   prefs: UserPreferences,
@@ -342,7 +404,10 @@ const getDiscoveryContent = async (
     const shuffled = unexploredGenres.sort(() => Math.random() - 0.5);
     const discoveryGenres = shuffled.slice(0, 3);
 
-    console.log('[SmartRecs] Discovery genres:', discoveryGenres);
+    // Use random page for variety
+    const randomPage = Math.floor(Math.random() * 5) + 1;
+
+    console.log('[SmartRecs] Discovery genres:', discoveryGenres, 'page:', randomPage);
 
     const response = await tmdbApi.get('/discover/movie', {
       params: {
@@ -350,12 +415,21 @@ const getDiscoveryContent = async (
         sort_by: 'popularity.desc',
         'vote_average.gte': 7.5, // Higher quality bar for discovery
         'vote_count.gte': 500,
+        page: randomPage,
       },
     });
 
-    return mapToUnifiedContent(response.data.results || [], 'movie')
-      .filter((item) => !prefs.watchlistContentIds.has(`movie-${item.id}`))
-      .slice(0, limit);
+    const filtered = mapToUnifiedContent(response.data.results || [], 'movie')
+      .filter((item) => !prefs.watchlistContentIds.has(`movie-${item.id}`));
+
+    const toShow = filtered.slice(0, limit);
+
+    // Track shown content
+    toShow.forEach((item) => {
+      sessionShownContent.add(`${item.type}-${item.id}`);
+    });
+
+    return toShow;
   } catch (error) {
     console.error('[SmartRecs] Error fetching discovery:', error);
     return [];
@@ -364,6 +438,7 @@ const getDiscoveryContent = async (
 
 /**
  * Fetch trending content
+ * UPDATED: Tracks shown content
  */
 const fetchTrending = async (excludeIds: Set<string>, limit: number): Promise<UnifiedContent[]> => {
   try {
@@ -372,13 +447,21 @@ const fetchTrending = async (excludeIds: Set<string>, limit: number): Promise<Un
     const response = await tmdbApi.get('/trending/all/day');
     const results = response.data.results || [];
 
-    return results
+    const filtered = results
       .map((item: any) => {
         const type = (item.media_type || 'movie') as 'movie' | 'tv';
         return mapToUnifiedContent([item], type)[0];
       })
-      .filter((item) => item && !excludeIds.has(`${item.type}-${item.id}`))
-      .slice(0, limit);
+      .filter((item) => item && !excludeIds.has(`${item.type}-${item.id}`));
+
+    const toShow = filtered.slice(0, limit);
+
+    // Track shown content
+    toShow.forEach((item) => {
+      sessionShownContent.add(`${item.type}-${item.id}`);
+    });
+
+    return toShow;
   } catch (error) {
     console.error('[SmartRecs] Error fetching trending:', error);
     return [];
@@ -433,10 +516,11 @@ const shuffleAndLimit = (items: UnifiedContent[], limit: number): UnifiedContent
 export const getPersonalizedRecommendations = async (
   userId: string,
   mediaType: 'movie' | 'tv' = 'movie',
-  limit: number = 20
+  limit: number = 20,
+  forceRefresh: boolean = false
 ): Promise<UnifiedContent[]> => {
   console.log('[SmartRecs] Using API: getPersonalizedRecommendations');
-  const result = await getSmartRecommendations(userId, { mediaType, limit });
+  const result = await getSmartRecommendations(userId, { mediaType, limit, forceRefresh });
   return result.forYou;
 };
 
@@ -445,10 +529,11 @@ export const getPersonalizedRecommendations = async (
  */
 export const getMixedRecommendations = async (
   userId: string,
-  limit: number = 20
+  limit: number = 20,
+  forceRefresh: boolean = false
 ): Promise<UnifiedContent[]> => {
   console.log('[SmartRecs] Using API: getMixedRecommendations');
-  const result = await getSmartRecommendations(userId, { mediaType: 'mixed', limit });
+  const result = await getSmartRecommendations(userId, { mediaType: 'mixed', limit, forceRefresh });
   return result.forYou;
 };
 
@@ -457,9 +542,13 @@ export const getMixedRecommendations = async (
  */
 export const getDiscoveryRecommendations = async (
   userId: string,
-  limit: number = 10
+  limit: number = 10,
+  forceRefresh: boolean = false
 ): Promise<UnifiedContent[]> => {
   console.log('[SmartRecs] Using API: getDiscoveryRecommendations');
+  if (forceRefresh) {
+    clearRecommendationCache();
+  }
   const prefs = await getUserPreferences(userId);
   return getDiscoveryContent(prefs, limit);
 };
