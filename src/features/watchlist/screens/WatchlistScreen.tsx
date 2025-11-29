@@ -3,7 +3,7 @@
  * User's watchlist grouped by status with content search integration
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -66,7 +66,8 @@ export const WatchlistScreen: React.FC = () => {
   const [watching, setWatching] = useState<WatchlistItemWithContent[]>([]);
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
-  const [forYouContent, setForYouContent] = useState<UnifiedContent[]>([]);
+  const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
+  const [filteredRecommendations, setFilteredRecommendations] = useState<UnifiedContent[]>([]);
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
   const [selectedGenreFilter, setSelectedGenreFilter] = useState<number | null>(null);
   const [loadingForYou, setLoadingForYou] = useState(false);
@@ -147,9 +148,11 @@ export const WatchlistScreen: React.FC = () => {
         getUserTopGenres(user.id, 6),
       ]);
 
+      console.log('[Watchlist] Loaded', recommendations.length, 'recommendations');
+
       if (append) {
         // Append new recommendations, avoiding duplicates
-        setForYouContent(prev => {
+        setAllRecommendations(prev => {
           const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
           const newItems = recommendations.filter(
             item => !existingIds.has(`${item.type}-${item.id}`)
@@ -157,7 +160,8 @@ export const WatchlistScreen: React.FC = () => {
           return [...prev, ...newItems];
         });
       } else {
-        setForYouContent(recommendations);
+        setAllRecommendations(recommendations);
+        setFilteredRecommendations(recommendations); // Initially show all
       }
       setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
     } catch (error) {
@@ -167,17 +171,22 @@ export const WatchlistScreen: React.FC = () => {
     }
   };
 
-  // Filter recommendations by selected genre
-  const filteredForYouContent = useMemo(() => {
+  // Filter recommendations when genre filter changes
+  useEffect(() => {
     if (!selectedGenreFilter) {
-      return forYouContent;
+      setFilteredRecommendations(allRecommendations);
+      console.log('[Watchlist] Showing all', allRecommendations.length, 'recommendations');
+    } else {
+      const filtered = allRecommendations.filter(item =>
+        item.genres && Array.isArray(item.genres) && item.genres.some(g =>
+          typeof g === 'number' ? g === selectedGenreFilter : g.id === selectedGenreFilter
+        )
+      );
+      setFilteredRecommendations(filtered);
+      const selectedGenreName = userTopGenres.find(g => g.id === selectedGenreFilter)?.name;
+      console.log('[Watchlist] Filtered to', filtered.length, 'items for genre:', selectedGenreName);
     }
-    return forYouContent.filter(item =>
-      item.genres && Array.isArray(item.genres) && item.genres.some(g =>
-        typeof g === 'number' ? g === selectedGenreFilter : g.id === selectedGenreFilter
-      )
-    );
-  }, [forYouContent, selectedGenreFilter]);
+  }, [selectedGenreFilter, allRecommendations, userTopGenres]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -413,7 +422,7 @@ export const WatchlistScreen: React.FC = () => {
         </View>
 
         {/* Personalized For You Section */}
-        {forYouContent.length > 0 ? (
+        {allRecommendations.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeaderWithSubtitle}>
               <View>
@@ -491,7 +500,7 @@ export const WatchlistScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.horizontalScroll}
             >
-              {filteredForYouContent.map(item => (
+              {filteredRecommendations.map(item => (
                 <TouchableOpacity
                   key={`foryou-${item.id}-${item.type}`}
                   onPress={() => handleContentPress(item)}
@@ -520,7 +529,7 @@ export const WatchlistScreen: React.FC = () => {
               ))}
 
               {/* More Button */}
-              {filteredForYouContent.length > 0 && !loadingForYou && (
+              {filteredRecommendations.length > 0 && !loadingForYou && (
                 <TouchableOpacity
                   style={styles.moreButton}
                   onPress={() => loadPersonalizedContent(true)}
@@ -543,7 +552,7 @@ export const WatchlistScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {loadingForYou && forYouContent.length === 0 && (
+        {loadingForYou && allRecommendations.length === 0 && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
