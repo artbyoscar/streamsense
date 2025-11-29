@@ -9,14 +9,17 @@ import { Text, Avatar } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { UserSubscription } from '@/types';
 import { COLORS } from '@/components';
+import type { SubscriptionValueMetrics } from '@/services/subscriptionValue';
 
 interface SubscriptionListItemProps {
   subscription: UserSubscription;
+  valueMetrics?: SubscriptionValueMetrics;
   onPress?: () => void;
 }
 
 export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
   subscription,
+  valueMetrics,
   onPress,
 }) => {
   const formatPrice = (price: number, cycle: string) => {
@@ -82,13 +85,6 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
     return iconMap[subscription.service_name] || 'play-box-outline';
   };
 
-  const getValueLabel = (score: number | null | undefined) => {
-    if (!score) return null;
-    if (score < 1) return { label: 'Great Value', color: COLORS.success };
-    if (score < 3) return { label: 'Good Value', color: COLORS.warning };
-    return { label: 'Low Value', color: COLORS.error };
-  };
-
   return (
     <TouchableOpacity
       style={styles.container}
@@ -137,20 +133,20 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
         </View>
 
         {/* Value Score Badge */}
-        {subscription.value_score && getValueLabel(subscription.value_score) && (
+        {valueMetrics && valueMetrics.contentWatched > 0 && (
           <View
             style={[
               styles.valueBadge,
-              { backgroundColor: getValueLabel(subscription.value_score)!.color + '20' },
+              { backgroundColor: valueMetrics.valueColor + '20' },
             ]}
           >
             <Text
               style={[
                 styles.valueBadgeText,
-                { color: getValueLabel(subscription.value_score)!.color },
+                { color: valueMetrics.valueColor },
               ]}
             >
-              ${subscription.value_score.toFixed(2)}/hr • {getValueLabel(subscription.value_score)!.label}
+              {valueMetrics.contentWatched} watched • ${valueMetrics.costPerItem.toFixed(2)}/item • {valueMetrics.valueLabel}
             </Text>
           </View>
         )}

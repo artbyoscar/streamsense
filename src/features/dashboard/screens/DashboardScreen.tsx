@@ -22,6 +22,7 @@ import { generateRecommendations } from '@/services/recommendations';
 import { getPosterUrl } from '@/services/tmdb';
 import { syncAllPlaidItems } from '@/services/plaid';
 import { isFeatureEnabled } from '@/config/env';
+import { calculateSubscriptionValue, SubscriptionValueMetrics } from '@/services/subscriptionValue';
 import { COLORS, EmptyState, LoadingScreen, Card, PaywallModal } from '@/components';
 import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import { SubscriptionListItem } from '../components/SubscriptionListItem';
@@ -35,6 +36,7 @@ export const DashboardScreen: React.FC = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
   const [potentialSavings, setPotentialSavings] = useState(0);
+  const [valueMetrics, setValueMetrics] = useState<Map<string, SubscriptionValueMetrics>>(new Map());
 
   // Premium feature check
   const { canAddSubscription, isPremium } = usePremiumFeature();
@@ -81,6 +83,38 @@ export const DashboardScreen: React.FC = () => {
     };
     calculateSavings();
   }, [activeSubscriptions]);
+
+  // Calculate value metrics for all subscriptions
+  useEffect(() => {
+    const calculateMetrics = async () => {
+      if (!user?.id || activeSubscriptions.length === 0) {
+        return;
+      }
+
+      try {
+        console.log('[Dashboard] Calculating value metrics for', activeSubscriptions.length, 'subscriptions');
+        const newMetrics = new Map<string, SubscriptionValueMetrics>();
+
+        await Promise.all(
+          activeSubscriptions.map(async (sub) => {
+            try {
+              const metrics = await calculateSubscriptionValue(user.id, sub.service_name, sub.price);
+              newMetrics.set(sub.id, metrics);
+            } catch (error) {
+              console.error(`[Dashboard] Error calculating metrics for ${sub.service_name}:`, error);
+            }
+          })
+        );
+
+        setValueMetrics(newMetrics);
+        console.log('[Dashboard] Value metrics calculated:', newMetrics.size, 'subscriptions');
+      } catch (error) {
+        console.error('[Dashboard] Error calculating value metrics:', error);
+      }
+    };
+
+    calculateMetrics();
+  }, [activeSubscriptions, user?.id]);
 
   // Refresh when refreshKey changes (e.g., after adding a subscription)
   useEffect(() => {
@@ -448,6 +482,7 @@ export const DashboardScreen: React.FC = () => {
             <SubscriptionListItem
               key={subscription.id}
               subscription={subscription}
+              valueMetrics={valueMetrics.get(subscription.id)}
               onPress={() => handleSubscriptionPress(subscription.id)}
             />
           ))}
@@ -463,6 +498,7 @@ export const DashboardScreen: React.FC = () => {
                 <SubscriptionListItem
                   key={subscription.id}
                   subscription={subscription}
+                  valueMetrics={valueMetrics.get(subscription.id)}
                   onPress={() => handleSubscriptionPress(subscription.id)}
                 />
               ))}

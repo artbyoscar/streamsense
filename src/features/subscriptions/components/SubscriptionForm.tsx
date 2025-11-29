@@ -65,7 +65,6 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   const [billingCycle, setBillingCycle] = useState(subscription?.billing_cycle || 'monthly');
   const [billingDay, setBillingDay] = useState(subscription?.billing_day?.toString() || '1');
   const [notes, setNotes] = useState(subscription?.notes || '');
-  const [viewingHours, setViewingHours] = useState<string>(subscription?.monthly_viewing_hours?.toString() || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -143,7 +142,6 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         billing_cycle: billingCycle,
         next_billing_date: nextBillingDate,
         notes: notes.trim() || null,
-        monthly_viewing_hours: viewingHours ? parseFloat(viewingHours) : null,
         detected_from: 'manual',
         status: 'active',
       });
@@ -292,45 +290,13 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         )}
       </View>
 
-      {/* Monthly Viewing Hours */}
-      <View style={styles.fieldGroup}>
-        <Text style={[styles.label, { color: colors.text }]}>
-          Monthly Viewing Hours (optional)
-        </Text>
-        <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-          Optional: Helps calculate your cost-per-hour value score
-        </Text>
-        <View style={styles.hoursInputRow}>
-          {['5', '10', '20', '30', '50'].map((hours) => (
-            <TouchableOpacity
-              key={hours}
-              style={[
-                styles.hoursChip,
-                viewingHours === hours && { backgroundColor: colors.primary },
-                { borderColor: colors.border },
-              ]}
-              onPress={() => setViewingHours(hours)}
-            >
-              <Text style={{ color: viewingHours === hours ? '#fff' : colors.text, fontSize: 14, fontWeight: '600' }}>
-                {hours}h
-              </Text>
-            </TouchableOpacity>
-          ))}
-          <TextInput
-            style={[
-              styles.hoursCustomInput,
-              {
-                borderColor: colors.border,
-                backgroundColor: colors.card,
-                color: colors.text,
-              },
-            ]}
-            value={viewingHours}
-            onChangeText={setViewingHours}
-            keyboardType="numeric"
-            placeholder="Custom"
-            placeholderTextColor={colors.textSecondary}
-          />
+      {/* Value Score Info */}
+      <View style={[styles.infoCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.infoRow}>
+          <MaterialCommunityIcons name="chart-line" size={20} color={colors.primary} />
+          <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+            Value scores are calculated automatically based on your watchlist activity
+          </Text>
         </View>
       </View>
 
@@ -501,24 +467,21 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
-  hoursInputRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  hoursChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  hoursCustomInput: {
-    width: 70,
+  infoCard: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    textAlign: 'center',
+    padding: 12,
+    marginBottom: 24,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
   textArea: {
     borderWidth: 1,
