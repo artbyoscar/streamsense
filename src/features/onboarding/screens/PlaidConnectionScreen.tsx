@@ -1,7 +1,7 @@
 /**
- * Plaid Connection Screen - Expo Go Compatible
- * Workaround for Plaid Link SDK crashes in Expo Go
- * Shows UI and initializes token, but requires dev build for full functionality
+ * Plaid Connection Screen
+ * Full implementation using Plaid Link SDK
+ * Requires development build
  */
 
 import React, { useState, useEffect } from 'react';
@@ -14,9 +14,10 @@ import {
   Alert,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PlaidLink, LinkSuccess, LinkExit } from '@burstware/expo-plaid-link';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/features/auth';
-import { createLinkToken } from '@/services/plaid';
+import { createLinkToken, exchangePublicToken } from '@/services/plaid';
 
 interface PlaidConnectionScreenProps {
   onSuccess?: () => void;
@@ -68,26 +69,58 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
       return;
     }
 
-    // For now, show a message that full Plaid integration requires a development build
-    Alert.alert(
-      'Development Build Required',
-      'Full Plaid bank connection requires a native development build and cannot run in Expo Go.\n\n' +
-      '✅ Good News: Your Plaid setup is working correctly!\n' +
-      '✅ The link token was successfully generated\n\n' +
-      'To use bank connections:\n' +
-      '1. Build a development version with EAS Build\n' +
-      '2. Or use manual subscription entry for now\n\n' +
-      'Would you like to use manual entry instead?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Use Manual Entry',
-          onPress: () => {
-            onCancel?.();
-          }
-        },
-      ]
-    );
+    try {
+      // Open Plaid Link
+      PlaidLink.open({
+        token: linkToken,
+        onSuccess: handlePlaidSuccess,
+        onExit: handlePlaidExit,
+      });
+    } catch (error) {
+      console.error('[PlaidScreen] Error opening Plaid Link:', error);
+      Alert.alert('Error', 'Failed to open Plaid Link. Please try again.');
+    }
+  };
+
+  const handlePlaidSuccess = async (success: LinkSuccess) => {
+    console.log('[PlaidScreen] Plaid success:', success);
+
+    if (!user?.id) {
+      Alert.alert('Error', 'User not authenticated');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Exchange public token for access token
+      await exchangePublicToken(success.publicToken, success.metadata);
+
+      Alert.alert(
+        'Success',
+        'Your bank account has been connected successfully!',
+        [{ text: 'OK', onPress: () => onSuccess?.() }]
+      );
+    } catch (error: any) {
+      console.error('[PlaidScreen] Error exchanging token:', error);
+      Alert.alert('Error', error.message || 'Failed to complete bank connection');
+      onError?.(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlaidExit = (exit: LinkExit) => {
+    console.log('[PlaidScreen] Plaid exit:', exit);
+
+    if (exit.error) {
+      console.error('[PlaidScreen] Plaid error:', exit.error);
+      Alert.alert('Error', exit.error.displayMessage || 'Failed to connect bank account');
+      onError?.(new Error(exit.error.errorMessage));
+    } else {
+      // User closed Plaid without completing
+      console.log('[PlaidScreen] User cancelled Plaid Link');
+    }
   };
 
   const handleClose = () => {
@@ -178,18 +211,10 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
           <View style={[styles.successContainer, { backgroundColor: '#D1FAE5', borderColor: '#10B981' }]}>
             <MaterialCommunityIcons name="check-circle" size={20} color="#059669" />
             <Text style={styles.successText}>
-              Plaid connection ready!
+              Ready to connect your bank!
             </Text>
           </View>
         )}
-
-        {/* Expo Go Notice */}
-        <View style={[styles.noticeCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
-          <MaterialCommunityIcons name="information" size={20} color="#D97706" />
-          <Text style={[styles.noticeText, { color: '#92400E' }]}>
-            Running in Expo Go: Full bank connection requires a development build
-          </Text>
-        </View>
       </View>
 
       {/* Buttons */}

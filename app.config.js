@@ -21,6 +21,16 @@ export default {
         backgroundColor: "#ffffff"
       }
     },
+    plugins: [
+      [
+        "@burstware/expo-plaid-link",
+        {
+          android: {
+            package: "com.artbyoscar.streamsense"
+          }
+        }
+      ]
+    ],
     web: {
       favicon: "./assets/favicon.png"
     },
