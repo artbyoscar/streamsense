@@ -82,6 +82,13 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
     return iconMap[subscription.service_name] || 'play-box-outline';
   };
 
+  const getValueLabel = (score: number | null | undefined) => {
+    if (!score) return null;
+    if (score < 1) return { label: 'Great Value', color: COLORS.success };
+    if (score < 3) return { label: 'Good Value', color: COLORS.warning };
+    return { label: 'Low Value', color: COLORS.error };
+  };
+
   return (
     <TouchableOpacity
       style={styles.container}
@@ -128,6 +135,25 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
             </View>
           )}
         </View>
+
+        {/* Value Score Badge */}
+        {subscription.value_score && getValueLabel(subscription.value_score) && (
+          <View
+            style={[
+              styles.valueBadge,
+              { backgroundColor: getValueLabel(subscription.value_score)!.color + '20' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.valueBadgeText,
+                { color: getValueLabel(subscription.value_score)!.color },
+              ]}
+            >
+              ${subscription.value_score.toFixed(2)}/hr • {getValueLabel(subscription.value_score)!.label}
+            </Text>
+          </View>
+        )}
       </View>
 
       <MaterialCommunityIcons
@@ -213,5 +239,16 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: 8,
+  },
+  valueBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  valueBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

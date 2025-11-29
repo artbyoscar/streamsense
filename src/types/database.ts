@@ -118,6 +118,8 @@ export interface Database {
           renewal_reminder_sent: boolean;
           detected_from: DetectionSource;
           notes: string | null;
+          monthly_viewing_hours: number | null;
+          value_score: number | null;
           created_at: string;
           updated_at: string;
           cancelled_at: string | null;
@@ -134,6 +136,7 @@ export interface Database {
           renewal_reminder_sent?: boolean;
           detected_from?: DetectionSource;
           notes?: string | null;
+          monthly_viewing_hours?: number | null;
           created_at?: string;
           updated_at?: string;
           cancelled_at?: string | null;
@@ -148,6 +151,7 @@ export interface Database {
           billing_cycle?: BillingCycle;
           next_billing_date?: string | null;
           renewal_reminder_sent?: boolean;
+          monthly_viewing_hours?: number | null;
           detected_from?: DetectionSource;
           notes?: string | null;
           created_at?: string;

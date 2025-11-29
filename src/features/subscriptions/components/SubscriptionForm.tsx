@@ -65,6 +65,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
   const [billingCycle, setBillingCycle] = useState(subscription?.billing_cycle || 'monthly');
   const [billingDay, setBillingDay] = useState(subscription?.billing_day?.toString() || '1');
   const [notes, setNotes] = useState(subscription?.notes || '');
+  const [viewingHours, setViewingHours] = useState<string>(subscription?.monthly_viewing_hours?.toString() || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -142,6 +143,7 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         billing_cycle: billingCycle,
         next_billing_date: nextBillingDate,
         notes: notes.trim() || null,
+        monthly_viewing_hours: viewingHours ? parseFloat(viewingHours) : null,
         detected_from: 'manual',
         status: 'active',
       });
@@ -288,6 +290,48 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
         {errors.price && (
           <Text style={[styles.error, { color: colors.error }]}>{errors.price}</Text>
         )}
+      </View>
+
+      {/* Monthly Viewing Hours */}
+      <View style={styles.fieldGroup}>
+        <Text style={[styles.label, { color: colors.text }]}>
+          Monthly Viewing Hours (estimated)
+        </Text>
+        <Text style={[styles.helperText, { color: colors.textSecondary }]}>
+          How many hours per month do you watch this service?
+        </Text>
+        <View style={styles.hoursInputRow}>
+          {['5', '10', '20', '30', '50'].map((hours) => (
+            <TouchableOpacity
+              key={hours}
+              style={[
+                styles.hoursChip,
+                viewingHours === hours && { backgroundColor: colors.primary },
+                { borderColor: colors.border },
+              ]}
+              onPress={() => setViewingHours(hours)}
+            >
+              <Text style={{ color: viewingHours === hours ? '#fff' : colors.text, fontSize: 14, fontWeight: '600' }}>
+                {hours}h
+              </Text>
+            </TouchableOpacity>
+          ))}
+          <TextInput
+            style={[
+              styles.hoursCustomInput,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.card,
+                color: colors.text,
+              },
+            ]}
+            value={viewingHours}
+            onChangeText={setViewingHours}
+            keyboardType="numeric"
+            placeholder="Custom"
+            placeholderTextColor={colors.textSecondary}
+          />
+        </View>
       </View>
 
       {/* Billing Cycle */}
@@ -456,6 +500,25 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  hoursInputRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  hoursChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  hoursCustomInput: {
+    width: 70,
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    textAlign: 'center',
   },
   textArea: {
     borderWidth: 1,

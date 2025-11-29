@@ -111,6 +111,9 @@ export const RecommendationsScreen: React.FC = () => {
   const [userGenres, setUserGenres] = useState<string[]>([]);
   const [recommendations, setRecommendations] = useState<ServiceRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [bestValue, setBestValue] = useState<typeof activeSubscriptions[0] | null>(null);
+  const [worstValue, setWorstValue] = useState<typeof activeSubscriptions[0] | null>(null);
+  const [potentialSavings, setPotentialSavings] = useState(0);
 
   useEffect(() => {
     if (user?.id) {
@@ -167,6 +170,27 @@ export const RecommendationsScreen: React.FC = () => {
       });
 
       setRecommendations(scored);
+
+      // Calculate value scores
+      const subsWithValue = activeSubscriptions.filter(s => s.value_score && s.value_score > 0);
+      if (subsWithValue.length > 0) {
+        // Best value = lowest cost per hour
+        const best = subsWithValue.reduce((prev, current) =>
+          (current.value_score! < prev.value_score!) ? current : prev
+        );
+        setBestValue(best);
+
+        // Worst value = highest cost per hour
+        const worst = subsWithValue.reduce((prev, current) =>
+          (current.value_score! > prev.value_score!) ? current : prev
+        );
+        setWorstValue(worst);
+
+        // Calculate potential savings if user cancels low-value services (>$3/hr)
+        const lowValueSubs = subsWithValue.filter(s => s.value_score! > 3);
+        const monthlySavings = lowValueSubs.reduce((sum, s) => sum + s.price, 0);
+        setPotentialSavings(monthlySavings);
+      }
     } catch (error) {
       console.error('Error loading tips data:', error);
     } finally {
@@ -232,6 +256,72 @@ export const RecommendationsScreen: React.FC = () => {
           </View>
         </View>
       </Card>
+
+      {/* Value Insights */}
+      {(bestValue || worstValue || potentialSavings > 0) && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            💰 Value Insights
+          </Text>
+
+          {bestValue && (
+            <Card style={styles.valueCard}>
+              <View style={styles.valueCardHeader}>
+                <MaterialCommunityIcons name="trophy" size={24} color={COLORS.success} />
+                <View style={styles.valueCardContent}>
+                  <Text style={[styles.valueCardLabel, { color: colors.textSecondary }]}>
+                    Best Value
+                  </Text>
+                  <Text style={[styles.valueCardTitle, { color: colors.text }]}>
+                    {bestValue.service_name}
+                  </Text>
+                  <Text style={[styles.valueCardValue, { color: COLORS.success }]}>
+                    ${bestValue.value_score?.toFixed(2)}/hr
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          )}
+
+          {worstValue && (
+            <Card style={styles.valueCard}>
+              <View style={styles.valueCardHeader}>
+                <MaterialCommunityIcons name="alert-circle" size={24} color={COLORS.error} />
+                <View style={styles.valueCardContent}>
+                  <Text style={[styles.valueCardLabel, { color: colors.textSecondary }]}>
+                    Low Value
+                  </Text>
+                  <Text style={[styles.valueCardTitle, { color: colors.text }]}>
+                    {worstValue.service_name}
+                  </Text>
+                  <Text style={[styles.valueCardValue, { color: COLORS.error }]}>
+                    ${worstValue.value_score?.toFixed(2)}/hr
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          )}
+
+          {potentialSavings > 0 && (
+            <Card style={[styles.valueCard, { backgroundColor: COLORS.warning + '10' }]}>
+              <View style={styles.valueCardHeader}>
+                <MaterialCommunityIcons name="piggy-bank" size={24} color={COLORS.warning} />
+                <View style={styles.valueCardContent}>
+                  <Text style={[styles.valueCardLabel, { color: colors.textSecondary }]}>
+                    Potential Monthly Savings
+                  </Text>
+                  <Text style={[styles.valueCardValue, { color: COLORS.warning }]}>
+                    {formatCurrency(potentialSavings)}
+                  </Text>
+                  <Text style={[styles.valueCardHint, { color: colors.textSecondary }]}>
+                    By canceling low-value services
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          )}
+        </View>
+      )}
 
       {/* Your Interests */}
       {userGenres.length > 0 && (
@@ -429,6 +519,13 @@ const styles = StyleSheet.create({
   tipContent: { flex: 1 },
   tipTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   tipText: { fontSize: 13, lineHeight: 18 },
+  valueCard: { marginBottom: 12 },
+  valueCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  valueCardContent: { flex: 1 },
+  valueCardLabel: { fontSize: 12, marginBottom: 2 },
+  valueCardTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
+  valueCardValue: { fontSize: 20, fontWeight: '700' },
+  valueCardHint: { fontSize: 12, marginTop: 2 },
 });
 
 export default RecommendationsScreen;
