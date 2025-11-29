@@ -137,7 +137,7 @@ export const WatchlistScreen: React.FC = () => {
     }
   }, [user?.id]);
 
-  const loadPersonalizedContent = async () => {
+  const loadPersonalizedContent = async (append: boolean = false) => {
     if (!user?.id) return;
 
     setLoadingForYou(true);
@@ -147,7 +147,18 @@ export const WatchlistScreen: React.FC = () => {
         getUserTopGenres(user.id, 6),
       ]);
 
-      setForYouContent(recommendations);
+      if (append) {
+        // Append new recommendations, avoiding duplicates
+        setForYouContent(prev => {
+          const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
+          const newItems = recommendations.filter(
+            item => !existingIds.has(`${item.type}-${item.id}`)
+          );
+          return [...prev, ...newItems];
+        });
+      } else {
+        setForYouContent(recommendations);
+      }
       setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
     } catch (error) {
       console.error('[Watchlist] Error loading personalized content:', error);
@@ -168,9 +179,18 @@ export const WatchlistScreen: React.FC = () => {
     );
   }, [forYouContent, selectedGenreFilter]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    fetchWatchlist();
+    try {
+      await Promise.all([
+        fetchWatchlist(),
+        loadPersonalizedContent(),
+      ]);
+    } catch (error) {
+      console.error('[Watchlist] Error refreshing:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   // Convert watchlist item to UnifiedContent for detail modal
@@ -498,6 +518,17 @@ export const WatchlistScreen: React.FC = () => {
                   </View>
                 </TouchableOpacity>
               ))}
+
+              {/* More Button */}
+              {filteredForYouContent.length > 0 && !loadingForYou && (
+                <TouchableOpacity
+                  style={styles.moreButton}
+                  onPress={() => loadPersonalizedContent(true)}
+                >
+                  <MaterialCommunityIcons name="plus-circle-outline" size={36} color={colors.primary} />
+                  <Text style={[styles.moreButtonText, { color: colors.primary }]}>More</Text>
+                </TouchableOpacity>
+              )}
             </ScrollView>
           </View>
         ) : !loadingForYou && totalItems > 0 ? (
@@ -780,5 +811,16 @@ const styles = StyleSheet.create({
   filterChipText: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  moreButton: {
+    width: 100,
+    height: 180,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  moreButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
   },
 });

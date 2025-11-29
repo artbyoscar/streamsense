@@ -295,10 +295,10 @@ export const SubscriptionForm: React.FC<SubscriptionFormProps> = ({
       {/* Monthly Viewing Hours */}
       <View style={styles.fieldGroup}>
         <Text style={[styles.label, { color: colors.text }]}>
-          Monthly Viewing Hours (estimated)
+          Monthly Viewing Hours (optional)
         </Text>
         <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-          How many hours per month do you watch this service?
+          Optional: Helps calculate your cost-per-hour value score
         </Text>
         <View style={styles.hoursInputRow}>
           {['5', '10', '20', '30', '50'].map((hours) => (

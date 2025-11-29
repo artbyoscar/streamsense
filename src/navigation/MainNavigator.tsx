@@ -32,6 +32,8 @@ const Navigator: React.FC = () => {
     setShowPlaidConnection,
     selectedContent,
     setSelectedContent,
+    selectedSubscriptionId,
+    setSelectedSubscriptionId,
     triggerRefresh,
   } = useCustomNavigation();
   const { colors, isDark } = useTheme();
@@ -82,8 +84,13 @@ const Navigator: React.FC = () => {
       <Modal visible={showSubscriptionForm} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Add Subscription</Text>
-            <TouchableOpacity onPress={() => setShowSubscriptionForm(false)}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              {selectedSubscriptionId ? 'Edit Subscription' : 'Add Subscription'}
+            </Text>
+            <TouchableOpacity onPress={() => {
+              setShowSubscriptionForm(false);
+              setSelectedSubscriptionId(null);
+            }}>
               <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -91,8 +98,13 @@ const Navigator: React.FC = () => {
             onSuccess={() => {
               triggerRefresh();
               setShowSubscriptionForm(false);
+              setSelectedSubscriptionId(null);
             }}
-            onCancel={() => setShowSubscriptionForm(false)}
+            onCancel={() => {
+              setShowSubscriptionForm(false);
+              setSelectedSubscriptionId(null);
+            }}
+            subscriptionId={selectedSubscriptionId}
           />
         </SafeAreaView>
       </Modal>

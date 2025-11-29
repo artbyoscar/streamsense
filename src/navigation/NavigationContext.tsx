@@ -22,6 +22,8 @@ interface NavigationContextType {
   setShowPlaidConnection: (show: boolean) => void;
   selectedContent: UnifiedContent | null;
   setSelectedContent: (content: UnifiedContent | null) => void;
+  selectedSubscriptionId: string | null;
+  setSelectedSubscriptionId: (id: string | null) => void;
   refreshKey: number;
   triggerRefresh: () => void;
 }
@@ -46,6 +48,8 @@ export const useCustomNavigation = () => {
       setShowPlaidConnection: (show: boolean) => console.log('[Navigation] Would show plaid connection:', show),
       selectedContent: null,
       setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
+      selectedSubscriptionId: null,
+      setSelectedSubscriptionId: (id: string | null) => console.log('[Navigation] Would select subscription:', id),
       refreshKey: 0,
       triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
     };
@@ -60,6 +64,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [showContentDetail, setShowContentDetail] = useState(false);
   const [showPlaidConnection, setShowPlaidConnection] = useState(false);
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const triggerRefresh = () => {
@@ -71,7 +76,13 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     console.log('[Navigation] Navigate to screen:', screen, params);
     // For now, map screen names to tabs
     if (screen === 'SubscriptionForm') {
-      console.log('[Navigation] Opening SubscriptionForm modal');
+      console.log('[Navigation] Opening SubscriptionForm modal', params);
+      // Capture subscriptionId from params if provided
+      if (params?.subscriptionId) {
+        setSelectedSubscriptionId(params.subscriptionId);
+      } else {
+        setSelectedSubscriptionId(null);
+      }
       setShowSubscriptionForm(true);
     } else if (screen === 'ContentSearch') {
       console.log('[Navigation] Opening ContentSearch modal');
@@ -107,6 +118,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowPlaidConnection,
         selectedContent,
         setSelectedContent,
+        selectedSubscriptionId,
+        setSelectedSubscriptionId,
         refreshKey,
         triggerRefresh,
       }}

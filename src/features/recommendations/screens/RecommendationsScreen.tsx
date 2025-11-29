@@ -127,7 +127,14 @@ export const RecommendationsScreen: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log('[Tips] Loading data for user:', user.id);
+      console.log('[Tips] Active subscriptions:', activeSubscriptions.length);
+      console.log('[Tips] Subscription names:', activeSubscriptions.map(s => s.service_name));
+
+      // Get user's top genres
       const topGenres = await getUserTopGenres(user.id, 6);
+      console.log('[Tips] Top genres:', topGenres.map(g => g.genreName));
+
       const genreNames = topGenres.map(g => g.genreName);
       setUserGenres(genreNames);
 
@@ -135,6 +142,8 @@ export const RecommendationsScreen: React.FC = () => {
       const currentServices = activeSubscriptions.map(s =>
         s.service_name?.toLowerCase().trim()
       ).filter(Boolean);
+
+      console.log('[Tips] Current services (lowercase):', currentServices);
 
       // Score each streaming service
       const scored: ServiceRecommendation[] = STREAMING_SERVICES.map(service => {
@@ -154,9 +163,15 @@ export const RecommendationsScreen: React.FC = () => {
           service.name.toLowerCase().includes(cs || '')
         );
 
+        console.log('[Tips] Service:', service.name, {
+          alreadyHave,
+          matchScore: genreNames.length > 0 ? matchingGenres.length / service.genres.length : 0,
+          matchingGenres: matchingGenres.length,
+        });
+
         return {
           service,
-          matchScore: matchingGenres.length / service.genres.length,
+          matchScore: genreNames.length > 0 ? matchingGenres.length / service.genres.length : 0,
           matchingGenres,
           alreadyHave,
         };
@@ -169,6 +184,12 @@ export const RecommendationsScreen: React.FC = () => {
         }
         return b.matchScore - a.matchScore;
       });
+
+      console.log('[Tips] Final recommendations:', scored.slice(0, 5).map(s => ({
+        name: s.service.name,
+        alreadyHave: s.alreadyHave,
+        matchScore: s.matchScore,
+      })));
 
       setRecommendations(scored);
 

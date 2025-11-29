@@ -14,11 +14,15 @@ export interface ContentCategory {
   params?: Record<string, string>; // Optional query params
 }
 
-// Helper to get date strings
+// Helper to get date strings (with proper timezone handling)
 const getDateString = (daysFromNow: number = 0): string => {
   const date = new Date();
   date.setDate(date.getDate() + daysFromNow);
-  return date.toISOString().split('T')[0]; // YYYY-MM-DD
+  // Format as YYYY-MM-DD with proper padding
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const BROWSE_CATEGORIES: ContentCategory[] = [
@@ -34,8 +38,9 @@ export const BROWSE_CATEGORIES: ContentCategory[] = [
     mediaType: 'movie',
     params: {
       'primary_release_date.gte': getDateString(1), // Tomorrow onwards
-      'primary_release_date.lte': getDateString(90), // Next 90 days
+      'primary_release_date.lte': getDateString(120), // Next 4 months
       'sort_by': 'primary_release_date.asc',
+      'with_release_type': '2|3', // Theatrical releases only
     },
   },
   { id: 'now-playing', title: '🍿 In Theaters', endpoint: '/movie/now_playing', mediaType: 'movie' },
@@ -51,8 +56,29 @@ export const fetchCategoryContent = async (category: ContentCategory): Promise<U
     const response = await tmdbApi.get(category.endpoint, {
       params: category.params || {},
     });
-    const results = response.data.results || [];
+    let results = response.data.results || [];
     console.log('[ContentBrowse] Got response:', results.length, 'items for', category.title);
+
+    // Extra filter for Coming Soon to ensure future dates only
+    if (category.id === 'upcoming') {
+      const today = getDateString(0);
+      console.log('[ContentBrowse] Filtering Coming Soon, today is:', today);
+      console.log('[ContentBrowse] Date range:', {
+        from: category.params?.['primary_release_date.gte'],
+        to: category.params?.['primary_release_date.lte'],
+      });
+
+      const beforeFilter = results.length;
+      results = results.filter((item: any) => {
+        const releaseDate = item.release_date;
+        const isFuture = releaseDate && releaseDate > today;
+        if (!isFuture && releaseDate) {
+          console.log('[ContentBrowse] Filtering out:', item.title, 'released:', releaseDate);
+        }
+        return isFuture;
+      });
+      console.log('[ContentBrowse] After filter:', results.length, 'items (filtered out', beforeFilter - results.length, ')');
+    }
 
     return results.slice(0, 10).map((item: any) => ({
       id: item.id,
