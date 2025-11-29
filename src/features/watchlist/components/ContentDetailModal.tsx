@@ -207,13 +207,16 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             }
           }
 
-          // Track rating change for watched content
-          if (selectedStatus === 'watched' && rating !== previousRating) {
+          // Track rating change for watching/watched content
+          if ((selectedStatus === 'watching' || selectedStatus === 'watched') && rating !== previousRating) {
             if (rating >= 4) {
+              // 4, 4.5, or 5 = high rating
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
-            } else if (rating >= 1 && rating <= 2) {
+            } else if (rating > 0 && rating <= 2) {
+              // 0.5, 1, 1.5, or 2 = low rating
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
             }
+            // 2.5, 3, 3.5 = neutral, no tracking
           }
         }
 
@@ -248,10 +251,13 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
             // Track rating if provided
             if (rating >= 4) {
+              // 4, 4.5, or 5 = high rating
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
-            } else if (rating >= 1 && rating <= 2) {
+            } else if (rating > 0 && rating <= 2) {
+              // 0.5, 1, 1.5, or 2 = low rating
               await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
             }
+            // 2.5, 3, 3.5 = neutral, no tracking
           }
         }
 
@@ -394,27 +400,49 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               </View>
             </View>
 
-            {/* Rating (only if watched) */}
-            {selectedStatus === 'watched' && (
+            {/* Rating (only if watching or watched) - Half Star Support */}
+            {(selectedStatus === 'watching' || selectedStatus === 'watched') && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Your Rating</Text>
                 <View style={styles.starsContainer}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <TouchableOpacity
-                      key={star}
-                      onPress={() => setRating(star)}
-                      style={styles.starButton}
-                    >
-                      <MaterialCommunityIcons
-                        name={star <= rating ? 'star' : 'star-outline'}
-                        size={40}
-                        color={star <= rating ? COLORS.warning : colors.border}
-                      />
-                    </TouchableOpacity>
-                  ))}
+                  {[1, 2, 3, 4, 5].map((star) => {
+                    const isFull = rating >= star;
+                    const isHalf = !isFull && rating >= star - 0.5;
+
+                    return (
+                      <TouchableOpacity
+                        key={star}
+                        style={styles.starButton}
+                        onPress={() => {
+                          // Cycle: empty → half → full → empty
+                          if (rating >= star) {
+                            // Full star, clear it (go to previous full star)
+                            setRating(star - 1);
+                          } else if (rating >= star - 0.5) {
+                            // Half star, make it full
+                            setRating(star);
+                          } else {
+                            // Empty, make it half
+                            setRating(star - 0.5);
+                          }
+                        }}
+                      >
+                        <MaterialCommunityIcons
+                          name={isFull ? 'star' : isHalf ? 'star-half-full' : 'star-outline'}
+                          size={40}
+                          color={isFull || isHalf ? COLORS.warning : colors.border}
+                        />
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
-                <Text style={[styles.ratingText, { color: colors.textSecondary }]}>
-                  {rating > 0 ? `${rating}/5` : 'Tap to rate'}
+                {rating > 0 && (
+                  <Text style={[styles.ratingText, { color: colors.primary }]}>
+                    {rating % 1 === 0 ? rating : rating.toFixed(1)}/5
+                  </Text>
+                )}
+                <Text style={[styles.ratingHint, { color: colors.textSecondary }]}>
+                  Tap to cycle: empty → half → full
                 </Text>
               </View>
             )}
@@ -566,6 +594,12 @@ const styles = StyleSheet.create({
   },
   ratingText: {
     fontSize: 14,
+    textAlign: 'center',
+  },
+  ratingHint: {
+    fontSize: 11,
+    marginTop: 8,
+    fontStyle: 'italic',
     textAlign: 'center',
   },
   addButton: {
