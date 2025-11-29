@@ -119,10 +119,11 @@ export const RecommendationsScreen: React.FC = () => {
     if (user?.id) {
       loadData();
     }
-  }, [user?.id, activeSubscriptions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]); // Only re-run when user changes, not on every subscription update
 
   const loadData = async () => {
-    if (!user?.id) return;
+    if (!user?.id || loading) return; // Prevent concurrent calls
 
     setLoading(true);
     try {
@@ -173,6 +174,7 @@ export const RecommendationsScreen: React.FC = () => {
 
       // Calculate value scores
       const subsWithValue = activeSubscriptions.filter(s => s.value_score && s.value_score > 0);
+
       if (subsWithValue.length > 0) {
         // Best value = lowest cost per hour
         const best = subsWithValue.reduce((prev, current) =>
@@ -180,16 +182,30 @@ export const RecommendationsScreen: React.FC = () => {
         );
         setBestValue(best);
 
-        // Worst value = highest cost per hour
-        const worst = subsWithValue.reduce((prev, current) =>
-          (current.value_score! > prev.value_score!) ? current : prev
-        );
-        setWorstValue(worst);
+        // Worst value = highest cost per hour (only if we have 2+ subscriptions)
+        if (subsWithValue.length >= 2) {
+          const worst = subsWithValue.reduce((prev, current) =>
+            (current.value_score! > prev.value_score!) ? current : prev
+          );
+          // Only set worst if it's different from best
+          if (worst.id !== best.id) {
+            setWorstValue(worst);
+          } else {
+            setWorstValue(null);
+          }
+        } else {
+          setWorstValue(null); // Don't show worst if only one subscription
+        }
 
         // Calculate potential savings if user cancels low-value services (>$3/hr)
         const lowValueSubs = subsWithValue.filter(s => s.value_score! > 3);
         const monthlySavings = lowValueSubs.reduce((sum, s) => sum + s.price, 0);
         setPotentialSavings(monthlySavings);
+      } else {
+        // No subscriptions with value scores, reset all
+        setBestValue(null);
+        setWorstValue(null);
+        setPotentialSavings(0);
       }
     } catch (error) {
       console.error('Error loading tips data:', error);
