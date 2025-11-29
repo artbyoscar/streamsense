@@ -23,16 +23,6 @@ export default {
     web: {
       favicon: "./assets/favicon.png"
     },
-    plugins: [
-      [
-        "react-native-plaid-link-sdk",
-        {
-          android: {
-            packageName: "com.streamsense.app"
-          }
-        }
-      ]
-    ],
     extra: {
       EXPO_PUBLIC_SUPABASE_URL: process.env.EXPO_PUBLIC_SUPABASE_URL,
       EXPO_PUBLIC_SUPABASE_ANON_KEY: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
