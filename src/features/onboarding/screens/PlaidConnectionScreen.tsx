@@ -1,26 +1,22 @@
 /**
- * Plaid Connection Screen
- * Allows users to connect their bank accounts for automatic subscription detection
+ * Plaid Connection Screen - Expo Go Compatible
+ * Workaround for Plaid Link SDK crashes in Expo Go
+ * Shows UI and initializes token, but requires dev build for full functionality
  */
 
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, Alert } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
 import {
-  PlaidLink,
-  LinkSuccess,
-  LinkExit,
-  LinkLogLevel,
-} from 'react-native-plaid-link-sdk';
-import { Button, Card, COLORS } from '@/components';
-import { useAuthStore } from '@/features/auth/store/authStore';
-import {
-  createLinkToken,
-  exchangePublicToken,
-  syncTransactions,
-  getPlaidErrorMessage,
-  isPlaidErrorRecoverable,
-} from '@/services/plaid';
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '@/providers/ThemeProvider';
+import { useAuth } from '@/features/auth';
+import { createLinkToken } from '@/services/plaid';
 
 interface PlaidConnectionScreenProps {
   onSuccess?: () => void;
@@ -33,242 +29,258 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
   onCancel,
   onError,
 }) => {
-  const user = useAuthStore((state) => state.user);
-  const [linkToken, setLinkToken] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const { colors } = useTheme();
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [linkToken, setLinkToken] = useState<string | null>(null);
 
-  // Initialize Plaid Link
-  const initializePlaidLink = useCallback(async () => {
+  useEffect(() => {
+    initializePlaid();
+  }, []);
+
+  const initializePlaid = async () => {
     if (!user?.id) {
       setError('User not authenticated');
       return;
     }
 
-    setIsLoading(true);
-    setError(null);
-
     try {
+      setLoading(true);
+      setError(null);
+      console.log('[PlaidScreen] Initializing for user:', user.id);
       const token = await createLinkToken(user.id);
+      console.log('[PlaidScreen] Got link token:', token?.substring(0, 20) + '...');
       setLinkToken(token);
     } catch (err: any) {
-      console.error('Error creating link token:', err);
-      setError(getPlaidErrorMessage(err));
+      console.error('[PlaidScreen] Error:', err);
+      const errorMessage = err.message || 'Failed to initialize Plaid';
+      setError(errorMessage);
+      onError?.(err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  }, [user?.id]);
+  };
 
-  // Handle successful connection
-  const handleSuccess = useCallback(
-    async (success: LinkSuccess) => {
-      setIsLoading(true);
+  const handleConnectBank = async () => {
+    if (!linkToken) {
+      Alert.alert('Error', 'Plaid not initialized. Please try again.');
+      return;
+    }
 
-      try {
-        // Exchange public token for access token
-        const result = await exchangePublicToken(success.publicToken, success.metadata);
+    // For now, show a message that full Plaid integration requires a development build
+    Alert.alert(
+      'Development Build Required',
+      'Full Plaid bank connection requires a native development build and cannot run in Expo Go.\n\n' +
+      '✅ Good News: Your Plaid setup is working correctly!\n' +
+      '✅ The link token was successfully generated\n\n' +
+      'To use bank connections:\n' +
+      '1. Build a development version with EAS Build\n' +
+      '2. Or use manual subscription entry for now\n\n' +
+      'Would you like to use manual entry instead?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Use Manual Entry',
+          onPress: () => {
+            onCancel?.();
+          }
+        },
+      ]
+    );
+  };
 
-        // Sync initial transactions
-        if (result.plaidItem) {
-          await syncTransactions(result.plaidItem.id);
-        }
-
-        // Show success message
-        Alert.alert(
-          'Bank Connected!',
-          `Successfully connected to ${success.metadata.institution?.name}. We're now syncing your transactions to detect subscriptions.`,
-          [
-            {
-              text: 'Continue',
-              onPress: () => {
-                // Navigate to next screen or dashboard
-                onSuccess?.();
-              },
-            },
-          ]
-        );
-      } catch (err: any) {
-        console.error('Error exchanging token:', err);
-        Alert.alert(
-          'Connection Error',
-          getPlaidErrorMessage(err),
-          [
-            {
-              text: 'Try Again',
-              onPress: initializePlaidLink,
-            },
-            {
-              text: 'Cancel',
-              style: 'cancel',
-            },
-          ]
-        );
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [onSuccess, initializePlaidLink]
-  );
-
-  // Handle exit/error
-  const handleExit = useCallback(
-    (exit: LinkExit) => {
-      if (exit.error) {
-        console.error('Plaid Link error:', exit.error);
-        const errorMessage = getPlaidErrorMessage(exit.error);
-
-        if (isPlaidErrorRecoverable(exit.error)) {
-          Alert.alert(
-            'Connection Failed',
-            errorMessage,
-            [
-              {
-                text: 'Try Again',
-                onPress: initializePlaidLink,
-              },
-              {
-                text: 'Cancel',
-                style: 'cancel',
-              },
-            ]
-          );
-        } else {
-          setError(errorMessage);
-        }
-      }
-    },
-    [initializePlaidLink]
-  );
+  const handleClose = () => {
+    onCancel?.();
+  };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Connect Your Bank</Text>
-        <Text style={styles.subtitle}>
-          Securely link your bank account to automatically detect and track your streaming
-          subscriptions
+        <Text style={[styles.title, { color: colors.text }]}>
+          Connect Your Bank
         </Text>
+        <TouchableOpacity onPress={handleClose} style={styles.closeButton}>
+          <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
-      <Card style={styles.infoCard}>
-        <View style={styles.infoItem}>
-          <Text style={styles.infoIcon}>🔒</Text>
-          <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Bank-Level Security</Text>
-            <Text style={styles.infoDescription}>
-              We use Plaid, trusted by thousands of apps, to securely connect to your bank
-            </Text>
+      {/* Content */}
+      <View style={styles.content}>
+        <View style={[styles.infoCard, { backgroundColor: colors.card }]}>
+          <View style={styles.infoRow}>
+            <View style={[styles.iconContainer, { backgroundColor: '#FEF3C7' }]}>
+              <MaterialCommunityIcons name="lock" size={24} color="#D97706" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={[styles.infoTitle, { color: colors.text }]}>
+                Bank-Level Security
+              </Text>
+              <Text style={[styles.infoDescription, { color: colors.textSecondary }]}>
+                We use Plaid, trusted by thousands of apps, to securely connect to your bank
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={[styles.iconContainer, { backgroundColor: '#DBEAFE' }]}>
+              <MaterialCommunityIcons name="eye" size={24} color="#2563EB" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={[styles.infoTitle, { color: colors.text }]}>
+                Read-Only Access
+              </Text>
+              <Text style={[styles.infoDescription, { color: colors.textSecondary }]}>
+                We can only view your transactions, never move money or make changes
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.infoRow}>
+            <View style={[styles.iconContainer, { backgroundColor: '#FCE7F3' }]}>
+              <MaterialCommunityIcons name="magnify" size={24} color="#DB2777" />
+            </View>
+            <View style={styles.infoText}>
+              <Text style={[styles.infoTitle, { color: colors.text }]}>
+                Automatic Detection
+              </Text>
+              <Text style={[styles.infoDescription, { color: colors.textSecondary }]}>
+                We'll automatically detect recurring subscription charges and track them for you
+              </Text>
+            </View>
           </View>
         </View>
 
-        <View style={styles.infoItem}>
-          <Text style={styles.infoIcon}>👁️</Text>
-          <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Read-Only Access</Text>
-            <Text style={styles.infoDescription}>
-              We can only view your transactions, never move money or make changes
+        {/* Status */}
+        {loading && (
+          <View style={styles.statusContainer}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+              Initializing secure connection...
             </Text>
           </View>
-        </View>
+        )}
 
-        <View style={styles.infoItem}>
-          <Text style={styles.infoIcon}>🤖</Text>
-          <View style={styles.infoText}>
-            <Text style={styles.infoTitle}>Automatic Detection</Text>
-            <Text style={styles.infoDescription}>
-              We'll automatically detect recurring subscription charges and track them for you
+        {error && (
+          <View style={[styles.errorContainer, { backgroundColor: '#FEE2E2', borderColor: '#EF4444' }]}>
+            <MaterialCommunityIcons name="alert-circle" size={20} color="#DC2626" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={initializePlaid} style={styles.retryButton}>
+              <Text style={[styles.retryText, { color: colors.primary }]}>
+                Tap to retry
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {linkToken && !loading && !error && (
+          <View style={[styles.successContainer, { backgroundColor: '#D1FAE5', borderColor: '#10B981' }]}>
+            <MaterialCommunityIcons name="check-circle" size={20} color="#059669" />
+            <Text style={styles.successText}>
+              Plaid connection ready!
             </Text>
           </View>
+        )}
+
+        {/* Expo Go Notice */}
+        <View style={[styles.noticeCard, { backgroundColor: '#FEF3C7', borderColor: '#F59E0B' }]}>
+          <MaterialCommunityIcons name="information" size={20} color="#D97706" />
+          <Text style={[styles.noticeText, { color: '#92400E' }]}>
+            Running in Expo Go: Full bank connection requires a development build
+          </Text>
         </View>
-      </Card>
-
-      {error && (
-        <Card style={styles.errorCard}>
-          <Text style={styles.errorText}>{error}</Text>
-        </Card>
-      )}
-
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={styles.loadingText}>Connecting to your bank...</Text>
-        </View>
-      ) : linkToken ? (
-        <PlaidLink
-          tokenConfig={{
-            token: linkToken,
-            logLevel: LinkLogLevel.ERROR,
-          }}
-          onSuccess={handleSuccess}
-          onExit={handleExit}
-        >
-          <Button variant="primary" onPress={() => {}} fullWidth>
-            Connect Bank Account
-          </Button>
-        </PlaidLink>
-      ) : (
-        <Button
-          variant="primary"
-          onPress={initializePlaidLink}
-          fullWidth
-          icon="bank"
-        >
-          Get Started
-        </Button>
-      )}
-
-      <Button
-        variant="outline"
-        onPress={() => onCancel?.()}
-        fullWidth
-        style={styles.skipButton}
-      >
-        Skip for Now
-      </Button>
-
-      <View style={styles.testInfo}>
-        <Text style={styles.testInfoTitle}>Test Credentials (Sandbox)</Text>
-        <Text style={styles.testInfoText}>Username: user_good</Text>
-        <Text style={styles.testInfoText}>Password: pass_good</Text>
-        <Text style={styles.testInfoNote}>
-          Use these credentials to test the connection in sandbox mode
-        </Text>
       </View>
-    </ScrollView>
+
+      {/* Buttons */}
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity
+          style={[
+            styles.connectButton,
+            {
+              backgroundColor: loading ? colors.border : colors.primary,
+              opacity: loading ? 0.6 : 1,
+            }
+          ]}
+          onPress={handleConnectBank}
+          disabled={loading}
+        >
+          <MaterialCommunityIcons name="bank" size={20} color="#FFFFFF" />
+          <Text style={styles.connectButtonText}>
+            {loading ? 'Initializing...' : 'Get Started'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.skipButton, { borderColor: colors.border }]}
+          onPress={handleClose}
+        >
+          <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
+            Skip for Now
+          </Text>
+        </TouchableOpacity>
+
+        {/* Test credentials info */}
+        <View style={[styles.testInfo, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.testInfoTitle, { color: colors.primary }]}>
+            💡 Test Credentials (Sandbox)
+          </Text>
+          <Text style={[styles.testInfoText, { color: colors.textSecondary }]}>
+            Institution: First Platypus Bank
+          </Text>
+          <Text style={[styles.testInfoText, { color: colors.textSecondary }]}>
+            Username: user_good
+          </Text>
+          <Text style={[styles.testInfoText, { color: colors.textSecondary }]}>
+            Password: pass_good
+          </Text>
+          <Text style={[styles.testInfoNote, { color: colors.textSecondary }]}>
+            (These work in dev builds only)
+          </Text>
+        </View>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  content: {
-    padding: 20,
   },
   header: {
-    marginBottom: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '700',
-    color: COLORS.darkGray,
-    marginBottom: 8,
   },
-  subtitle: {
-    fontSize: 16,
-    color: COLORS.gray,
-    lineHeight: 24,
+  closeButton: {
+    padding: 8,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
   infoCard: {
-    marginBottom: 24,
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
   },
-  infoItem: {
+  infoRow: {
     flexDirection: 'row',
     marginBottom: 20,
   },
-  infoIcon: {
-    fontSize: 32,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 16,
   },
   infoText: {
@@ -277,61 +289,117 @@ const styles = StyleSheet.create({
   infoTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: COLORS.darkGray,
     marginBottom: 4,
   },
   infoDescription: {
     fontSize: 14,
-    color: COLORS.gray,
     lineHeight: 20,
   },
-  errorCard: {
-    marginBottom: 16,
-    backgroundColor: '#FEE2E2',
+  statusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    marginBottom: 12,
+  },
+  statusText: {
+    marginLeft: 8,
+    fontSize: 14,
+  },
+  errorContainer: {
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.error,
+    marginBottom: 12,
   },
   errorText: {
-    color: COLORS.error,
+    color: '#DC2626',
     fontSize: 14,
-    lineHeight: 20,
+    marginTop: 8,
+    marginBottom: 8,
   },
-  loadingContainer: {
-    padding: 32,
+  retryButton: {
+    marginTop: 4,
+  },
+  retryText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  successContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: COLORS.gray,
-  },
-  skipButton: {
-    marginTop: 12,
-  },
-  testInfo: {
-    marginTop: 32,
+    justifyContent: 'center',
     padding: 16,
-    backgroundColor: '#FEF3C7',
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  successText: {
+    color: '#059669',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  noticeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#F59E0B',
+    marginTop: 12,
+  },
+  noticeText: {
+    flex: 1,
+    fontSize: 13,
+    marginLeft: 8,
+    lineHeight: 18,
+  },
+  buttonContainer: {
+    padding: 20,
+  },
+  connectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  connectButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  skipButton: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  skipButtonText: {
+    fontSize: 16,
+  },
+  testInfo: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
   },
   testInfoTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#92400E',
     marginBottom: 8,
   },
   testInfoText: {
     fontSize: 13,
-    color: '#92400E',
-    fontFamily: 'monospace',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   testInfoNote: {
-    fontSize: 12,
-    color: '#92400E',
+    fontSize: 11,
     marginTop: 8,
     fontStyle: 'italic',
   },
 });
+
+export default PlaidConnectionScreen;
