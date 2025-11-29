@@ -19,9 +19,15 @@ import {
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useAuth } from '@/features/auth';
 import { useSearchContent } from '@/hooks/useTMDb';
 import { tmdbApi, getPosterUrl } from '@/services/tmdb';
-import { BROWSE_CATEGORIES, fetchMultipleCategories } from '@/services/contentBrowse';
+import {
+  fetchMultipleCategories,
+  getPersonalizedCategories,
+  getDefaultCategories,
+  type ContentCategory,
+} from '@/services/contentBrowse';
 import { ContentDetailModal } from './ContentDetailModal';
 import type { TMDbMultiSearchResult, UnifiedContent } from '@/types/tmdb';
 import { COLORS } from '@/components';
@@ -36,10 +42,12 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   onClose,
 }) => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [browseContent, setBrowseContent] = useState<Map<string, UnifiedContent[]>>(new Map());
   const [loadingBrowse, setLoadingBrowse] = useState(true);
+  const [categories, setCategories] = useState<ContentCategory[]>(getDefaultCategories());
 
   // New state for nested modal
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
@@ -64,15 +72,21 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   const loadBrowseCategories = async () => {
     setLoadingBrowse(true);
     try {
-      const content = await fetchMultipleCategories([
-        'trending',
-        'popular-movies',
-        'popular-tv',
-        'upcoming'
-      ]);
+      // Get personalized categories if user is logged in
+      const personalizedCats = user?.id
+        ? await getPersonalizedCategories(user.id)
+        : getDefaultCategories();
+
+      setCategories(personalizedCats);
+      console.log('[SearchContent] Loaded', personalizedCats.length, 'categories');
+
+      // Fetch content for the first few categories
+      const categoryIds = personalizedCats.slice(0, 4).map(c => c.id);
+      const content = await fetchMultipleCategories(categoryIds);
       setBrowseContent(content);
     } catch (error) {
-      console.error('Error loading browse content:', error);
+      console.error('[SearchContent] Error loading browse content:', error);
+      setCategories(getDefaultCategories());
     } finally {
       setLoadingBrowse(false);
     }
@@ -116,7 +130,7 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   // Load more content for a specific category
   const loadMoreForCategory = async (categoryId: string) => {
     setLoadingMore(categoryId);
-    const category = BROWSE_CATEGORIES.find(c => c.id === categoryId);
+    const category = categories.find(c => c.id === categoryId);
     if (!category) {
       setLoadingMore(null);
       return;
@@ -262,8 +276,7 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
             </View>
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.browseContainer}>
-              {BROWSE_CATEGORIES
-                .filter(cat => ['trending', 'popular-movies', 'popular-tv', 'upcoming'].includes(cat.id))
+              {categories
                 .filter(cat => browseContent.has(cat.id))
                 .map(category => (
                   <View key={category.id} style={styles.categorySection}>
