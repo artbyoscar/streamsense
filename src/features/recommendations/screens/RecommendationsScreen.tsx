@@ -43,7 +43,7 @@ const STREAMING_SERVICES = [
     price: 7.99,
     genres: ['Animation', 'Family', 'Adventure', 'Sci-Fi & Fantasy'],
     strengths: 'Marvel, Star Wars, Pixar, Disney classics',
-    icon: 'disney',
+    icon: 'castle',
   },
   {
     id: 'max',
@@ -59,7 +59,7 @@ const STREAMING_SERVICES = [
     price: 8.99,
     genres: ['Action', 'Comedy', 'Drama', 'Thriller'],
     strengths: 'Thursday Night Football, wide rental catalog',
-    icon: 'amazon',
+    icon: 'shopping',
   },
   {
     id: 'apple',

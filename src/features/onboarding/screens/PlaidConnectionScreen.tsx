@@ -13,7 +13,7 @@ import {
   LinkLogLevel,
 } from 'react-native-plaid-link-sdk';
 import { Button, Card, COLORS } from '@/components';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuthStore } from '@/features/auth/store/authStore';
 import {
   createLinkToken,
   exchangePublicToken,
