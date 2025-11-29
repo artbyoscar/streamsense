@@ -32,7 +32,10 @@ export default {
       tmdbAccessToken: process.env.EXPO_PUBLIC_TMDB_ACCESS_TOKEN,
       revenueCatIosApiKey: process.env.REVENUECAT_IOS_API_KEY,
       revenueCatAndroidApiKey: process.env.REVENUECAT_ANDROID_API_KEY,
-      sentryDsn: process.env.SENTRY_DSN
+      sentryDsn: process.env.SENTRY_DSN,
+      eas: {
+        projectId: "fdd17ec3-8028-4ff0-a6e0-3df9bd1934a3"
+      }
     },
     hooks: {
       postPublish: [
