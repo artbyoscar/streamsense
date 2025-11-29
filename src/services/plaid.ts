@@ -42,12 +42,21 @@ export async function createLinkToken(userId: string): Promise<string> {
   checkPlaidConfigured();
 
   try {
+    console.log('[Plaid Client] Creating link token for user:', userId);
+
     // Get the current session for authentication
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('[Plaid Client] Session check:', {
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      userId: session?.user?.id,
+    });
 
     if (!session) {
       throw new Error('No active session. Please log in again.');
     }
+
+    console.log('[Plaid Client] Invoking edge function...');
 
     const { data, error } = await supabase.functions.invoke<CreateLinkTokenResponse>(
       'plaid-create-link-token',
@@ -59,18 +68,27 @@ export async function createLinkToken(userId: string): Promise<string> {
       }
     );
 
+    console.log('[Plaid Client] Edge function response:', {
+      hasData: !!data,
+      hasError: !!error,
+      data,
+      error,
+    });
+
     if (error) {
-      console.error('Error creating link token:', error);
+      console.error('[Plaid Client] Error creating link token:', error);
       throw new Error(error.message || 'Failed to create link token');
     }
 
     if (!data?.linkToken) {
+      console.error('[Plaid Client] No link token in response:', data);
       throw new Error('No link token returned from server');
     }
 
+    console.log('[Plaid Client] Successfully received link token');
     return data.linkToken;
   } catch (error) {
-    console.error('Error in createLinkToken:', error);
+    console.error('[Plaid Client] Error in createLinkToken:', error);
     throw error;
   }
 }

@@ -32,8 +32,28 @@ serve(async (req) => {
   }
 
   try {
+    // Debug: Log environment configuration
+    console.log('[Plaid] Environment check:', {
+      hasClientId: !!PLAID_CLIENT_ID,
+      hasSecret: !!PLAID_SECRET,
+      env: PLAID_ENV,
+      clientIdLength: PLAID_CLIENT_ID?.length,
+      secretLength: PLAID_SECRET?.length,
+    });
+
+    // Check if Plaid credentials are configured
+    if (!PLAID_CLIENT_ID || !PLAID_SECRET) {
+      console.error('[Plaid] Missing credentials!', {
+        hasClientId: !!PLAID_CLIENT_ID,
+        hasSecret: !!PLAID_SECRET,
+      });
+      throw new Error('Plaid credentials not configured. Please set PLAID_CLIENT_ID and PLAID_SECRET in Edge Function secrets.');
+    }
+
     // Verify authentication
     const authHeader = req.headers.get('Authorization');
+    console.log('[Plaid] Auth header present:', !!authHeader);
+
     if (!authHeader) {
       throw new Error('Missing authorization header');
     }
@@ -55,19 +75,38 @@ serve(async (req) => {
       error: userError,
     } = await supabaseClient.auth.getUser();
 
+    console.log('[Plaid] User authentication check:', {
+      hasUser: !!user,
+      userId: user?.id,
+      hasError: !!userError,
+      errorMessage: userError?.message,
+    });
+
     if (userError || !user) {
+      console.error('[Plaid] Auth error:', userError);
       throw new Error('User not authenticated');
     }
 
     // Parse request body
     const { userId }: LinkTokenRequest = await req.json();
+    console.log('[Plaid] Request user ID:', userId);
 
     if (!userId || userId !== user.id) {
+      console.error('[Plaid] User ID mismatch:', { requested: userId, authenticated: user.id });
       throw new Error('Invalid user ID');
     }
 
     // Create Plaid Link token
-    const response = await fetch('https://sandbox.plaid.com/link/token/create', {
+    console.log('[Plaid] Creating link token for user:', userId);
+    console.log('[Plaid] Plaid environment:', PLAID_ENV);
+
+    const plaidUrl = PLAID_ENV === 'production'
+      ? 'https://production.plaid.com/link/token/create'
+      : 'https://sandbox.plaid.com/link/token/create';
+
+    console.log('[Plaid] Calling Plaid API:', plaidUrl);
+
+    const response = await fetch(plaidUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -91,13 +130,22 @@ serve(async (req) => {
       }),
     });
 
+    console.log('[Plaid] Plaid API response status:', response.status);
+
     if (!response.ok) {
       const error = await response.json();
-      console.error('Plaid API error:', error);
-      throw new Error(error.error_message || 'Failed to create link token');
+      console.error('[Plaid] Plaid API error details:', {
+        status: response.status,
+        error: error,
+        errorCode: error.error_code,
+        errorMessage: error.error_message,
+        errorType: error.error_type,
+      });
+      throw new Error(error.error_message || `Plaid API error: ${error.error_code || 'Unknown'}`);
     }
 
     const data: PlaidLinkTokenResponse = await response.json();
+    console.log('[Plaid] Successfully created link token');
 
     return new Response(
       JSON.stringify({
@@ -109,16 +157,27 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error in plaid-create-link-token:', error);
+    console.error('[Plaid] ERROR in plaid-create-link-token:', {
+      message: error.message,
+      stack: error.stack,
+      error: error,
+    });
+
+    // Determine appropriate status code
+    const status = error.message?.includes('not authenticated') ? 401 :
+                   error.message?.includes('not configured') ? 500 :
+                   400;
+
     return new Response(
       JSON.stringify({
         error: {
           message: error.message || 'Internal server error',
+          type: 'plaid_link_token_error',
         },
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status,
       }
     );
   }
