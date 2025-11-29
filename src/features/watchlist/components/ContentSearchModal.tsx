@@ -80,10 +80,11 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
       setCategories(personalizedCats);
       console.log('[SearchContent] Loaded', personalizedCats.length, 'categories');
 
-      // Fetch content for the first few categories
-      const categoryIds = personalizedCats.slice(0, 4).map(c => c.id);
+      // Fetch content for ALL categories
+      const categoryIds = personalizedCats.map(c => c.id);
       const content = await fetchMultipleCategories(categoryIds);
       setBrowseContent(content);
+      console.log('[SearchContent] Fetched content for', content.size, 'categories');
     } catch (error) {
       console.error('[SearchContent] Error loading browse content:', error);
       setCategories(getDefaultCategories());
