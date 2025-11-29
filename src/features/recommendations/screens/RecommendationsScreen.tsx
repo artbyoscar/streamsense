@@ -18,87 +18,93 @@ import { useAuth } from '@/features/auth';
 import { useSubscriptionsData, formatCurrency } from '@/features/subscriptions';
 import { getUserTopGenres } from '@/services/genreAffinity';
 import { COLORS, Card } from '@/components';
+import { supabase } from '@/config/supabase';
+
+// TMDb Genre ID to Name mapping
+const GENRE_NAMES: Record<number, string> = {
+  28: 'Action', 12: 'Adventure', 16: 'Animation', 35: 'Comedy', 80: 'Crime',
+  99: 'Documentary', 18: 'Drama', 10751: 'Family', 14: 'Fantasy', 36: 'History',
+  27: 'Horror', 10402: 'Music', 9648: 'Mystery', 10749: 'Romance',
+  878: 'Science Fiction', 53: 'Thriller', 10752: 'War', 37: 'Western',
+  10759: 'Action & Adventure', 10762: 'Kids', 10765: 'Sci-Fi & Fantasy',
+  10768: 'War & Politics',
+};
 
 // Streaming service metadata for recommendations
 const STREAMING_SERVICES = [
   {
     id: 'netflix',
     name: 'Netflix',
-    price: 15.49,
-    genres: ['Drama', 'Comedy', 'Documentary', 'Sci-Fi & Fantasy', 'Mystery'],
-    strengths: 'Original series, International content, K-dramas',
     icon: 'netflix',
+    color: '#E50914',
+    keywords: ['netflix'],
+    genres: ['Drama', 'Comedy', 'Thriller', 'Documentary', 'Action', 'Science Fiction',
+             'Horror', 'Romance', 'Crime', 'Mystery', 'Sci-Fi & Fantasy', 'Action & Adventure'],
   },
   {
     id: 'hulu',
     name: 'Hulu',
-    price: 7.99,
-    genres: ['Comedy', 'Drama', 'Reality', 'Animation'],
-    strengths: 'Next-day TV episodes, FX originals',
     icon: 'hulu',
+    color: '#1CE783',
+    keywords: ['hulu'],
+    genres: ['Drama', 'Comedy', 'Animation', 'Documentary', 'Crime', 'Action & Adventure'],
   },
   {
     id: 'disney',
     name: 'Disney+',
-    price: 7.99,
-    genres: ['Animation', 'Family', 'Adventure', 'Sci-Fi & Fantasy'],
-    strengths: 'Marvel, Star Wars, Pixar, Disney classics',
     icon: 'castle',
-  },
-  {
-    id: 'max',
-    name: 'Max',
-    price: 15.99,
-    genres: ['Drama', 'Documentary', 'Comedy', 'Crime'],
-    strengths: 'HBO prestige TV, Warner Bros films',
-    icon: 'television-classic',
+    color: '#113CCF',
+    keywords: ['disney', 'disney+'],
+    genres: ['Family', 'Animation', 'Adventure', 'Action', 'Science Fiction', 'Fantasy',
+             'Sci-Fi & Fantasy', 'Action & Adventure'],
   },
   {
     id: 'prime',
     name: 'Prime Video',
-    price: 8.99,
-    genres: ['Action', 'Comedy', 'Drama', 'Thriller'],
-    strengths: 'Thursday Night Football, wide rental catalog',
     icon: 'shopping',
+    color: '#00A8E1',
+    keywords: ['prime', 'amazon'],
+    genres: ['Drama', 'Comedy', 'Thriller', 'Action', 'Science Fiction', 'Documentary',
+             'Action & Adventure', 'Sci-Fi & Fantasy'],
+  },
+  {
+    id: 'hbo',
+    name: 'Max',
+    icon: 'alpha-m-box',
+    color: '#B535F6',
+    keywords: ['hbo', 'max'],
+    genres: ['Drama', 'Comedy', 'Documentary', 'Crime', 'Thriller', 'Horror', 'Sci-Fi & Fantasy'],
   },
   {
     id: 'apple',
     name: 'Apple TV+',
-    price: 9.99,
-    genres: ['Drama', 'Comedy', 'Sci-Fi & Fantasy', 'Documentary'],
-    strengths: 'Award-winning originals, high production value',
     icon: 'apple',
-  },
-  {
-    id: 'peacock',
-    name: 'Peacock',
-    price: 5.99,
-    genres: ['Comedy', 'Drama', 'Reality', 'Sports'],
-    strengths: 'The Office, NBC content, sports',
-    icon: 'bird',
+    color: '#555555',
+    keywords: ['apple'],
+    genres: ['Drama', 'Comedy', 'Thriller', 'Science Fiction', 'Documentary', 'Mystery'],
   },
   {
     id: 'paramount',
     name: 'Paramount+',
-    price: 5.99,
-    genres: ['Drama', 'Reality', 'Comedy', 'Action'],
-    strengths: 'Star Trek, CBS shows, NFL games',
-    icon: 'star-circle',
+    icon: 'mountain',
+    color: '#0064FF',
+    keywords: ['paramount', 'cbs'],
+    genres: ['Drama', 'Comedy', 'Science Fiction', 'Action', 'Crime', 'Action & Adventure'],
   },
   {
-    id: 'crunchyroll',
-    name: 'Crunchyroll',
-    price: 7.99,
-    genres: ['Animation', 'Action & Adventure', 'Comedy', 'Drama'],
-    strengths: 'Largest anime library, simulcast new episodes',
-    icon: 'animation',
+    id: 'peacock',
+    name: 'Peacock',
+    icon: 'bird',
+    color: '#333333',
+    keywords: ['peacock', 'nbc'],
+    genres: ['Drama', 'Comedy', 'Crime', 'Mystery'],
   },
 ];
 
 interface ServiceRecommendation {
   service: typeof STREAMING_SERVICES[0];
   matchScore: number;
-  matchingGenres: string[];
+  matchingGenres: number;
   alreadyHave: boolean;
 }
 
@@ -123,61 +129,117 @@ export const RecommendationsScreen: React.FC = () => {
   }, [user?.id]); // Only re-run when user changes, not on every subscription update
 
   const loadData = async () => {
-    if (!user?.id || loading) return; // Prevent concurrent calls
+    if (!user?.id || loading) return;
 
     setLoading(true);
     try {
       console.log('[Tips] Loading data for user:', user.id);
       console.log('[Tips] Active subscriptions:', activeSubscriptions.length);
-      console.log('[Tips] Subscription names:', activeSubscriptions.map(s => s.service_name));
+      activeSubscriptions.forEach(s => console.log('[Tips] - Sub:', s.service_name));
 
-      // Get user's top genres
-      const topGenres = await getUserTopGenres(user.id, 6);
-      console.log('[Tips] Top genres:', topGenres.map(g => g.genreName));
+      // METHOD 1: Get genres from affinity table
+      let userGenreNames: string[] = [];
 
-      const genreNames = topGenres.map(g => g.genreName);
-      setUserGenres(genreNames);
+      const { data: affinityData } = await supabase
+        .from('user_genre_affinity')
+        .select('genre_id, genre_name, affinity_score')
+        .eq('user_id', user.id)
+        .order('affinity_score', { ascending: false })
+        .limit(10);
 
-      // Get user's current service names (lowercase for matching)
-      const currentServices = activeSubscriptions.map(s =>
-        s.service_name?.toLowerCase().trim()
-      ).filter(Boolean);
+      if (affinityData && affinityData.length > 0) {
+        userGenreNames = affinityData.map(g => g.genre_name || GENRE_NAMES[g.genre_id] || '').filter(Boolean);
+        console.log('[Tips] Genres from affinity:', userGenreNames);
+      }
 
-      console.log('[Tips] Current services (lowercase):', currentServices);
+      // METHOD 2: If no affinity data, get from watchlist genres
+      if (userGenreNames.length === 0) {
+        const { data: watchlistData } = await supabase
+          .from('watchlist_items')
+          .select('genres')
+          .eq('user_id', user.id);
 
-      // Score each streaming service
-      const scored: ServiceRecommendation[] = STREAMING_SERVICES.map(service => {
-        const matchingGenres = service.genres.filter(serviceGenre =>
-          genreNames.some(userGenre => {
-            const sg = serviceGenre.toLowerCase();
-            const ug = userGenre.toLowerCase();
-            return sg.includes(ug) || ug.includes(sg) ||
-                   sg.split(' ').some(w => ug.includes(w)) ||
-                   ug.split(' ').some(w => sg.includes(w));
-          })
+        if (watchlistData && watchlistData.length > 0) {
+          const genreCounts: Record<number, number> = {};
+          watchlistData.forEach(item => {
+            if (Array.isArray(item.genres)) {
+              item.genres.forEach((gid: number) => {
+                genreCounts[gid] = (genreCounts[gid] || 0) + 1;
+              });
+            }
+          });
+
+          // Sort by count and map to names
+          userGenreNames = Object.entries(genreCounts)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 10)
+            .map(([gid]) => GENRE_NAMES[Number(gid)] || '')
+            .filter(Boolean);
+
+          console.log('[Tips] Genres from watchlist:', userGenreNames);
+        }
+      }
+
+      // METHOD 3: Default genres if still empty
+      if (userGenreNames.length === 0) {
+        userGenreNames = ['Drama', 'Action', 'Comedy', 'Thriller', 'Science Fiction'];
+        console.log('[Tips] Using default genres');
+      }
+
+      setUserGenres(userGenreNames);
+
+      // Get current subscription names (normalized)
+      const currentServiceKeywords: string[] = [];
+      activeSubscriptions.forEach(sub => {
+        const name = (sub.service_name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (name) currentServiceKeywords.push(name);
+      });
+      console.log('[Tips] Current service keywords:', currentServiceKeywords);
+
+      // Score streaming services
+      const scored = STREAMING_SERVICES.map(service => {
+        // Check if user already has this service
+        const alreadyHave = service.keywords.some(keyword =>
+          currentServiceKeywords.some(userKeyword =>
+            userKeyword.includes(keyword) || keyword.includes(userKeyword)
+          )
         );
 
-        const alreadyHave = currentServices.some(cs =>
-          cs?.includes(service.id) ||
-          cs?.includes(service.name.toLowerCase()) ||
-          service.name.toLowerCase().includes(cs || '')
-        );
+        // Calculate genre match score
+        let matchCount = 0;
+        const serviceGenresLower = service.genres.map(g => g.toLowerCase());
 
-        console.log('[Tips] Service:', service.name, {
-          alreadyHave,
-          matchScore: genreNames.length > 0 ? matchingGenres.length / service.genres.length : 0,
-          matchingGenres: matchingGenres.length,
+        userGenreNames.forEach(userGenre => {
+          const ug = userGenre.toLowerCase();
+          if (serviceGenresLower.some(sg =>
+            sg === ug ||
+            sg.includes(ug) ||
+            ug.includes(sg) ||
+            (sg.includes('sci-fi') && ug.includes('science')) ||
+            (ug.includes('sci-fi') && sg.includes('science'))
+          )) {
+            matchCount++;
+          }
         });
+
+        const matchScore = userGenreNames.length > 0
+          ? Math.round((matchCount / Math.min(userGenreNames.length, 5)) * 100)
+          : 50;
+
+        console.log('[Tips] Service:', service.name,
+          '| owned:', alreadyHave,
+          '| matches:', matchCount,
+          '| score:', matchScore);
 
         return {
           service,
-          matchScore: genreNames.length > 0 ? matchingGenres.length / service.genres.length : 0,
-          matchingGenres,
+          matchScore: Math.min(matchScore, 100),
+          matchingGenres: matchCount,
           alreadyHave,
         };
       });
 
-      // Sort: services user doesn't have first, then by match score
+      // Sort: not owned first, then by match score
       scored.sort((a, b) => {
         if (a.alreadyHave !== b.alreadyHave) {
           return a.alreadyHave ? 1 : -1;
@@ -185,11 +247,10 @@ export const RecommendationsScreen: React.FC = () => {
         return b.matchScore - a.matchScore;
       });
 
-      console.log('[Tips] Final recommendations:', scored.slice(0, 5).map(s => ({
-        name: s.service.name,
-        alreadyHave: s.alreadyHave,
-        matchScore: s.matchScore,
-      })));
+      console.log('[Tips] Final recommendations:');
+      scored.slice(0, 5).forEach(s => {
+        console.log(`  ${s.service.name}: ${s.matchScore}% ${s.alreadyHave ? '(owned)' : ''}`);
+      });
 
       setRecommendations(scored);
 
@@ -215,7 +276,7 @@ export const RecommendationsScreen: React.FC = () => {
             setWorstValue(null);
           }
         } else {
-          setWorstValue(null); // Don't show worst if only one subscription
+          setWorstValue(null);
         }
 
         // Calculate potential savings if user cancels low-value services (>$3/hr)
@@ -223,13 +284,12 @@ export const RecommendationsScreen: React.FC = () => {
         const monthlySavings = lowValueSubs.reduce((sum, s) => sum + s.price, 0);
         setPotentialSavings(monthlySavings);
       } else {
-        // No subscriptions with value scores, reset all
         setBestValue(null);
         setWorstValue(null);
         setPotentialSavings(0);
       }
     } catch (error) {
-      console.error('Error loading tips data:', error);
+      console.error('[Tips] Error loading data:', error);
     } finally {
       setLoading(false);
     }
@@ -393,70 +453,45 @@ export const RecommendationsScreen: React.FC = () => {
           📺 Service Recommendations
         </Text>
 
-        {userGenres.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <MaterialCommunityIcons name="playlist-plus" size={40} color={colors.textSecondary} />
+        {recommendations.length === 0 && !loading ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.card }]}>
+            <MaterialCommunityIcons name="television" size={32} color={colors.textSecondary} />
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Add shows and movies to your watchlist to get personalized service recommendations
             </Text>
-          </Card>
+          </View>
         ) : (
-          recommendations.slice(0, 5).map(rec => (
-            <Card
-              key={rec.service.id}
-              style={[
-                styles.recCard,
-                rec.alreadyHave && { opacity: 0.7 }
-              ]}
-            >
-              <View style={styles.recHeader}>
-                <View style={styles.recLeft}>
+          <View style={styles.servicesGrid}>
+            {recommendations.slice(0, 6).map(({ service, matchScore, alreadyHave }) => (
+              <View
+                key={service.id}
+                style={[
+                  styles.serviceCard,
+                  { backgroundColor: colors.card },
+                  alreadyHave && styles.serviceCardOwned,
+                ]}
+              >
+                <View style={[styles.serviceIcon, { backgroundColor: service.color }]}>
                   <MaterialCommunityIcons
-                    name={rec.service.icon as any}
-                    size={28}
-                    color={colors.primary}
+                    name={service.icon as any}
+                    size={24}
+                    color="#FFFFFF"
                   />
-                  <View style={styles.recInfo}>
-                    <View style={styles.recNameRow}>
-                      <Text style={[styles.recName, { color: colors.text }]}>
-                        {rec.service.name}
-                      </Text>
-                      {rec.alreadyHave && (
-                        <View style={[styles.haveBadge, { backgroundColor: COLORS.success + '20' }]}>
-                          <Text style={[styles.haveBadgeText, { color: COLORS.success }]}>
-                            ✓ You have this
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                    <Text style={[styles.recPrice, { color: colors.textSecondary }]}>
-                      {formatCurrency(rec.service.price)}/month
-                    </Text>
-                  </View>
                 </View>
-                <View style={[
-                  styles.matchBadge,
-                  { backgroundColor: rec.matchScore >= 0.5 ? COLORS.success + '20' : colors.card }
-                ]}>
-                  <Text style={[
-                    styles.matchText,
-                    { color: rec.matchScore >= 0.5 ? COLORS.success : colors.textSecondary }
-                  ]}>
-                    {Math.round(rec.matchScore * 100)}%
-                  </Text>
-                </View>
-              </View>
-
-              {rec.matchingGenres.length > 0 && (
-                <Text style={[styles.recMatch, { color: colors.primary }]}>
-                  Matches: {rec.matchingGenres.join(', ')}
+                <Text style={[styles.serviceName, { color: colors.text }]} numberOfLines={1}>
+                  {service.name}
                 </Text>
-              )}
-              <Text style={[styles.recStrengths, { color: colors.textSecondary }]}>
-                {rec.service.strengths}
-              </Text>
-            </Card>
-          ))
+                <Text style={[styles.matchScore, { color: colors.primary }]}>
+                  {matchScore}% match
+                </Text>
+                {alreadyHave && (
+                  <View style={styles.ownedBadge}>
+                    <Text style={styles.ownedBadgeText}>✓ Subscribed</Text>
+                  </View>
+                )}
+              </View>
+            ))}
+          </View>
         )}
       </View>
 
@@ -537,21 +572,53 @@ const styles = StyleSheet.create({
   genreChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   genreChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20 },
   genreChipText: { fontSize: 14, fontWeight: '600' },
-  emptyCard: { alignItems: 'center', padding: 24 },
+  emptyCard: { alignItems: 'center', padding: 24, borderRadius: 12 },
   emptyText: { fontSize: 14, textAlign: 'center', marginTop: 12, lineHeight: 20 },
-  recCard: { marginBottom: 12 },
-  recHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  recLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
-  recInfo: { flex: 1 },
-  recNameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  recName: { fontSize: 17, fontWeight: '700' },
-  recPrice: { fontSize: 14, marginTop: 2 },
-  haveBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
-  haveBadgeText: { fontSize: 11, fontWeight: '600' },
-  matchBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  matchText: { fontSize: 14, fontWeight: '700' },
-  recMatch: { fontSize: 13, fontWeight: '600', marginTop: 10 },
-  recStrengths: { fontSize: 13, marginTop: 4, lineHeight: 18 },
+  servicesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  serviceCard: {
+    width: '48%',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  serviceCardOwned: {
+    opacity: 0.6,
+  },
+  serviceIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  serviceName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  matchScore: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  ownedBadge: {
+    marginTop: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    backgroundColor: '#10B981',
+    borderRadius: 4,
+  },
+  ownedBadgeText: {
+    fontSize: 10,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
   tipCard: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 10 },
   tipContent: { flex: 1 },
   tipTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
