@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DashboardScreen } from '@/features/dashboard';
 import { WatchlistScreen } from '@/features/watchlist';
@@ -130,27 +130,13 @@ const Navigator: React.FC = () => {
       />
 
       {/* Plaid Connection Modal */}
-      <Modal visible={showPlaidConnection} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
-          <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.modalTitle, { color: colors.text }]}>Connect Bank Account</Text>
-            <TouchableOpacity onPress={() => setShowPlaidConnection(false)}>
-              <MaterialCommunityIcons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          <PlaidConnectionScreen
-            onSuccess={() => {
-              setShowPlaidConnection(false);
-              console.log('[Navigation] Bank account connected successfully');
-            }}
-            onCancel={() => setShowPlaidConnection(false)}
-            onError={(error) => {
-              console.error('[Navigation] Plaid connection error:', error);
-              setShowPlaidConnection(false);
-              Alert.alert('Connection Error', 'Failed to connect bank account. Please try again.');
-            }}
-          />
-        </SafeAreaView>
+      <Modal
+        visible={showPlaidConnection}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowPlaidConnection(false)}
+      >
+        <PlaidConnectionScreen onClose={() => setShowPlaidConnection(false)} />
       </Modal>
     </SafeAreaView>
   );
