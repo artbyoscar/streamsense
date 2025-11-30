@@ -2,51 +2,82 @@ import { supabase } from './supabase';
 import { tmdbApi } from './tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Session cache for shown items (persists during app session)
-let sessionShownItems: Set<number> = new Set();
-let lastCacheClear: number = Date.now();
+// Persistent session cache
+const SESSION_CACHE_KEY = 'streamsense_session_shown';
+const WATCHLIST_CACHE_KEY = 'streamsense_watchlist_ids';
+let sessionShownIds: Set<number> = new Set();
+let watchlistTmdbIds: Set<number> = new Set();
+let cacheInitialized = false;
 
-// Cache key for persistence
-const CACHE_KEY = 'streamsense_shown_items';
-const CACHE_EXPIRY = 24 * 60 * 60 * 1000; // 24 hours
+// Initialize caches
+const initializeCaches = async (userId: string) => {
+  if (cacheInitialized) return;
 
-// Initialize cache from storage
-const initializeCache = async () => {
   try {
-    const cached = await AsyncStorage.getItem(CACHE_KEY);
-    if (cached) {
-      const { items, timestamp } = JSON.parse(cached);
-      if (Date.now() - timestamp < CACHE_EXPIRY) {
-        sessionShownItems = new Set(items);
-        console.log(`[SmartRecs] Restored ${sessionShownItems.size} items from cache`);
-      } else {
-        // Cache expired, clear it
-        sessionShownItems = new Set();
-        await AsyncStorage.removeItem(CACHE_KEY);
+    // Load session shown items from storage
+    const sessionData = await AsyncStorage.getItem(SESSION_CACHE_KEY);
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+        sessionShownIds = new Set(parsed.ids);
+        console.log('[SmartRecs] Restored session cache:', sessionShownIds.size, 'items');
       }
     }
+
+    // Load FRESH watchlist IDs from database
+    const { data: watchlistItems } = await supabase
+      .from('watchlist_items')
+      .select('tmdb_id')
+      .eq('user_id', userId);
+
+    if (watchlistItems) {
+      watchlistTmdbIds = new Set(watchlistItems.map(item => item.tmdb_id));
+      console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
+
+      // Cache to storage
+      await AsyncStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify({
+        ids: Array.from(watchlistTmdbIds),
+        timestamp: Date.now(),
+      }));
+    }
+
+    cacheInitialized = true;
   } catch (error) {
     console.error('[SmartRecs] Cache init error:', error);
   }
 };
 
-// Save cache to storage
-const saveCache = async () => {
+// Save session cache
+const saveSessionCache = async () => {
   try {
-    await AsyncStorage.setItem(
-      CACHE_KEY,
-      JSON.stringify({
-        items: Array.from(sessionShownItems),
-        timestamp: Date.now(),
-      })
-    );
+    await AsyncStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({
+      ids: Array.from(sessionShownIds),
+      timestamp: Date.now(),
+    }));
   } catch (error) {
-    console.error('[SmartRecs] Cache save error:', error);
+    console.error('[SmartRecs] Save session cache error:', error);
   }
 };
 
-// Genre ID mappings
-const GENRE_NAME_TO_ID: Record<string, number[]> = {
+// Add item to session cache
+const addToSessionCache = (id: number) => {
+  sessionShownIds.add(id);
+};
+
+// Check if item should be excluded
+const shouldExclude = (tmdbId: number): boolean => {
+  // Exclude if in watchlist OR already shown this session
+  const inWatchlist = watchlistTmdbIds.has(tmdbId);
+  const alreadyShown = sessionShownIds.has(tmdbId);
+
+  if (inWatchlist || alreadyShown) {
+    return true;
+  }
+  return false;
+};
+
+// Genre mappings
+const GENRE_NAME_TO_IDS: Record<string, number[]> = {
   'Drama': [18],
   'Adventure': [12],
   'Action': [28],
@@ -63,17 +94,9 @@ const GENRE_NAME_TO_ID: Record<string, number[]> = {
   'Family': [10751],
   'War': [10752],
   'History': [36],
-  'Music': [10402],
-  'Western': [37],
   // TV specific
   'Sci-Fi & Fantasy': [10765],
   'Action & Adventure': [10759],
-  'War & Politics': [10768],
-  'Kids': [10762],
-  'Reality': [10764],
-  'Soap': [10766],
-  'Talk': [10767],
-  'News': [10763],
 };
 
 interface RecommendationOptions {
@@ -88,168 +111,133 @@ export const getSmartRecommendations = async (
 ): Promise<any[]> => {
   const { userId, limit = 20, mediaType = 'mixed', forceRefresh = false } = options;
 
-  // Initialize cache on first call
-  if (sessionShownItems.size === 0) {
-    await initializeCache();
+  // Force refresh watchlist cache if requested
+  if (forceRefresh) {
+    cacheInitialized = false;
+    sessionShownIds.clear();
+    await AsyncStorage.removeItem(SESSION_CACHE_KEY);
   }
 
-  console.log('[SmartRecs] Getting smart recommendations:', {
+  // Initialize caches
+  await initializeCaches(userId);
+
+  // ALWAYS refresh watchlist IDs to catch new additions
+  const { data: freshWatchlist } = await supabase
+    .from('watchlist_items')
+    .select('tmdb_id')
+    .eq('user_id', userId);
+
+  if (freshWatchlist) {
+    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
+  }
+
+  const totalExcluded = watchlistTmdbIds.size + sessionShownIds.size;
+
+  console.log('[SmartRecs] Getting recommendations:', {
     userId,
     limit,
     mediaType,
-    sessionCacheSize: sessionShownItems.size,
+    watchlistIds: watchlistTmdbIds.size,
+    sessionShownIds: sessionShownIds.size,
+    totalExcluded,
     forceRefresh,
   });
 
-  // Clear cache if forced or after 24 hours
-  if (forceRefresh || Date.now() - lastCacheClear > CACHE_EXPIRY) {
-    sessionShownItems.clear();
-    lastCacheClear = Date.now();
-    await AsyncStorage.removeItem(CACHE_KEY);
-    console.log('[SmartRecs] Cache cleared');
-  }
-
   try {
-    // 1. Load user's watchlist to exclude
-    const { data: watchlistItems } = await supabase
-      .from('watchlist_items')
-      .select('tmdb_id')
-      .eq('user_id', userId);
-
-    const watchlistIds = new Set(
-      (watchlistItems || []).map((item) => item.tmdb_id)
-    );
-
-    // 2. Load user's genre affinity
+    // Get user genre affinity
     const { data: affinityData } = await supabase
       .from('user_genre_affinity')
       .select('genre_name, affinity_score')
       .eq('user_id', userId)
       .order('affinity_score', { ascending: false })
-      .limit(15);
+      .limit(10);
 
-    console.log('[SmartRecs] Data loaded:', {
-      watchlistItems: watchlistIds.size,
-      affinityEntries: affinityData?.length || 0,
-    });
-
-    // Combined exclusion set
-    const excludeIds = new Set([...watchlistIds, ...sessionShownItems]);
-
-    console.log('[SmartRecs] Excluding:', {
-      watchlistItems: watchlistIds.size,
-      sessionShownItems: sessionShownItems.size,
-      totalExcluded: excludeIds.size,
-    });
-
-    // 3. Determine top genres
+    // Determine top genres
     let topGenres: string[] = [];
     if (affinityData && affinityData.length > 0) {
-      topGenres = affinityData.slice(0, 5).map((a) => a.genre_name);
+      topGenres = affinityData.slice(0, 5).map(a => a.genre_name);
     } else {
-      // Default genres for new users
       topGenres = ['Drama', 'Action', 'Comedy', 'Adventure', 'Science Fiction'];
     }
 
     console.log('[SmartRecs] Top genres:', topGenres);
 
-    // 4. Convert genre names to IDs
-    const genreIds = topGenres.flatMap(
-      (name) => GENRE_NAME_TO_ID[name] || []
-    ).slice(0, 3);
+    // Convert to genre IDs
+    const genreIds = topGenres
+      .flatMap(name => GENRE_NAME_TO_IDS[name] || [])
+      .slice(0, 3);
 
-    // 5. Fetch recommendations with variety
     const recommendations: any[] = [];
 
-    // Random page selection for variety (1-10)
-    const randomPage = Math.floor(Math.random() * 10) + 1;
+    // Random page for variety
+    const getRandomPage = () => Math.floor(Math.random() * 10) + 1;
 
     // Fetch movies
     if (mediaType === 'movie' || mediaType === 'mixed') {
-      try {
-        console.log('[SmartRecs] Fetching movie by genres:', {
-          genres: genreIds,
-          page: randomPage,
-          excludeCount: excludeIds.size,
-        });
+      const page = getRandomPage();
+      console.log('[SmartRecs] Fetching movies, page:', page);
 
-        const movieResponse = await tmdbApi.discover('movie', {
-          with_genres: genreIds.join(','),
-          page: randomPage,
-          sort_by: 'vote_count.desc',
-          'vote_count.gte': 100,
-          'vote_average.gte': 6.0,
-        });
+      const movieResponse = await tmdbApi.discover('movie', {
+        with_genres: genreIds.join(','),
+        page,
+        sort_by: 'popularity.desc',
+        'vote_count.gte': 100,
+        'vote_average.gte': 6.0,
+      });
 
-        const filteredMovies = (movieResponse.data?.results || [])
-          .filter((item: any) => !excludeIds.has(item.id))
-          .map((item: any) => ({ ...item, media_type: 'movie' }));
+      const movies = (movieResponse.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id))
+        .map((item: any) => ({ ...item, media_type: 'movie' }));
 
-        recommendations.push(...filteredMovies);
+      console.log('[SmartRecs] Movies after filtering:', movies.length, 'of', movieResponse.data?.results?.length);
 
-        // Add to session cache
-        filteredMovies.forEach((item: any) => sessionShownItems.add(item.id));
-
-        console.log(
-          `[SmartRecs] Returning ${filteredMovies.length} items, session cache now has ${sessionShownItems.size} items`
-        );
-      } catch (error) {
-        console.error('[SmartRecs] Movie fetch error:', error);
-      }
+      // Add to session cache
+      movies.forEach((m: any) => addToSessionCache(m.id));
+      recommendations.push(...movies);
     }
 
     // Fetch TV shows
     if (mediaType === 'tv' || mediaType === 'mixed') {
-      try {
-        // Map movie genre IDs to TV genre IDs
-        const tvGenreIds = genreIds.map((id) => {
-          if (id === 878) return 10765; // Sci-Fi -> Sci-Fi & Fantasy
-          if (id === 28) return 10759; // Action -> Action & Adventure
-          return id;
-        });
+      // Map movie genres to TV genres
+      const tvGenreIds = genreIds.map(id => {
+        if (id === 878) return 10765; // Sci-Fi -> Sci-Fi & Fantasy
+        if (id === 28) return 10759;  // Action -> Action & Adventure
+        return id;
+      });
 
-        const tvPage = Math.floor(Math.random() * 10) + 1;
+      const page = getRandomPage();
+      console.log('[SmartRecs] Fetching TV, page:', page);
 
-        console.log('[SmartRecs] Fetching tv by genres:', {
-          genres: tvGenreIds,
-          page: tvPage,
-          excludeCount: excludeIds.size,
-        });
+      const tvResponse = await tmdbApi.discover('tv', {
+        with_genres: tvGenreIds.join(','),
+        page,
+        sort_by: 'popularity.desc',
+        'vote_count.gte': 50,
+        'vote_average.gte': 6.0,
+      });
 
-        const tvResponse = await tmdbApi.discover('tv', {
-          with_genres: tvGenreIds.join(','),
-          page: tvPage,
-          sort_by: 'vote_count.desc',
-          'vote_count.gte': 50,
-          'vote_average.gte': 6.0,
-        });
+      const tvShows = (tvResponse.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id))
+        .map((item: any) => ({ ...item, media_type: 'tv' }));
 
-        const filteredTV = (tvResponse.data?.results || [])
-          .filter((item: any) => !excludeIds.has(item.id))
-          .map((item: any) => ({ ...item, media_type: 'tv' }));
+      console.log('[SmartRecs] TV after filtering:', tvShows.length, 'of', tvResponse.data?.results?.length);
 
-        recommendations.push(...filteredTV);
-
-        // Add to session cache
-        filteredTV.forEach((item: any) => sessionShownItems.add(item.id));
-
-        console.log(
-          `[SmartRecs] Returning ${filteredTV.length} items, session cache now has ${sessionShownItems.size} items`
-        );
-      } catch (error) {
-        console.error('[SmartRecs] TV fetch error:', error);
-      }
+      // Add to session cache
+      tvShows.forEach((t: any) => addToSessionCache(t.id));
+      recommendations.push(...tvShows);
     }
 
-    // 6. Shuffle for variety
+    // Shuffle for variety
     const shuffled = recommendations.sort(() => Math.random() - 0.5);
 
-    // 7. Save cache
-    await saveCache();
+    // Save session cache
+    await saveSessionCache();
 
-    // 8. Return limited results
+    // Return limited results
     const results = shuffled.slice(0, limit);
-    console.log(`[SmartRecs] For You items: ${results.length}`);
+
+    console.log('[SmartRecs] Returning', results.length, 'recommendations');
+    console.log('[SmartRecs] First 5 IDs:', results.slice(0, 5).map(r => r.id));
 
     return results;
   } catch (error) {
@@ -258,16 +246,32 @@ export const getSmartRecommendations = async (
   }
 };
 
-// Clear session cache (call when user logs out or explicitly refreshes)
-export const clearRecommendationCache = async () => {
-  sessionShownItems.clear();
-  lastCacheClear = Date.now();
-  await AsyncStorage.removeItem(CACHE_KEY);
-  console.log('[SmartRecs] Cache manually cleared');
+// Force refresh - call when user adds to watchlist
+export const refreshWatchlistCache = async (userId: string) => {
+  const { data: freshWatchlist } = await supabase
+    .from('watchlist_items')
+    .select('tmdb_id')
+    .eq('user_id', userId);
+
+  if (freshWatchlist) {
+    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
+    console.log('[SmartRecs] Refreshed watchlist cache:', watchlistTmdbIds.size, 'items');
+  }
 };
 
-// Get cache stats
-export const getCacheStats = () => ({
-  sessionItems: sessionShownItems.size,
-  lastClear: lastCacheClear,
+// Clear all caches
+export const clearRecommendationCaches = async () => {
+  sessionShownIds.clear();
+  watchlistTmdbIds.clear();
+  cacheInitialized = false;
+  await AsyncStorage.multiRemove([SESSION_CACHE_KEY, WATCHLIST_CACHE_KEY]);
+  console.log('[SmartRecs] All caches cleared');
+};
+
+// Debug function
+export const getExclusionStats = () => ({
+  watchlistSize: watchlistTmdbIds.size,
+  sessionSize: sessionShownIds.size,
+  watchlistSample: Array.from(watchlistTmdbIds).slice(0, 10),
+  sessionSample: Array.from(sessionShownIds).slice(0, 10),
 });

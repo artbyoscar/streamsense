@@ -5,6 +5,7 @@
 
 import { supabase } from '@/config/supabase';
 import { trackGenreInteraction } from '@/services/genreAffinity';
+import { refreshWatchlistCache } from '@/services/smartRecommendations';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
 
 // ============================================================================
@@ -104,6 +105,11 @@ export async function addToWatchlist(
   if (error) {
     throw new Error(error.message);
   }
+
+  // Refresh the recommendation cache so this item is excluded immediately
+  refreshWatchlistCache(user.id).catch((error) => {
+    console.error('[Watchlist] Error refreshing recommendation cache:', error);
+  });
 
   return data;
 }
