@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getUserValueScores } from '@/services/valueScore';
+import { getChurnRecommendations, type ChurnRecommendation } from '@/services/churnCalendar';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -84,6 +85,7 @@ export const RecommendationsScreen: React.FC = () => {
   const [spending, setSpending] = useState({ monthly: 0, yearly: 0, count: 0 });
   const [userGenres, setUserGenres] = useState<string[]>([]);
   const [valueScores, setValueScores] = useState<any[]>([]);
+  const [churnRecs, setChurnRecs] = useState<ChurnRecommendation[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -180,6 +182,11 @@ export const RecommendationsScreen: React.FC = () => {
       const scores = await getUserValueScores(user.id);
       console.log('[Tips] Value scores:', scores);
       setValueScores(scores);
+
+      // Load churn recommendations
+      const churn = await getChurnRecommendations(user.id);
+      console.log('[Tips] Churn recommendations:', churn);
+      setChurnRecs(churn);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -363,6 +370,113 @@ export const RecommendationsScreen: React.FC = () => {
           </>
         )}
 
+        {/* Churn Recommendations */}
+        {churnRecs.length > 0 && churnRecs.some(r => r.action !== 'keep') && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              🔄 Smart Cancellation Suggestions
+            </Text>
+
+            {churnRecs
+              .filter(r => r.action !== 'keep')
+              .map((rec) => {
+                const actionColor =
+                  rec.action === 'cancel_now' ? '#EF4444' : '#F59E0B';
+                const actionIcon =
+                  rec.action === 'cancel_now' ? 'close-circle' : 'time';
+
+                return (
+                  <View
+                    key={rec.serviceId}
+                    style={[styles.churnCard, { backgroundColor: colors.card }]}
+                  >
+                    {/* Header */}
+                    <View style={styles.churnHeader}>
+                      <View style={styles.churnTitleRow}>
+                        <Ionicons
+                          name={actionIcon as any}
+                          size={24}
+                          color={actionColor}
+                        />
+                        <Text style={[styles.churnServiceName, { color: colors.text }]}>
+                          {rec.service}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.churnActionBadge,
+                          { backgroundColor: `${actionColor}20` },
+                        ]}
+                      >
+                        <Text style={[styles.churnActionText, { color: actionColor }]}>
+                          {rec.action === 'cancel_now' ? 'Cancel Now' : 'Cancel Soon'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Reason */}
+                    <Text style={[styles.churnReason, { color: colors.textSecondary }]}>
+                      {rec.reason}
+                    </Text>
+
+                    {/* Potential Savings */}
+                    {rec.potentialSavings > 0 && (
+                      <View
+                        style={[
+                          styles.savingsBox,
+                          { backgroundColor: colors.background },
+                        ]}
+                      >
+                        <Ionicons
+                          name="cash-outline"
+                          size={20}
+                          color="#22C55E"
+                        />
+                        <Text style={[styles.savingsText, { color: '#22C55E' }]}>
+                          Save ${rec.potentialSavings.toFixed(2)} over 2 months
+                        </Text>
+                      </View>
+                    )}
+
+                    {/* Upcoming Content */}
+                    {rec.upcomingContent.length > 0 && (
+                      <View style={styles.upcomingContent}>
+                        <Text
+                          style={[
+                            styles.upcomingLabel,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          Upcoming on {rec.service}:
+                        </Text>
+                        {rec.upcomingContent.slice(0, 2).map((content, idx) => (
+                          <View key={idx} style={styles.upcomingItem}>
+                            <Ionicons
+                              name="calendar-outline"
+                              size={14}
+                              color={colors.textSecondary}
+                            />
+                            <Text
+                              style={[
+                                styles.upcomingText,
+                                { color: colors.textSecondary },
+                              ]}
+                            >
+                              {content.title} -{' '}
+                              {content.daysUntil
+                                ? `in ${content.daysUntil} days`
+                                : 'TBA'}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+          </>
+        )}
+
         {/* Service Recommendations */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
           📺 Service Recommendations
@@ -482,6 +596,20 @@ const styles = StyleSheet.create({
   valueMetricDivider: { width: 1, height: 32, opacity: 0.2 },
   recommendationBox: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, gap: 8 },
   recommendationText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  // Churn Recommendation Styles
+  churnCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
+  churnHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  churnTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  churnServiceName: { fontSize: 18, fontWeight: '700' },
+  churnActionBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
+  churnActionText: { fontSize: 12, fontWeight: '600' },
+  churnReason: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
+  savingsBox: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, gap: 8, marginBottom: 12 },
+  savingsText: { fontSize: 14, fontWeight: '600' },
+  upcomingContent: { paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(128, 128, 128, 0.1)' },
+  upcomingLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8 },
+  upcomingItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  upcomingText: { fontSize: 13, flex: 1 },
 });
 
 export default RecommendationsScreen;
