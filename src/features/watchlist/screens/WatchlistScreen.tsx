@@ -3,7 +3,7 @@
  * User's watchlist grouped by status with content search integration
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   View,
@@ -30,10 +30,11 @@ import type { UnifiedContent, WatchlistStatus } from '@/types';
 // ============================================================================
 
 const GENRE_ID_MAP: Record<string, number[]> = {
+  'All': [],
   'Drama': [18],
   'Adventure': [12],
-  'Action': [28],
-  'Science Fiction': [878, 10765], // Movie + TV sci-fi
+  'Action': [28, 10759], // Movie + TV Action
+  'Science Fiction': [878, 10765], // Movie Sci-Fi + TV Sci-Fi & Fantasy
   'Animation': [16],
   'Comedy': [35],
   'Thriller': [53],
@@ -44,12 +45,6 @@ const GENRE_ID_MAP: Record<string, number[]> = {
   'Mystery': [9648],
   'Fantasy': [14, 10765],
   'Family': [10751],
-  'War': [10752, 10768],
-  'History': [36],
-  'Music': [10402],
-  'Western': [37],
-  'Sci-Fi & Fantasy': [10765],
-  'Action & Adventure': [10759],
 };
 
 // ============================================================================
@@ -94,13 +89,42 @@ export const WatchlistScreen: React.FC = () => {
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
   const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
-  const [filteredRecommendations, setFilteredRecommendations] = useState<UnifiedContent[]>([]);
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
   const [loadingForYou, setLoadingForYou] = useState(false);
 
   // Fetch trending for suggestions
   const { data: trending } = useTrending('week', 1);
+
+  // ============================================================================
+  // DERIVED STATE - Use useMemo to avoid infinite loops
+  // ============================================================================
+
+  // Filter recommendations by genre using useMemo
+  const filteredRecommendations = useMemo(() => {
+    if (activeGenreFilter === 'All') {
+      console.log('[Watchlist] Showing all', allRecommendations.length, 'recommendations');
+      return allRecommendations;
+    }
+
+    const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
+
+    if (targetGenreIds.length === 0) {
+      console.log('[Watchlist] No genre IDs found for:', activeGenreFilter);
+      return allRecommendations;
+    }
+
+    console.log(`[Watchlist] Filtering for genre: ${activeGenreFilter}, IDs: ${targetGenreIds}`);
+
+    const filtered = allRecommendations.filter((item: any) => {
+      const itemGenreIds = item.genre_ids || [];
+      const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+      return hasMatch;
+    });
+
+    console.log(`[Watchlist] Filtered to ${filtered.length} items`);
+    return filtered;
+  }, [activeGenreFilter, allRecommendations]);
 
   // ============================================================================
   // HELPER FUNCTIONS
@@ -114,41 +138,11 @@ export const WatchlistScreen: React.FC = () => {
     return [...baseFilters, ...topGenres, ...extraGenres];
   };
 
-  // Filter recommendations by genre
-  const filterRecommendationsByGenre = (items: UnifiedContent[], genreName: string): UnifiedContent[] => {
-    if (genreName === 'All') {
-      return items;
-    }
-
-    let targetGenreIds = GENRE_ID_MAP[genreName] || [];
-
-    if (targetGenreIds.length === 0) {
-      // Try to find by partial match
-      const matchKey = Object.keys(GENRE_ID_MAP).find(
-        key => key.toLowerCase().includes(genreName.toLowerCase()) ||
-               genreName.toLowerCase().includes(key.toLowerCase())
-      );
-      if (matchKey) {
-        targetGenreIds = GENRE_ID_MAP[matchKey];
-      }
-    }
-
-    console.log(`[Watchlist] Filtering for genre: ${genreName}, IDs: ${targetGenreIds}`);
-
-    const filtered = items.filter(item => {
-      // Handle different genre formats in the genres property
-      if (!item.genres || !Array.isArray(item.genres)) {
-        return false;
-      }
-
-      const itemGenreIds = item.genres.map((g: any) => typeof g === 'number' ? g : g.id);
-      const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
-      return hasMatch;
-    });
-
-    console.log(`[Watchlist] Filtered to ${filtered.length} items for genre: ${genreName}`);
-    return filtered;
-  };
+  // Handle genre filter tap - just update state, no side effects
+  const handleGenreFilterTap = useCallback((genre: string) => {
+    console.log('[Watchlist] Genre filter tapped:', genre);
+    setActiveGenreFilter(genre);
+  }, []);
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -236,7 +230,6 @@ export const WatchlistScreen: React.FC = () => {
         });
       } else {
         setAllRecommendations(recommendations);
-        setFilteredRecommendations(recommendations); // Initially show all
       }
       setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
     } catch (error) {
@@ -245,12 +238,6 @@ export const WatchlistScreen: React.FC = () => {
       setLoadingForYou(false);
     }
   };
-
-  // Filter recommendations when genre filter changes
-  useEffect(() => {
-    const filtered = filterRecommendationsByGenre(allRecommendations, activeGenreFilter);
-    setFilteredRecommendations(filtered);
-  }, [activeGenreFilter, allRecommendations, filterRecommendationsByGenre]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -523,10 +510,7 @@ export const WatchlistScreen: React.FC = () => {
                       borderColor: colors.border
                     }
                   ]}
-                  onPress={() => {
-                    console.log(`[Watchlist] Genre filter tapped: ${genre}`);
-                    setActiveGenreFilter(genre);
-                  }}
+                  onPress={() => handleGenreFilterTap(genre)}
                 >
                   <Text
                     style={[
