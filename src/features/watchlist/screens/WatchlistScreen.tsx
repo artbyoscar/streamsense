@@ -538,29 +538,38 @@ export const WatchlistScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Media Type Toggle */}
-            <View style={styles.mediaTypeToggle}>
-              {(['all', 'movie', 'tv'] as const).map((type) => (
-                <TouchableOpacity
-                  key={type}
-                  style={[
-                    styles.mediaTypeButton,
-                    {
-                      backgroundColor: mediaTypeFilter === type ? colors.primary : colors.card,
-                    },
-                  ]}
-                  onPress={() => setMediaTypeFilter(type)}
-                >
-                  <Text
+            {/* Media Type Segmented Control */}
+            <View style={styles.mediaTypeContainer}>
+              <View style={[styles.segmentedControl, { backgroundColor: colors.card }]}>
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'movie', label: '🎬 Movies' },
+                  { key: 'tv', label: '📺 TV Shows' },
+                ].map((item) => (
+                  <TouchableOpacity
+                    key={item.key}
                     style={[
-                      styles.mediaTypeText,
-                      { color: mediaTypeFilter === type ? COLORS.white : colors.text },
+                      styles.segmentButton,
+                      mediaTypeFilter === item.key && {
+                        backgroundColor: colors.primary,
+                      },
                     ]}
+                    onPress={() => setMediaTypeFilter(item.key as 'all' | 'movie' | 'tv')}
                   >
-                    {type === 'all' ? 'All' : type === 'movie' ? '🎬 Movies' : '📺 TV'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+                    <Text
+                      style={[
+                        styles.segmentText,
+                        {
+                          color: mediaTypeFilter === item.key ? COLORS.white : colors.text,
+                          fontWeight: mediaTypeFilter === item.key ? '600' : '400',
+                        },
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </View>
 
             {/* Genre Filter Chips */}
@@ -931,19 +940,22 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 8,
   },
-  mediaTypeToggle: {
-    flexDirection: 'row',
+  mediaTypeContainer: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    gap: 8,
   },
-  mediaTypeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+  segmentedControl: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
   },
-  mediaTypeText: {
+  segmentButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  segmentText: {
     fontSize: 14,
-    fontWeight: '600',
   },
 });
