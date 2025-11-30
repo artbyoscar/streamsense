@@ -91,6 +91,7 @@ export const WatchlistScreen: React.FC = () => {
   const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
+  const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [loadingForYou, setLoadingForYou] = useState(false);
 
   // Fetch trending for suggestions
@@ -100,31 +101,29 @@ export const WatchlistScreen: React.FC = () => {
   // DERIVED STATE - Use useMemo to avoid infinite loops
   // ============================================================================
 
-  // Filter recommendations by genre using useMemo
+  // Filter recommendations by media type and genre using useMemo
   const filteredRecommendations = useMemo(() => {
-    if (activeGenreFilter === 'All') {
-      console.log('[Watchlist] Showing all', allRecommendations.length, 'recommendations');
-      return allRecommendations;
+    let filtered = allRecommendations;
+
+    // Filter by media type first
+    if (mediaTypeFilter !== 'all') {
+      filtered = filtered.filter((item: any) => item.media_type === mediaTypeFilter);
     }
 
-    const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
-
-    if (targetGenreIds.length === 0) {
-      console.log('[Watchlist] No genre IDs found for:', activeGenreFilter);
-      return allRecommendations;
+    // Then filter by genre
+    if (activeGenreFilter !== 'All') {
+      const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
+      if (targetGenreIds.length > 0) {
+        filtered = filtered.filter((item: any) => {
+          const itemGenreIds = item.genre_ids || [];
+          return itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+        });
+      }
     }
 
-    console.log(`[Watchlist] Filtering for genre: ${activeGenreFilter}, IDs: ${targetGenreIds}`);
-
-    const filtered = allRecommendations.filter((item: any) => {
-      const itemGenreIds = item.genre_ids || [];
-      const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
-      return hasMatch;
-    });
-
-    console.log(`[Watchlist] Filtered to ${filtered.length} items`);
+    console.log(`[Watchlist] Filtered: ${filtered.length} items (media: ${mediaTypeFilter}, genre: ${activeGenreFilter})`);
     return filtered;
-  }, [activeGenreFilter, allRecommendations]);
+  }, [allRecommendations, activeGenreFilter, mediaTypeFilter]);
 
   // ============================================================================
   // HELPER FUNCTIONS
@@ -491,6 +490,31 @@ export const WatchlistScreen: React.FC = () => {
                   </Text>
                 )}
               </View>
+            </View>
+
+            {/* Media Type Toggle */}
+            <View style={styles.mediaTypeToggle}>
+              {(['all', 'movie', 'tv'] as const).map((type) => (
+                <TouchableOpacity
+                  key={type}
+                  style={[
+                    styles.mediaTypeButton,
+                    {
+                      backgroundColor: mediaTypeFilter === type ? colors.primary : colors.card,
+                    },
+                  ]}
+                  onPress={() => setMediaTypeFilter(type)}
+                >
+                  <Text
+                    style={[
+                      styles.mediaTypeText,
+                      { color: mediaTypeFilter === type ? COLORS.white : colors.text },
+                    ]}
+                  >
+                    {type === 'all' ? 'All' : type === 'movie' ? '🎬 Movies' : '📺 TV'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
 
             {/* Genre Filter Chips */}
@@ -860,5 +884,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
+  },
+  mediaTypeToggle: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  mediaTypeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  mediaTypeText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });
