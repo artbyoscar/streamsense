@@ -17,6 +17,13 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getUserValueScores } from '@/services/valueScore';
 import { getChurnRecommendations, type ChurnRecommendation } from '@/services/churnCalendar';
+import {
+  getAchievementProgress,
+  checkAchievements,
+  getTierColor,
+  type UserAchievement,
+  type Achievement
+} from '@/services/achievements';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -86,6 +93,12 @@ export const RecommendationsScreen: React.FC = () => {
   const [userGenres, setUserGenres] = useState<string[]>([]);
   const [valueScores, setValueScores] = useState<any[]>([]);
   const [churnRecs, setChurnRecs] = useState<ChurnRecommendation[]>([]);
+  const [achievements, setAchievements] = useState<{
+    unlocked: UserAchievement[];
+    locked: Achievement[];
+    totalPoints: number;
+    progress: number;
+  }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
 
   const loadData = useCallback(async () => {
     try {
@@ -187,6 +200,17 @@ export const RecommendationsScreen: React.FC = () => {
       const churn = await getChurnRecommendations(user.id);
       console.log('[Tips] Churn recommendations:', churn);
       setChurnRecs(churn);
+
+      // Check and award new achievements
+      const newAchievements = await checkAchievements(user.id);
+      if (newAchievements.length > 0) {
+        console.log('[Tips] New achievements unlocked:', newAchievements);
+      }
+
+      // Load achievement progress
+      const achievementData = await getAchievementProgress(user.id);
+      console.log('[Tips] Achievement progress:', achievementData);
+      setAchievements(achievementData);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -270,6 +294,107 @@ export const RecommendationsScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {/* Achievements Section */}
+        {achievements.unlocked.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              🏆 Achievements
+            </Text>
+
+            <View style={[styles.achievementCard, { backgroundColor: colors.card }]}>
+              {/* Progress Header */}
+              <View style={styles.achievementHeader}>
+                <View style={styles.achievementHeaderLeft}>
+                  <Text style={[styles.achievementPoints, { color: colors.primary }]}>
+                    {achievements.totalPoints} points
+                  </Text>
+                  <Text style={[styles.achievementCount, { color: colors.textSecondary }]}>
+                    {achievements.unlocked.length} of {achievements.unlocked.length + achievements.locked.length} unlocked
+                  </Text>
+                </View>
+                <Text style={[styles.achievementProgress, { color: colors.text }]}>
+                  {achievements.progress}%
+                </Text>
+              </View>
+
+              {/* Progress Bar */}
+              <View style={[styles.progressBarBg, { backgroundColor: colors.background }]}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      backgroundColor: colors.primary,
+                      width: `${achievements.progress}%`,
+                    },
+                  ]}
+                />
+              </View>
+
+              {/* Recent Achievements */}
+              <Text style={[styles.achievementSubtitle, { color: colors.textSecondary }]}>
+                Recent Unlocks
+              </Text>
+
+              {achievements.unlocked
+                .sort((a, b) => b.unlockedAt.getTime() - a.unlockedAt.getTime())
+                .slice(0, 3)
+                .map((ua) => {
+                  const tierColor = getTierColor(ua.achievement.tier);
+                  return (
+                    <View key={ua.achievementId} style={styles.achievementItem}>
+                      <View style={styles.achievementLeft}>
+                        <Text style={styles.achievementIcon}>{ua.achievement.icon}</Text>
+                        <View style={styles.achievementInfo}>
+                          <Text style={[styles.achievementName, { color: colors.text }]}>
+                            {ua.achievement.name}
+                          </Text>
+                          <Text style={[styles.achievementDesc, { color: colors.textSecondary }]}>
+                            {ua.achievement.description}
+                          </Text>
+                        </View>
+                      </View>
+                      <View
+                        style={[
+                          styles.tierBadge,
+                          { backgroundColor: `${tierColor}20` },
+                        ]}
+                      >
+                        <Text style={[styles.tierText, { color: tierColor }]}>
+                          {ua.achievement.tier.charAt(0).toUpperCase() + ua.achievement.tier.slice(1)}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+
+              {/* Locked Achievements Preview (Next 2) */}
+              {achievements.locked.length > 0 && (
+                <>
+                  <Text style={[styles.achievementSubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+                    Next Up
+                  </Text>
+
+                  {achievements.locked.slice(0, 2).map((achievement) => (
+                    <View key={achievement.id} style={[styles.achievementItem, { opacity: 0.5 }]}>
+                      <View style={styles.achievementLeft}>
+                        <Text style={styles.achievementIcon}>🔒</Text>
+                        <View style={styles.achievementInfo}>
+                          <Text style={[styles.achievementName, { color: colors.text }]}>
+                            {achievement.name}
+                          </Text>
+                          <Text style={[styles.achievementDesc, { color: colors.textSecondary }]}>
+                            {achievement.description}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
+          </>
+        )}
 
         {/* Value Analysis Section */}
         {valueScores.length > 0 && (
@@ -610,6 +735,24 @@ const styles = StyleSheet.create({
   upcomingLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8 },
   upcomingItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   upcomingText: { fontSize: 13, flex: 1 },
+  // Achievement Styles
+  achievementCard: { borderRadius: 16, padding: 20, marginBottom: 24 },
+  achievementHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  achievementHeaderLeft: { flex: 1 },
+  achievementPoints: { fontSize: 24, fontWeight: '700', marginBottom: 4 },
+  achievementCount: { fontSize: 13 },
+  achievementProgress: { fontSize: 28, fontWeight: '700' },
+  progressBarBg: { height: 8, borderRadius: 4, marginBottom: 20, overflow: 'hidden' },
+  progressBarFill: { height: '100%', borderRadius: 4 },
+  achievementSubtitle: { fontSize: 13, fontWeight: '600', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  achievementItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  achievementLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  achievementIcon: { fontSize: 32, marginRight: 12 },
+  achievementInfo: { flex: 1 },
+  achievementName: { fontSize: 16, fontWeight: '600', marginBottom: 2 },
+  achievementDesc: { fontSize: 13, lineHeight: 18 },
+  tierBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
+  tierText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
 });
 
 export default RecommendationsScreen;
