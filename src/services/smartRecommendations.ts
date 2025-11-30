@@ -187,7 +187,14 @@ export const getSmartRecommendations = async (
 
       const movies = (movieResponse.data?.results || [])
         .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => ({ ...item, media_type: 'movie' }));
+        .map((item: any) => ({
+          ...item,
+          media_type: 'movie',  // FORCE set media_type
+          // Normalize genre_ids from genres if needed
+          genre_ids: item.genre_ids || (item.genres?.map((g: any) =>
+            typeof g === 'number' ? g : g.id
+          )) || [],
+        }));
 
       console.log('[SmartRecs] Movies after filtering:', movies.length, 'of', movieResponse.data?.results?.length);
 
@@ -218,7 +225,14 @@ export const getSmartRecommendations = async (
 
       const tvShows = (tvResponse.data?.results || [])
         .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => ({ ...item, media_type: 'tv' }));
+        .map((item: any) => ({
+          ...item,
+          media_type: 'tv',  // FORCE set media_type
+          // Normalize genre_ids from genres if needed
+          genre_ids: item.genre_ids || (item.genres?.map((g: any) =>
+            typeof g === 'number' ? g : g.id
+          )) || [],
+        }));
 
       console.log('[SmartRecs] TV after filtering:', tvShows.length, 'of', tvResponse.data?.results?.length);
 
