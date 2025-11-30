@@ -35,7 +35,8 @@ const GENRE_ID_MAP: Record<string, number[]> = {
   'Adventure': [12],
   'Action': [28, 10759], // Movie + TV Action
   'Science Fiction': [878, 10765], // Movie Sci-Fi + TV Sci-Fi & Fantasy
-  'Animation': [16],
+  'Animation': [16],        // Western animation/cartoons
+  'Anime': [16],            // Japanese anime (same ID, filtered by origin)
   'Comedy': [35],
   'Thriller': [53],
   'Horror': [27],
@@ -161,6 +162,20 @@ export const WatchlistScreen: React.FC = () => {
           }
 
           const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+
+          // Special handling for Anime vs Animation
+          if (activeGenreFilter === 'Anime') {
+            // Must be animation (16) AND Japanese origin
+            const isAnimated = itemGenreIds.includes(16);
+            const isJapanese = item.original_language === 'ja';
+            return isAnimated && isJapanese;
+          } else if (activeGenreFilter === 'Animation') {
+            // Must be animation (16) AND NOT Japanese origin
+            const isAnimated = itemGenreIds.includes(16);
+            const isJapanese = item.original_language === 'ja';
+            return isAnimated && !isJapanese;
+          }
+
           return hasMatch;
         });
         console.log(`[Watchlist] After genre filter (${activeGenreFilter}): ${filtered.length} items`);
@@ -187,6 +202,7 @@ export const WatchlistScreen: React.FC = () => {
           media_type: anyItem.media_type,
           genre_ids: anyItem.genre_ids,
           genres: anyItem.genres,
+          original_language: anyItem.original_language,
           first_air_date: anyItem.first_air_date,
           release_date: anyItem.release_date,
         });
@@ -201,7 +217,7 @@ export const WatchlistScreen: React.FC = () => {
   // Get available genre filters
   const getGenreFilters = (): string[] => {
     const baseFilters = ['All'];
-    const topGenres = ['Drama', 'Adventure', 'Action', 'Science Fiction', 'Animation', 'Comedy'];
+    const topGenres = ['Drama', 'Adventure', 'Action', 'Science Fiction', 'Animation', 'Anime', 'Comedy'];
     const extraGenres = ['Thriller', 'Horror', 'Romance', 'Documentary', 'Crime', 'Mystery', 'Fantasy', 'Family'];
     return [...baseFilters, ...topGenres, ...extraGenres];
   };
