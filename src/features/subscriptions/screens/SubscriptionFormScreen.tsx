@@ -251,8 +251,9 @@ export const SubscriptionFormScreen: React.FC = () => {
         style={[
           styles.header,
           {
-            paddingTop: insets.top > 0 ? insets.top + 8 : 20,
+            paddingTop: Math.max(insets.top, 44) + 8,
             backgroundColor: colors.background,
+            borderBottomColor: colors.border,
           },
         ]}
       >
@@ -272,8 +273,9 @@ export const SubscriptionFormScreen: React.FC = () => {
         style={styles.scrollView}
         contentContainerStyle={[
           styles.contentContainer,
-          { paddingBottom: insets.bottom + 24 },
+          { paddingBottom: insets.bottom + 100 },
         ]}
+        keyboardShouldPersistTaps="handled"
       >
       <Card style={styles.formCard}>
         <Text style={styles.formSubtitle}>
@@ -561,6 +563,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 16,
+    borderBottomWidth: 1,
   },
   headerTitle: {
     fontSize: 24,
