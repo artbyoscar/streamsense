@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/hooks/useTheme';
+import { useTheme } from '@/providers/ThemeProvider';
+import { ModalHeader } from '@/components/ModalHeader';
 
 interface PlaidConnectionScreenProps {
   onClose: () => void;
@@ -55,19 +56,8 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header with proper SafeArea offset */}
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Connect Bank Account
-        </Text>
-        <TouchableOpacity
-          style={styles.closeButton}
-          onPress={onClose}
-          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-        >
-          <Ionicons name="close" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
+      {/* Reusable Modal Header with SafeArea */}
+      <ModalHeader title="Connect Bank Account" onClose={onClose} />
 
       <ScrollView
         style={styles.scrollView}
@@ -159,20 +149,6 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  closeButton: {
-    padding: 8,
   },
   scrollView: {
     flex: 1,

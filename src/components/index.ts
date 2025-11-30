@@ -41,3 +41,6 @@ export { ToastProvider, useToast } from './Toast';
 export type { ToastType, ToastOptions } from './Toast';
 
 export { OfflineBanner } from './OfflineBanner';
+
+export { ModalHeader } from './ModalHeader';
+export type { ModalHeaderProps } from './ModalHeader';
