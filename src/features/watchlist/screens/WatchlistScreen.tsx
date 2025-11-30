@@ -101,35 +101,73 @@ export const WatchlistScreen: React.FC = () => {
   // DERIVED STATE - Use useMemo to avoid infinite loops
   // ============================================================================
 
-  // Filter recommendations by media type and genre using useMemo
+  // ROBUST filtering that handles different data structures
   const filteredRecommendations = useMemo(() => {
-    let filtered = allRecommendations;
-
-    // Filter by media type first
-    if (mediaTypeFilter !== 'all') {
-      filtered = filtered.filter((item: any) => item.media_type === mediaTypeFilter);
+    if (!allRecommendations || allRecommendations.length === 0) {
+      console.log('[Watchlist] No recommendations to filter');
+      return [];
     }
 
-    // Then filter by genre
+    let filtered = [...allRecommendations];
+
+    // Debug: Log first item structure
+    if (filtered.length > 0) {
+      const sample = filtered[0] as any;
+      console.log('[Watchlist] Sample item structure:', {
+        id: sample.id,
+        title: sample.title,
+        media_type: sample.media_type,
+        genre_ids: sample.genre_ids,
+        genres: sample.genres,
+      });
+    }
+
+    // Filter by media type
+    if (mediaTypeFilter !== 'all') {
+      filtered = filtered.filter((item: any) => {
+        // Check media_type field
+        if (item.media_type) {
+          return item.media_type === mediaTypeFilter;
+        }
+        // Fallback: Check if it has 'title' (movie) or 'name' (TV)
+        if (mediaTypeFilter === 'movie') {
+          return item.title && !item.first_air_date;
+        }
+        if (mediaTypeFilter === 'tv') {
+          return item.name || item.first_air_date;
+        }
+        return true;
+      });
+      console.log(`[Watchlist] After media type filter (${mediaTypeFilter}): ${filtered.length} items`);
+    }
+
+    // Filter by genre
     if (activeGenreFilter !== 'All') {
       const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
+
       if (targetGenreIds.length > 0) {
         filtered = filtered.filter((item: any) => {
-          // Get genre IDs from either field
+          // Try genre_ids first (array of numbers)
           let itemGenreIds: number[] = [];
 
           if (Array.isArray(item.genre_ids)) {
             itemGenreIds = item.genre_ids;
-          } else if (Array.isArray(item.genres)) {
-            itemGenreIds = item.genres.map((g: any) => typeof g === 'number' ? g : g.id);
+          }
+          // Try genres as array of objects with id
+          else if (Array.isArray(item.genres)) {
+            itemGenreIds = item.genres.map((g: any) =>
+              typeof g === 'number' ? g : (g.id || 0)
+            );
           }
 
-          return itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+          const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+          return hasMatch;
         });
+        console.log(`[Watchlist] After genre filter (${activeGenreFilter}): ${filtered.length} items`);
       }
     }
 
-    console.log(`[Watchlist] Filtered: ${filtered.length} items (media: ${mediaTypeFilter}, genre: ${activeGenreFilter})`);
+    console.log(`[Watchlist] Final filtered: ${filtered.length} items`);
     return filtered;
   }, [allRecommendations, activeGenreFilter, mediaTypeFilter]);
 
