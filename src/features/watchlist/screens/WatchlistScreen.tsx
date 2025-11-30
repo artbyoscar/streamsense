@@ -115,7 +115,15 @@ export const WatchlistScreen: React.FC = () => {
       const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
       if (targetGenreIds.length > 0) {
         filtered = filtered.filter((item: any) => {
-          const itemGenreIds = item.genre_ids || [];
+          // Get genre IDs from either field
+          let itemGenreIds: number[] = [];
+
+          if (Array.isArray(item.genre_ids)) {
+            itemGenreIds = item.genre_ids;
+          } else if (Array.isArray(item.genres)) {
+            itemGenreIds = item.genres.map((g: any) => typeof g === 'number' ? g : g.id);
+          }
+
           return itemGenreIds.some((id: number) => targetGenreIds.includes(id));
         });
       }
