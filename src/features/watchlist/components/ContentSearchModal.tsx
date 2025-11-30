@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Switch,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -28,6 +29,7 @@ import {
   getDefaultCategories,
   type ContentCategory,
 } from '@/services/contentBrowse';
+import { getUserProviderIds, filterByUserServices } from '@/services/watchProviders';
 import { ContentDetailModal } from './ContentDetailModal';
 import type { TMDbMultiSearchResult, UnifiedContent } from '@/types/tmdb';
 import { COLORS } from '@/components';
@@ -54,6 +56,12 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [loadingMore, setLoadingMore] = useState<string | null>(null);
 
+  // Free to Me filter state
+  const [freeToMeOnly, setFreeToMeOnly] = useState(false);
+  const [userProviderIds, setUserProviderIds] = useState<number[]>([]);
+  const [availableContentIds, setAvailableContentIds] = useState<Set<number>>(new Set());
+  const [isFilteringContent, setIsFilteringContent] = useState(false);
+
   // Debounce search query
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -61,6 +69,57 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
     }, 300);
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Load user provider IDs when modal opens
+  useEffect(() => {
+    if (visible && user?.id) {
+      getUserProviderIds(user.id).then(ids => {
+        setUserProviderIds(ids);
+        console.log('[ContentSearch] User provider IDs:', ids);
+      });
+    }
+  }, [visible, user?.id]);
+
+  // Filter browse content when Free to Me toggle changes
+  useEffect(() => {
+    if (!freeToMeOnly || userProviderIds.length === 0) {
+      setAvailableContentIds(new Set());
+      return;
+    }
+
+    const filterContent = async () => {
+      setIsFilteringContent(true);
+
+      try {
+        // Collect all unique content items from browse content
+        const allContent: Array<{ id: number; type: 'movie' | 'tv' }> = [];
+        const seenIds = new Set<number>();
+
+        browseContent.forEach(categoryItems => {
+          categoryItems.forEach(item => {
+            if (!seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              allContent.push({ id: item.id, type: item.type });
+            }
+          });
+        });
+
+        console.log('[ContentSearch] Filtering', allContent.length, 'items by user services');
+
+        // Filter by user's services
+        const available = await filterByUserServices(allContent, userProviderIds);
+        setAvailableContentIds(available);
+
+        console.log('[ContentSearch] Found', available.size, 'available items');
+      } catch (error) {
+        console.error('[ContentSearch] Error filtering content:', error);
+      } finally {
+        setIsFilteringContent(false);
+      }
+    };
+
+    filterContent();
+  }, [freeToMeOnly, browseContent, userProviderIds]);
 
   // Load browse categories when modal opens
   useEffect(() => {
@@ -265,6 +324,38 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
           )}
         </View>
 
+        {/* Free to Me Toggle */}
+        {userProviderIds.length > 0 && (
+          <View style={[styles.filterContainer, { backgroundColor: colors.card }]}>
+            <View style={styles.filterRow}>
+              <View style={styles.filterLabelRow}>
+                <MaterialCommunityIcons
+                  name="television-play"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={[styles.filterLabel, { color: colors.text }]}>
+                  Free to Me
+                </Text>
+              </View>
+              <Switch
+                value={freeToMeOnly}
+                onValueChange={setFreeToMeOnly}
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={freeToMeOnly ? '#FFFFFF' : '#f4f3f4'}
+              />
+            </View>
+            {freeToMeOnly && (
+              <Text style={[styles.filterDescription, { color: colors.textSecondary }]}>
+                {isFilteringContent
+                  ? 'Filtering content...'
+                  : `Showing only content available on your ${userProviderIds.length} subscription${userProviderIds.length > 1 ? 's' : ''}`
+                }
+              </Text>
+            )}
+          </View>
+        )}
+
         {/* Results */}
         {debouncedQuery.length === 0 ? (
           // Browse Mode - Show categories when not searching
@@ -289,7 +380,9 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.categoryScroll}
                     >
-                      {browseContent.get(category.id)?.map(item => (
+                      {browseContent.get(category.id)
+                        ?.filter(item => !freeToMeOnly || availableContentIds.has(item.id))
+                        .map(item => (
                         <TouchableOpacity
                           key={`${category.id}-${item.id}`}
                           onPress={() => handleSelectContent(item)}
@@ -340,7 +433,11 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
         ) : data && data.results.length > 0 ? (
           // Search Results
           <FlatList
-            data={data.results}
+            data={data.results.filter((item: TMDbMultiSearchResult) =>
+              !freeToMeOnly ||
+              availableContentIds.has(item.id) ||
+              (item.media_type !== 'movie' && item.media_type !== 'tv')
+            )}
             renderItem={renderSearchResult}
             keyExtractor={(item) => `${item.media_type}-${item.id}`}
             contentContainerStyle={styles.listContainer}
@@ -408,6 +505,32 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
+  },
+  filterContainer: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  filterLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  filterDescription: {
+    fontSize: 13,
+    marginTop: 8,
+    lineHeight: 18,
   },
   listContainer: {
     paddingHorizontal: 16,
