@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,11 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  Pressable,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '@/providers/ThemeProvider';
-import { ModalHeader } from '@/components/ModalHeader';
-import { useAuth } from '@/features/auth';
+import { useTheme } from '@/hooks/useTheme';
 
 interface PlaidConnectionScreenProps {
   onClose: () => void;
@@ -22,26 +21,32 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const { user } = useAuth();
 
-  // Ready for future Plaid integration when SDK becomes compatible
-  useEffect(() => {
-    if (user?.id) {
-      console.log('[PlaidConnection] User authenticated:', user.id);
-      // When Plaid SDK becomes available:
-      // initializePlaid();
+  console.log('[PlaidScreen] Rendering, onClose exists:', !!onClose);
+
+  const handleClose = () => {
+    console.log('[PlaidScreen] Close button pressed');
+    if (onClose) {
+      onClose();
+    } else {
+      console.error('[PlaidScreen] onClose is undefined!');
     }
-  }, [user?.id]);
+  };
 
   const handleLearnMore = () => {
     Alert.alert(
       'Plaid SDK Not Available',
       'The Plaid Link SDK is not compatible with Expo SDK 54. Your Plaid backend is configured correctly.\n\nOptions:\n• Use manual subscription entry for now\n• Wait for an updated Plaid SDK\n• Eject to bare workflow (advanced)\n\nYour subscriptions can still be tracked manually!',
       [
-        { text: 'Use Manual Entry', onPress: onClose },
+        { text: 'Use Manual Entry', onPress: handleClose },
         { text: 'OK', style: 'cancel' },
       ]
     );
+  };
+
+  const handleManualEntry = () => {
+    console.log('[PlaidScreen] Manual entry pressed');
+    handleClose();
   };
 
   const features = [
@@ -67,8 +72,27 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Reusable Modal Header with SafeArea */}
-      <ModalHeader title="Connect Bank Account" onClose={onClose} />
+      {/* Single Header with proper spacing */}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top > 0 ? insets.top + 8 : 20,
+            backgroundColor: colors.background,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          Connect Your Bank
+        </Text>
+        <Pressable
+          style={styles.closeButton}
+          onPress={handleClose}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        >
+          <Ionicons name="close" size={28} color={colors.text} />
+        </Pressable>
+      </View>
 
       <ScrollView
         style={styles.scrollView}
@@ -78,14 +102,10 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
         ]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.title, { color: colors.text }]}>
-          Connect Your Bank
-        </Text>
-
         {/* Feature Cards */}
         <View style={[styles.featuresCard, { backgroundColor: colors.card }]}>
           {features.map((feature, index) => (
-            <View key={index} style={styles.featureRow}>
+            <View key={feature.title} style={styles.featureRow}>
               <View
                 style={[
                   styles.featureIcon,
@@ -125,23 +145,23 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
         </View>
 
         {/* Learn More Button */}
-        <TouchableOpacity
+        <Pressable
           style={[styles.learnMoreButton, { backgroundColor: colors.primary }]}
           onPress={handleLearnMore}
         >
           <Ionicons name="business" size={20} color="#FFFFFF" />
           <Text style={styles.learnMoreText}>Learn More</Text>
-        </TouchableOpacity>
+        </Pressable>
 
-        {/* Manual Entry Button */}
-        <TouchableOpacity
+        {/* Manual Entry Button - THIS MUST WORK */}
+        <Pressable
           style={[styles.manualButton, { borderColor: colors.border }]}
-          onPress={onClose}
+          onPress={handleManualEntry}
         >
-          <Text style={[styles.manualButtonText, { color: colors.textSecondary }]}>
+          <Text style={[styles.manualButtonText, { color: colors.text }]}>
             Use Manual Entry Instead
           </Text>
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Test Credentials Info */}
         <View style={[styles.testInfo, { backgroundColor: colors.card }]}>
@@ -161,17 +181,31 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scrollView: {
     flex: 1,
   },
   content: {
     paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 24,
+    paddingTop: 8,
   },
   featuresCard: {
     borderRadius: 16,
@@ -236,12 +270,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 12,
-    borderWidth: 1,
+    borderWidth: 2,
     marginBottom: 24,
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   manualButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
   testInfo: {
     flexDirection: 'row',
