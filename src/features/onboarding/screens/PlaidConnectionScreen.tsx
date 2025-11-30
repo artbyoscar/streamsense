@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { ModalHeader } from '@/components/ModalHeader';
+import { useAuth } from '@/features/auth';
 
 interface PlaidConnectionScreenProps {
   onClose: () => void;
@@ -21,6 +22,16 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
 }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+
+  // Ready for future Plaid integration when SDK becomes compatible
+  useEffect(() => {
+    if (user?.id) {
+      console.log('[PlaidConnection] User authenticated:', user.id);
+      // When Plaid SDK becomes available:
+      // initializePlaid();
+    }
+  }, [user?.id]);
 
   const handleLearnMore = () => {
     Alert.alert(
