@@ -26,6 +26,33 @@ import { COLORS, EmptyState } from '@/components';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
 // ============================================================================
+// CONSTANTS
+// ============================================================================
+
+const GENRE_ID_MAP: Record<string, number[]> = {
+  'Drama': [18],
+  'Adventure': [12],
+  'Action': [28],
+  'Science Fiction': [878, 10765], // Movie + TV sci-fi
+  'Animation': [16],
+  'Comedy': [35],
+  'Thriller': [53],
+  'Horror': [27],
+  'Romance': [10749],
+  'Documentary': [99],
+  'Crime': [80],
+  'Mystery': [9648],
+  'Fantasy': [14, 10765],
+  'Family': [10751],
+  'War': [10752, 10768],
+  'History': [36],
+  'Music': [10402],
+  'Western': [37],
+  'Sci-Fi & Fantasy': [10765],
+  'Action & Adventure': [10759],
+};
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -69,11 +96,59 @@ export const WatchlistScreen: React.FC = () => {
   const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
   const [filteredRecommendations, setFilteredRecommendations] = useState<UnifiedContent[]>([]);
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
-  const [selectedGenreFilter, setSelectedGenreFilter] = useState<number | null>(null);
+  const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
   const [loadingForYou, setLoadingForYou] = useState(false);
 
   // Fetch trending for suggestions
   const { data: trending } = useTrending('week', 1);
+
+  // ============================================================================
+  // HELPER FUNCTIONS
+  // ============================================================================
+
+  // Get available genre filters
+  const getGenreFilters = (): string[] => {
+    const baseFilters = ['All'];
+    const topGenres = ['Drama', 'Adventure', 'Action', 'Science Fiction', 'Animation', 'Comedy'];
+    const extraGenres = ['Thriller', 'Horror', 'Romance', 'Documentary', 'Crime', 'Mystery', 'Fantasy', 'Family'];
+    return [...baseFilters, ...topGenres, ...extraGenres];
+  };
+
+  // Filter recommendations by genre
+  const filterRecommendationsByGenre = (items: UnifiedContent[], genreName: string): UnifiedContent[] => {
+    if (genreName === 'All') {
+      return items;
+    }
+
+    let targetGenreIds = GENRE_ID_MAP[genreName] || [];
+
+    if (targetGenreIds.length === 0) {
+      // Try to find by partial match
+      const matchKey = Object.keys(GENRE_ID_MAP).find(
+        key => key.toLowerCase().includes(genreName.toLowerCase()) ||
+               genreName.toLowerCase().includes(key.toLowerCase())
+      );
+      if (matchKey) {
+        targetGenreIds = GENRE_ID_MAP[matchKey];
+      }
+    }
+
+    console.log(`[Watchlist] Filtering for genre: ${genreName}, IDs: ${targetGenreIds}`);
+
+    const filtered = items.filter(item => {
+      // Handle different genre formats in the genres property
+      if (!item.genres || !Array.isArray(item.genres)) {
+        return false;
+      }
+
+      const itemGenreIds = item.genres.map((g: any) => typeof g === 'number' ? g : g.id);
+      const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
+      return hasMatch;
+    });
+
+    console.log(`[Watchlist] Filtered to ${filtered.length} items for genre: ${genreName}`);
+    return filtered;
+  };
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -173,20 +248,9 @@ export const WatchlistScreen: React.FC = () => {
 
   // Filter recommendations when genre filter changes
   useEffect(() => {
-    if (!selectedGenreFilter) {
-      setFilteredRecommendations(allRecommendations);
-      console.log('[Watchlist] Showing all', allRecommendations.length, 'recommendations');
-    } else {
-      const filtered = allRecommendations.filter(item =>
-        item.genres && Array.isArray(item.genres) && item.genres.some(g =>
-          typeof g === 'number' ? g === selectedGenreFilter : g.id === selectedGenreFilter
-        )
-      );
-      setFilteredRecommendations(filtered);
-      const selectedGenreName = userTopGenres.find(g => g.id === selectedGenreFilter)?.name;
-      console.log('[Watchlist] Filtered to', filtered.length, 'items for genre:', selectedGenreName);
-    }
-  }, [selectedGenreFilter, allRecommendations, userTopGenres]);
+    const filtered = filterRecommendationsByGenre(allRecommendations, activeGenreFilter);
+    setFilteredRecommendations(filtered);
+  }, [activeGenreFilter, allRecommendations, filterRecommendationsByGenre]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -429,71 +493,52 @@ export const WatchlistScreen: React.FC = () => {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   ✨ For You
                 </Text>
-                {userTopGenres.length > 0 && !selectedGenreFilter && (
+                {userTopGenres.length > 0 && activeGenreFilter === 'All' && (
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
                     Based on {userTopGenres.slice(0, 2).map(g => g.name).join(' & ')}
                   </Text>
                 )}
-                {selectedGenreFilter && (
+                {activeGenreFilter !== 'All' && (
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                    Filtered by {userTopGenres.find(g => g.id === selectedGenreFilter)?.name}
+                    Filtered by {activeGenreFilter}
                   </Text>
                 )}
               </View>
             </View>
 
             {/* Genre Filter Chips */}
-            {userTopGenres.length > 0 && (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.filterChipsContainer}
-              >
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterChipsContainer}
+            >
+              {getGenreFilters().map((genre) => (
                 <TouchableOpacity
+                  key={genre}
                   style={[
                     styles.filterChip,
-                    !selectedGenreFilter && styles.filterChipActive,
+                    activeGenreFilter === genre && styles.filterChipActive,
                     {
-                      backgroundColor: !selectedGenreFilter ? colors.primary : colors.card,
+                      backgroundColor: activeGenreFilter === genre ? colors.primary : colors.card,
                       borderColor: colors.border
                     }
                   ]}
-                  onPress={() => setSelectedGenreFilter(null)}
+                  onPress={() => {
+                    console.log(`[Watchlist] Genre filter tapped: ${genre}`);
+                    setActiveGenreFilter(genre);
+                  }}
                 >
                   <Text
                     style={[
                       styles.filterChipText,
-                      { color: !selectedGenreFilter ? COLORS.white : colors.text }
+                      { color: activeGenreFilter === genre ? COLORS.white : colors.text }
                     ]}
                   >
-                    All
+                    {genre}
                   </Text>
                 </TouchableOpacity>
-                {userTopGenres.map(genre => (
-                  <TouchableOpacity
-                    key={genre.id}
-                    style={[
-                      styles.filterChip,
-                      selectedGenreFilter === genre.id && styles.filterChipActive,
-                      {
-                        backgroundColor: selectedGenreFilter === genre.id ? colors.primary : colors.card,
-                        borderColor: colors.border
-                      }
-                    ]}
-                    onPress={() => setSelectedGenreFilter(genre.id)}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        { color: selectedGenreFilter === genre.id ? COLORS.white : colors.text }
-                      ]}
-                    >
-                      {genre.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            )}
+              ))}
+            </ScrollView>
 
             <ScrollView
               horizontal
