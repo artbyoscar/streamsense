@@ -10,6 +10,7 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import {
   type UserAchievement,
   type Achievement
 } from '@/services/achievements';
+import { getPileOfShame, type ShameItem } from '@/services/pileOfShame';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -99,6 +101,7 @@ export const RecommendationsScreen: React.FC = () => {
     totalPoints: number;
     progress: number;
   }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
+  const [pileOfShame, setPileOfShame] = useState<ShameItem[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -211,6 +214,11 @@ export const RecommendationsScreen: React.FC = () => {
       const achievementData = await getAchievementProgress(user.id);
       console.log('[Tips] Achievement progress:', achievementData);
       setAchievements(achievementData);
+
+      // Load pile of shame
+      const shame = await getPileOfShame(user.id);
+      console.log('[Tips] Pile of shame:', shame);
+      setPileOfShame(shame);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -393,6 +401,88 @@ export const RecommendationsScreen: React.FC = () => {
                 </>
               )}
             </View>
+          </>
+        )}
+
+        {/* Pile of Shame Section */}
+        {pileOfShame.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              📚 Your Pile of Shame
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+              High-rated content you're paying for but haven't watched yet
+            </Text>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.shameScrollContainer}
+            >
+              {pileOfShame.slice(0, 6).map((item) => (
+                <View
+                  key={`${item.type}-${item.id}`}
+                  style={[styles.shameCard, { backgroundColor: colors.card }]}
+                >
+                  {/* Poster */}
+                  {item.posterPath ? (
+                    <Image
+                      source={{ uri: `https://image.tmdb.org/t/p/w342${item.posterPath}` }}
+                      style={styles.shamePoster}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.shamePoster, { backgroundColor: colors.background }]}>
+                      <Ionicons name="film-outline" size={40} color={colors.textSecondary} />
+                    </View>
+                  )}
+
+                  {/* Rating Badge */}
+                  <View style={[styles.shameRatingBadge, { backgroundColor: 'rgba(0, 0, 0, 0.8)' }]}>
+                    <Ionicons name="star" size={12} color="#FFD700" />
+                    <Text style={styles.shameRatingText}>
+                      {item.rating.toFixed(1)}
+                    </Text>
+                  </View>
+
+                  {/* Info */}
+                  <View style={styles.shameInfo}>
+                    <Text
+                      style={[styles.shameTitle, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.shameYear, { color: colors.textSecondary }]}>
+                      {item.releaseYear} • {item.type === 'movie' ? '🎬' : '📺'}
+                    </Text>
+                    {item.genres.length > 0 && (
+                      <Text
+                        style={[styles.shameGenres, { color: colors.textSecondary }]}
+                        numberOfLines={1}
+                      >
+                        {item.genres.join(', ')}
+                      </Text>
+                    )}
+                    <View style={[styles.shameMessage, { backgroundColor: colors.background }]}>
+                      <Ionicons name="information-circle" size={14} color={colors.primary} />
+                      <Text
+                        style={[styles.shameMessageText, { color: colors.textSecondary }]}
+                        numberOfLines={2}
+                      >
+                        {item.message}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            {pileOfShame.length > 6 && (
+              <Text style={[styles.shameFooter, { color: colors.textSecondary }]}>
+                +{pileOfShame.length - 6} more highly-rated titles waiting for you
+              </Text>
+            )}
           </>
         )}
 
@@ -753,6 +843,20 @@ const styles = StyleSheet.create({
   achievementDesc: { fontSize: 13, lineHeight: 18 },
   tierBadge: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   tierText: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  // Pile of Shame Styles
+  sectionSubtitle: { fontSize: 14, marginBottom: 16, marginTop: -8 },
+  shameScrollContainer: { paddingRight: 20, gap: 12 },
+  shameCard: { width: 160, borderRadius: 12, overflow: 'hidden', marginRight: 0 },
+  shamePoster: { width: '100%', height: 200, backgroundColor: '#1F2937', justifyContent: 'center', alignItems: 'center' },
+  shameRatingBadge: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
+  shameRatingText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  shameInfo: { padding: 12 },
+  shameTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4, lineHeight: 18 },
+  shameYear: { fontSize: 12, marginBottom: 4 },
+  shameGenres: { fontSize: 11, marginBottom: 8 },
+  shameMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, padding: 8, borderRadius: 8, marginTop: 4 },
+  shameMessageText: { fontSize: 11, flex: 1, lineHeight: 14 },
+  shameFooter: { fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 8 },
 });
 
 export default RecommendationsScreen;
