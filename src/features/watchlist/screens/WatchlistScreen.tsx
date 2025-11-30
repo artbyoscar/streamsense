@@ -172,6 +172,29 @@ export const WatchlistScreen: React.FC = () => {
   }, [allRecommendations, activeGenreFilter, mediaTypeFilter]);
 
   // ============================================================================
+  // DEBUG - Log item structure when recommendations load
+  // ============================================================================
+
+  useEffect(() => {
+    if (allRecommendations.length > 0) {
+      console.log('[Watchlist] DEBUG - First 3 items structure:');
+      allRecommendations.slice(0, 3).forEach((item, i) => {
+        const anyItem = item as any;
+        console.log(`Item ${i}:`, {
+          id: anyItem.id,
+          title: anyItem.title,
+          name: anyItem.name,
+          media_type: anyItem.media_type,
+          genre_ids: anyItem.genre_ids,
+          genres: anyItem.genres,
+          first_air_date: anyItem.first_air_date,
+          release_date: anyItem.release_date,
+        });
+      });
+    }
+  }, [allRecommendations]);
+
+  // ============================================================================
   // HELPER FUNCTIONS
   // ============================================================================
 
