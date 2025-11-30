@@ -15,6 +15,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
+import { getUserValueScores } from '@/services/valueScore';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -82,6 +83,7 @@ export const RecommendationsScreen: React.FC = () => {
   const [serviceRecs, setServiceRecs] = useState<any[]>([]);
   const [spending, setSpending] = useState({ monthly: 0, yearly: 0, count: 0 });
   const [userGenres, setUserGenres] = useState<string[]>([]);
+  const [valueScores, setValueScores] = useState<any[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -173,6 +175,11 @@ export const RecommendationsScreen: React.FC = () => {
       })));
 
       setServiceRecs(scored);
+
+      // Load value scores
+      const scores = await getUserValueScores(user.id);
+      console.log('[Tips] Value scores:', scores);
+      setValueScores(scores);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -256,6 +263,105 @@ export const RecommendationsScreen: React.FC = () => {
             </View>
           </View>
         </View>
+
+        {/* Value Analysis Section */}
+        {valueScores.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              💎 Subscription Value Analysis
+            </Text>
+
+            {valueScores.map((score) => {
+              // Determine color based on rating
+              let ratingColor: string;
+              let ratingIcon: string;
+
+              if (score.rating === 'excellent') {
+                ratingColor = '#22C55E';
+                ratingIcon = 'checkmark-circle';
+              } else if (score.rating === 'good') {
+                ratingColor = '#84CC16';
+                ratingIcon = 'thumbs-up';
+              } else if (score.rating === 'fair') {
+                ratingColor = '#EAB308';
+                ratingIcon = 'warning';
+              } else if (score.rating === 'poor') {
+                ratingColor = '#EF4444';
+                ratingIcon = 'close-circle';
+              } else {
+                ratingColor = '#9CA3AF';
+                ratingIcon = 'help-circle';
+              }
+
+              return (
+                <View
+                  key={score.subscriptionId}
+                  style={[styles.valueCard, { backgroundColor: colors.card }]}
+                >
+                  {/* Header */}
+                  <View style={styles.valueCardHeader}>
+                    <Text style={[styles.valueServiceName, { color: colors.text }]}>
+                      {score.serviceName}
+                    </Text>
+                    <View
+                      style={[
+                        styles.ratingBadge,
+                        { backgroundColor: `${ratingColor}20` }
+                      ]}
+                    >
+                      <Ionicons name={ratingIcon as any} size={16} color={ratingColor} />
+                      <Text style={[styles.ratingText, { color: ratingColor }]}>
+                        {score.rating === 'unknown' ? 'No Data' : score.rating.charAt(0).toUpperCase() + score.rating.slice(1)}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Value Metrics */}
+                  <View style={styles.valueMetricsRow}>
+                    <View style={styles.valueMetric}>
+                      <Text style={[styles.valueMetricAmount, { color: ratingColor }]}>
+                        ${score.costPerHour.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.valueMetricLabel, { color: colors.textSecondary }]}>
+                        per hour
+                      </Text>
+                    </View>
+                    <View style={[styles.valueMetricDivider, { backgroundColor: colors.textSecondary }]} />
+                    <View style={styles.valueMetric}>
+                      <Text style={[styles.valueMetricAmount, { color: colors.text }]}>
+                        ${score.monthlyCost.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.valueMetricLabel, { color: colors.textSecondary }]}>
+                        monthly
+                      </Text>
+                    </View>
+                    <View style={[styles.valueMetricDivider, { backgroundColor: colors.textSecondary }]} />
+                    <View style={styles.valueMetric}>
+                      <Text style={[styles.valueMetricAmount, { color: colors.text }]}>
+                        {score.totalWatchHours.toFixed(1)}h
+                      </Text>
+                      <Text style={[styles.valueMetricLabel, { color: colors.textSecondary }]}>
+                        watched
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Recommendation */}
+                  <View style={[styles.recommendationBox, { backgroundColor: colors.background }]}>
+                    <Ionicons
+                      name="bulb-outline"
+                      size={16}
+                      color={colors.textSecondary}
+                    />
+                    <Text style={[styles.recommendationText, { color: colors.textSecondary }]}>
+                      {score.recommendation}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </>
+        )}
 
         {/* Service Recommendations */}
         <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -363,6 +469,19 @@ const styles = StyleSheet.create({
   tipContent: { flex: 1 },
   tipTitle: { fontSize: 16, fontWeight: '600', marginBottom: 4 },
   tipDescription: { fontSize: 14, lineHeight: 20 },
+  // Value Analysis Styles
+  valueCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
+  valueCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  valueServiceName: { fontSize: 18, fontWeight: '700' },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  ratingText: { fontSize: 13, fontWeight: '600' },
+  valueMetricsRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
+  valueMetric: { alignItems: 'center', flex: 1 },
+  valueMetricAmount: { fontSize: 22, fontWeight: '700' },
+  valueMetricLabel: { fontSize: 11, marginTop: 4 },
+  valueMetricDivider: { width: 1, height: 32, opacity: 0.2 },
+  recommendationBox: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, gap: 8 },
+  recommendationText: { fontSize: 13, flex: 1, lineHeight: 18 },
 });
 
 export default RecommendationsScreen;
