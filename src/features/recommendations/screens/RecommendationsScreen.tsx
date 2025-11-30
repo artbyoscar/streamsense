@@ -95,13 +95,27 @@ export const RecommendationsScreen: React.FC = () => {
       }
 
       // Load subscriptions for spending
-      const { data: subs } = await supabase
+      const { data: subs, error: subsError } = await supabase
         .from('user_subscriptions')
         .select('*')
         .eq('user_id', user.id)
         .eq('status', 'active');
 
-      const monthly = (subs || []).reduce((sum, s) => sum + (s.monthly_cost || 0), 0);
+      if (subsError) {
+        console.error('[Tips] Error loading subscriptions:', subsError);
+      }
+
+      console.log('[Tips] Loaded subscriptions:', subs);
+
+      // The monthly_cost field might be named differently - try multiple field names
+      const monthly = (subs || []).reduce((sum, s) => {
+        const cost = s.monthly_cost || s.cost || s.price || 0;
+        console.log('[Tips] Sub:', s.service_name || s.name, 'Cost:', cost);
+        return sum + cost;
+      }, 0);
+
+      console.log('[Tips] Total monthly:', monthly);
+
       setSpending({
         monthly,
         yearly: monthly * 12,
