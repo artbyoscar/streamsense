@@ -11,9 +11,12 @@ import {
   TouchableOpacity,
   Platform,
   Alert,
+  Pressable,
 } from 'react-native';
 import { Text, TextInput as PaperInput, Menu, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,6 +29,7 @@ import {
 } from '../hooks/useSubscriptions';
 import { fetchStreamingServices } from '@/services/streamingServices';
 import { COLORS, Card, Button, LoadingScreen } from '@/components';
+import { useTheme } from '@/providers/ThemeProvider';
 import type { BillingCycle, StreamingService } from '@/types';
 
 // ============================================================================
@@ -73,6 +77,8 @@ export const SubscriptionFormScreen: React.FC = () => {
   const route = useRoute<RouteProp<RouteParams, 'SubscriptionForm'>>();
   const subscriptionId = route.params?.subscriptionId;
   const isEditMode = !!subscriptionId;
+  const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   // State
   const [streamingServices, setStreamingServices] = useState<StreamingService[]>([]);
@@ -239,11 +245,37 @@ export const SubscriptionFormScreen: React.FC = () => {
   // ========================================================================
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <Card style={styles.formCard}>
-        <Text style={styles.formTitle}>
-          {isEditMode ? 'Edit Subscription' : 'Add New Subscription'}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header with SafeArea */}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top > 0 ? insets.top + 8 : 20,
+            backgroundColor: colors.background,
+          },
+        ]}
+      >
+        <Text style={[styles.headerTitle, { color: colors.text }]}>
+          {isEditMode ? 'Edit Subscription' : 'Add Subscription'}
         </Text>
+        <Pressable
+          style={styles.closeButton}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+        >
+          <Ionicons name="close" size={28} color={colors.text} />
+        </Pressable>
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.contentContainer,
+          { paddingBottom: insets.bottom + 24 },
+        ]}
+      >
+      <Card style={styles.formCard}>
         <Text style={styles.formSubtitle}>
           {isEditMode
             ? 'Update your subscription details'
@@ -511,6 +543,7 @@ export const SubscriptionFormScreen: React.FC = () => {
 
       <View style={styles.bottomPadding} />
     </ScrollView>
+    </View>
   );
 };
 
@@ -521,7 +554,28 @@ export const SubscriptionFormScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(128, 128, 128, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scrollView: {
+    flex: 1,
   },
   contentContainer: {
     padding: 20,
