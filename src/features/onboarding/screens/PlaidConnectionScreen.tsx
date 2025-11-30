@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useAuth } from '@/services/auth';
 import { createLinkToken } from '@/services/plaid';
 
 interface PlaidConnectionScreenProps {
@@ -22,19 +23,28 @@ export const PlaidConnectionScreen: React.FC<PlaidConnectionScreenProps> = ({
   onSuccess,
 }) => {
   const { colors } = useTheme();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [linkToken, setLinkToken] = useState<string | null>(null);
 
   useEffect(() => {
-    initializePlaid();
-  }, []);
+    if (user?.id) {
+      initializePlaid();
+    }
+  }, [user?.id]);
 
   const initializePlaid = async () => {
+    if (!user?.id) {
+      console.log('[PlaidScreen] No user ID, skipping initialization');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      const token = await createLinkToken();
+      console.log('[PlaidScreen] Initializing for user:', user.id);
+      const token = await createLinkToken(user.id);
       console.log('[PlaidScreen] Got link token:', token?.substring(0, 20) + '...');
       setLinkToken(token);
     } catch (err: any) {
