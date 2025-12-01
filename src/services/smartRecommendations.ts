@@ -175,6 +175,98 @@ interface RecommendationOptions {
   forceRefresh?: boolean;
 }
 
+/**
+ * Diversify recommendations to prevent genre clustering
+ * Ensures variety by preventing too many consecutive items of the same genre
+ * and capping total percentage per genre
+ */
+const diversifyRecommendations = (
+  items: any[],
+  options: {
+    maxConsecutiveSameGenre?: number;
+    maxPercentagePerGenre?: number;
+  } = {}
+): any[] => {
+  const {
+    maxConsecutiveSameGenre = 2,
+    maxPercentagePerGenre = 0.3, // 30% cap
+  } = options;
+
+  if (items.length === 0) return items;
+
+  const result: any[] = [];
+  const remaining: any[] = [...items];
+  const genreCounts: Record<number, number> = {};
+  const maxPerGenre = Math.floor(items.length * maxPercentagePerGenre);
+
+  console.log('[SmartRecs] Diversifying', items.length, 'items. Max per genre:', maxPerGenre, 'Max consecutive:', maxConsecutiveSameGenre);
+
+  // Track last N genres to prevent clustering
+  const recentGenres: number[] = [];
+
+  while (remaining.length > 0 && result.length < items.length) {
+    let selected = false;
+
+    // Try to find an item that doesn't create clustering
+    for (let i = 0; i < remaining.length; i++) {
+      const item = remaining[i];
+      const primaryGenre = item.genre_ids?.[0] || item.genres?.[0] || 0;
+
+      // Check if this genre is at cap
+      const genreCount = genreCounts[primaryGenre] || 0;
+      if (genreCount >= maxPerGenre) {
+        continue; // Skip, this genre is at capacity
+      }
+
+      // Check if this would create too many consecutive same-genre items
+      const consecutiveCount = recentGenres.slice(-maxConsecutiveSameGenre).filter(g => g === primaryGenre).length;
+      if (consecutiveCount >= maxConsecutiveSameGenre) {
+        continue; // Skip, would create clustering
+      }
+
+      // This item passes both checks - use it
+      result.push(item);
+      remaining.splice(i, 1);
+
+      // Update tracking
+      genreCounts[primaryGenre] = genreCount + 1;
+      recentGenres.push(primaryGenre);
+      if (recentGenres.length > maxConsecutiveSameGenre * 2) {
+        recentGenres.shift(); // Keep recent history manageable
+      }
+
+      selected = true;
+      break;
+    }
+
+    // If we couldn't find a suitable item, relax the consecutive constraint
+    if (!selected && remaining.length > 0) {
+      const item = remaining[0];
+      const primaryGenre = item.genre_ids?.[0] || item.genres?.[0] || 0;
+
+      // Still check genre cap
+      const genreCount = genreCounts[primaryGenre] || 0;
+      if (genreCount < maxPerGenre || result.length + remaining.length <= items.length) {
+        result.push(item);
+        remaining.splice(0, 1);
+        genreCounts[primaryGenre] = genreCount + 1;
+        recentGenres.push(primaryGenre);
+      } else {
+        // Skip this item entirely if at cap
+        remaining.splice(0, 1);
+      }
+    }
+  }
+
+  // Log genre distribution
+  const distribution = Object.entries(genreCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+  console.log('[SmartRecs] Genre distribution (top 5):', distribution);
+
+  return result;
+};
+
 export const getSmartRecommendations = async (
   options: RecommendationOptions
 ): Promise<any[]> => {
@@ -266,11 +358,14 @@ export const getSmartRecommendations = async (
     // Fetch movies
     if (mediaType === 'movie' || mediaType === 'mixed') {
       let page = getRandomPage();
-      console.log('[SmartRecs] Fetching movies, page:', page);
+
+      // Use first 2-3 genres with OR operator for variety (not too specific, not too broad)
+      const movieGenreQuery = genreIds.slice(0, 3).join('|');
+      console.log('[SmartRecs] Fetching movies with genres:', movieGenreQuery, 'page:', page);
 
       const movieResponse = await tmdbApi.get('/discover/movie', {
         params: {
-          with_genres: genreIds.join(','),
+          with_genres: movieGenreQuery,  // Use | for OR query instead of , for AND
           page,
           sort_by: 'popularity.desc',
           'vote_count.gte': 100,
@@ -292,7 +387,7 @@ export const getSmartRecommendations = async (
 
         const secondResponse = await tmdbApi.get('/discover/movie', {
           params: {
-            with_genres: genreIds.join(','),
+            with_genres: movieGenreQuery,  // Use same OR query
             page,
             sort_by: 'popularity.desc',
             'vote_count.gte': 100,
@@ -380,14 +475,20 @@ export const getSmartRecommendations = async (
       recommendations.push(...tvShows);
     }
 
-    // Shuffle for variety
+    // First shuffle for initial randomization
     const shuffled = recommendations.sort(() => Math.random() - 0.5);
+
+    // Then apply smart diversification to prevent genre clustering
+    const diversified = diversifyRecommendations(shuffled, {
+      maxConsecutiveSameGenre: 2,
+      maxPercentagePerGenre: 0.3, // 30% cap per genre
+    });
 
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    const results = shuffled.slice(0, limit);
+    const results = diversified.slice(0, limit);
 
     console.log('[SmartRecs] Returning', results.length, 'recommendations');
     console.log('[SmartRecs] First 5 IDs:', results.slice(0, 5).map(r => r.id));
@@ -567,14 +668,20 @@ export const getGenreRecommendations = async ({
       recommendations.push(...tvShows);
     }
 
-    // Shuffle for variety
+    // First shuffle for initial randomization
     const shuffled = recommendations.sort(() => Math.random() - 0.5);
+
+    // Apply smart diversification (less strict for genre-specific queries)
+    const diversified = diversifyRecommendations(shuffled, {
+      maxConsecutiveSameGenre: 3, // More lenient since filtering by genre already
+      maxPercentagePerGenre: 0.5, // 50% cap for genre-specific
+    });
 
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    const results = shuffled.slice(0, limit);
+    const results = diversified.slice(0, limit);
 
     console.log('[SmartRecs] Returning', results.length, 'genre recommendations for', genre);
     return results;

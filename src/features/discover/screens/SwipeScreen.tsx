@@ -54,10 +54,10 @@ export const SwipeScreen: React.FC = () => {
 
       setUser(currentUser);
 
-      // Get smart recommendations
+      // Get smart recommendations with larger pool for variety
       const recommendations = await getSmartRecommendations({
         userId: currentUser.id,
-        limit: 20,
+        limit: 50,
         forceRefresh: false,
       });
 
@@ -114,7 +114,7 @@ export const SwipeScreen: React.FC = () => {
     try {
       const recommendations = await getSmartRecommendations({
         userId: user.id,
-        limit: 20,
+        limit: 50,
         forceRefresh: true,
       });
 
