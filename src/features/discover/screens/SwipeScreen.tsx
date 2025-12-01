@@ -720,9 +720,12 @@ export const SwipeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: 60,
   },
   header: {
     paddingHorizontal: 20,
+    marginBottom: 10,
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 32,
@@ -772,7 +775,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1, // Takes remaining 45%
     padding: 16,
-    paddingBottom: 100, // Heavy padding to ensure text doesn't go behind buttons
+    paddingBottom: 140, // Heavy padding to ensure text doesn't go behind buttons
   },
   cardTitle: {
     fontSize: 22,
@@ -817,9 +820,9 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 30,
+    bottom: 40,
     width: '100%',
-    zIndex: 20,
+    zIndex: 50,
     elevation: 20,
     flexDirection: 'column', // Stack rows vertically
     justifyContent: 'center',
