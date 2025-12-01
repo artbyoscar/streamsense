@@ -909,8 +909,8 @@ export const RecommendationsScreen: React.FC = () => {
             // Use 'success' haptic for adding to watchlist
             removePileItem(selectedContent.id, 'success');
           }
-          // Refresh pile data in background
-          setTimeout(() => loadData(), 400);
+          // Don't refresh the entire pile - let user continue browsing
+          // The pile will naturally refresh when user navigates away and returns
         }}
       />
 
