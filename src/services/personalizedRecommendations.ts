@@ -182,7 +182,8 @@ export const getUserPreferences = async (userId: string): Promise<UserPreference
   });
 
   // 6. Get existing watchlist content IDs to exclude from recommendations
-  // Also include session-shown content to prevent repeats
+  // IMPROVEMENT: ONLY exclude items EXPLICITLY in watchlist, NOT session-shown items
+  // This reduces exclusion aggressiveness and provides more variety
   const watchlistContentIds = new Set<string>();
   watchlistData?.forEach((item: any) => {
     if (item.content) {
@@ -190,15 +191,11 @@ export const getUserPreferences = async (userId: string): Promise<UserPreference
     }
   });
 
-  // Add session-shown content to exclusion set
-  sessionShownContent.forEach((id) => {
-    watchlistContentIds.add(id);
-  });
-
-  console.log('[SmartRecs] Excluding:', {
+  // For discovery mode, we still track session items separately but don't exclude them aggressively
+  console.log('[SmartRecs] Exclusions:', {
     watchlistItems: watchlistData?.length || 0,
     sessionShownItems: sessionShownContent.size,
-    totalExcluded: watchlistContentIds.size,
+    excludingOnlyWatchlist: true,
   });
 
   // 7. Sort genres by weighted score
@@ -276,24 +273,38 @@ export const getSmartRecommendations = async (
   const fetchTV = mediaType === 'mixed' || mediaType === 'tv' || prefs.preferredMediaType === 'tv';
 
   // 1. "FOR YOU" - Based on top genres with quality filter
+  // IMPROVEMENT: Fetch MORE candidates than needed, then apply weighted randomization
   const forYouPromises: Promise<UnifiedContent[]>[] = [];
 
   if (prefs.topGenres.length > 0) {
-    // Use top 3 genres with OR logic
+    // Fetch MORE candidates (3x limit) for better variety and scoring
+    const fetchLimit = limit * 3;
+
+    // Strategy 1: Top 3 genres with OR logic (broad personalization)
     const topGenreIds = prefs.topGenres.slice(0, 3).map((g) => g.id);
 
     if (fetchMovie) {
-      forYouPromises.push(fetchByGenres(topGenreIds, 'movie', limit, prefs.watchlistContentIds));
+      forYouPromises.push(fetchByGenres(topGenreIds, 'movie', fetchLimit, prefs.watchlistContentIds));
     }
     if (fetchTV) {
-      forYouPromises.push(fetchByGenres(topGenreIds, 'tv', limit, prefs.watchlistContentIds));
+      forYouPromises.push(fetchByGenres(topGenreIds, 'tv', fetchLimit, prefs.watchlistContentIds));
+    }
+
+    // Strategy 2: "DEEP CUTS" - Exact genre combinations user loves
+    const deepCuts = await getDeepCutRecommendations(userId, prefs, fetchMovie, fetchTV, Math.floor(limit / 2));
+    if (deepCuts.length > 0) {
+      console.log('[SmartRecs] Deep cuts found:', deepCuts.length);
+      forYouPromises.push(Promise.resolve(deepCuts));
     }
   }
 
   const forYouResults = await Promise.all(forYouPromises);
-  const forYou = shuffleAndLimit(forYouResults.flat(), limit);
+  const allCandidates = forYouResults.flat();
 
-  console.log('[SmartRecs] For You items:', forYou.length);
+  // IMPROVEMENT: Apply weighted randomization (70% relevance, 30% random)
+  const forYou = applyWeightedRandomization(allCandidates, prefs, limit);
+
+  console.log('[SmartRecs] For You items:', forYou.length, 'from', allCandidates.length, 'candidates');
 
   // 2. "BECAUSE YOU LIKED [GENRE]" - Specific genre recommendations
   const becauseYouLiked: { genre: string; items: UnifiedContent[] }[] = [];
@@ -466,6 +477,181 @@ const fetchTrending = async (excludeIds: Set<string>, limit: number): Promise<Un
     console.error('[SmartRecs] Error fetching trending:', error);
     return [];
   }
+};
+
+// ============================================================================
+// IMPROVEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Get "deep cut" recommendations - content with exact genre combinations user loves
+ * Finds popular genre pairs/trios from watchlist and fetches matching content
+ */
+const getDeepCutRecommendations = async (
+  userId: string,
+  prefs: UserPreferences,
+  fetchMovie: boolean,
+  fetchTV: boolean,
+  limit: number
+): Promise<UnifiedContent[]> => {
+  try {
+    // Get user's watchlist to find genre combinations
+    const { data: watchlistData } = await supabase
+      .from('watchlist_items')
+      .select(`
+        content (
+          type,
+          genres
+        )
+      `)
+      .eq('user_id', userId);
+
+    if (!watchlistData || watchlistData.length < 5) {
+      console.log('[SmartRecs] Not enough watchlist data for deep cuts');
+      return [];
+    }
+
+    // Find popular genre combinations (pairs)
+    const genreCombos = new Map<string, { count: number; genres: number[]; type: 'movie' | 'tv' }>();
+
+    watchlistData.forEach((item: any) => {
+      const content = item.content;
+      if (!content || !content.genres || content.genres.length < 2) return;
+
+      const genres = content.genres.slice(0, 3); // Take up to 3 genres
+      const key = genres.sort((a: number, b: number) => a - b).join('-');
+
+      if (genreCombos.has(key)) {
+        genreCombos.get(key)!.count++;
+      } else {
+        genreCombos.set(key, {
+          count: 1,
+          genres,
+          type: content.type,
+        });
+      }
+    });
+
+    // Get top 2-3 most popular combinations
+    const topCombos = Array.from(genreCombos.entries())
+      .sort(([, a], [, b]) => b.count - a.count)
+      .slice(0, 3)
+      .filter(([, data]) => data.count >= 2); // Must appear at least twice
+
+    if (topCombos.length === 0) {
+      console.log('[SmartRecs] No recurring genre combinations found');
+      return [];
+    }
+
+    console.log('[SmartRecs] Top genre combos:', topCombos.map(([key, data]) =>
+      `${key} (${data.count}x)`
+    ));
+
+    // Fetch content matching these exact combinations
+    const deepCutPromises: Promise<UnifiedContent[]>[] = [];
+
+    for (const [, data] of topCombos) {
+      if ((data.type === 'movie' && fetchMovie) || (data.type === 'tv' && fetchTV)) {
+        const randomPage = Math.floor(Math.random() * 5) + 1;
+        const endpoint = data.type === 'tv' ? '/discover/tv' : '/discover/movie';
+
+        const promise = tmdbApi.get(endpoint, {
+          params: {
+            with_genres: data.genres.join(','), // AND logic for exact combo
+            sort_by: 'vote_average.desc',
+            'vote_count.gte': 500,
+            'vote_average.gte': 7.0,
+            page: randomPage,
+          },
+        }).then(response => {
+          const results = mapToUnifiedContent(response.data.results || [], data.type);
+          return results.filter((item) => !prefs.watchlistContentIds.has(`${item.type}-${item.id}`));
+        }).catch(error => {
+          console.error('[SmartRecs] Deep cut fetch error:', error);
+          return [];
+        });
+
+        deepCutPromises.push(promise);
+      }
+    }
+
+    const deepCutResults = await Promise.all(deepCutPromises);
+    const allDeepCuts = deepCutResults.flat();
+
+    // Track shown content
+    const toShow = allDeepCuts.slice(0, limit);
+    toShow.forEach((item) => {
+      sessionShownContent.add(`${item.type}-${item.id}`);
+    });
+
+    console.log('[SmartRecs] Deep cuts:', toShow.length, 'from', allDeepCuts.length, 'candidates');
+    return toShow;
+  } catch (error) {
+    console.error('[SmartRecs] Error getting deep cuts:', error);
+    return [];
+  }
+};
+
+/**
+ * Apply weighted randomization to recommendations
+ * 70% based on relevance score, 30% random for variety
+ */
+const applyWeightedRandomization = (
+  candidates: UnifiedContent[],
+  prefs: UserPreferences,
+  limit: number
+): UnifiedContent[] => {
+  // Remove duplicates
+  const unique = Array.from(
+    new Map(candidates.map((i) => [`${i.type}-${i.id}`, i])).values()
+  );
+
+  // Calculate relevance score for each item
+  const scored = unique.map((item) => {
+    let relevanceScore = 0;
+
+    // Score based on genre match
+    const itemGenres = item.genres || item.genre_ids || [];
+    const userGenreIds = new Set(prefs.topGenres.map((g) => g.id));
+
+    itemGenres.forEach((genreId: number) => {
+      if (userGenreIds.has(genreId)) {
+        // Find the genre's weight
+        const genreData = prefs.topGenres.find((g) => g.id === genreId);
+        if (genreData) {
+          relevanceScore += genreData.score;
+        }
+      }
+    });
+
+    // Boost items with higher ratings
+    relevanceScore += (item.rating / 10) * 20; // Max +20 for 10/10 rating
+
+    // Boost based on popularity (but not too much)
+    relevanceScore += Math.log10(item.popularity || 1) * 5;
+
+    // Normalize score to 0-100 range
+    relevanceScore = Math.min(100, relevanceScore);
+
+    return {
+      ...item,
+      _relevanceScore: relevanceScore,
+    };
+  });
+
+  // Sort with weighted randomization: 70% relevance, 30% random
+  const sorted = scored.sort((a, b) => {
+    const aScore = (a._relevanceScore * 0.7) + (Math.random() * 30);
+    const bScore = (b._relevanceScore * 0.7) + (Math.random() * 30);
+    return bScore - aScore;
+  });
+
+  console.log('[SmartRecs] Top scored items:',
+    sorted.slice(0, 5).map(i => `${i.title} (${i._relevanceScore.toFixed(1)})`)
+  );
+
+  // Return top items after weighted selection
+  return sorted.slice(0, limit).map(({ _relevanceScore, ...item }) => item as UnifiedContent);
 };
 
 // ============================================================================
