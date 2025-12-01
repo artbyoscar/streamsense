@@ -644,6 +644,52 @@ export const RecommendationsScreen: React.FC = () => {
             {churnRecs
               .filter(r => r.action !== 'keep')
               .map((rec) => {
+                // Handle track_usage action differently
+                if (rec.action === 'track_usage') {
+                  return (
+                    <View
+                      key={rec.serviceId}
+                      style={[styles.churnCard, { backgroundColor: colors.card }]}
+                    >
+                      <View style={styles.churnHeader}>
+                        <View style={styles.churnTitleRow}>
+                          <Ionicons
+                            name="analytics"
+                            size={24}
+                            color={colors.primary}
+                          />
+                          <Text style={[styles.churnServiceName, { color: colors.text }]}>
+                            {rec.service}
+                          </Text>
+                        </View>
+                        <View
+                          style={[
+                            styles.churnActionBadge,
+                            { backgroundColor: `${colors.primary}20` },
+                          ]}
+                        >
+                          <Text style={[styles.churnActionText, { color: colors.primary }]}>
+                            Track Usage
+                          </Text>
+                        </View>
+                      </View>
+
+                      <Text style={[styles.churnReason, { color: colors.textSecondary }]}>
+                        {rec.reason}
+                      </Text>
+
+                      {/* Log Watch Time Button */}
+                      <TouchableOpacity
+                        style={[styles.trackUsageButton, { backgroundColor: colors.primary }]}
+                        onPress={() => handleLogWatchTime(rec)}
+                      >
+                        <Ionicons name="time" size={20} color="#FFFFFF" />
+                        <Text style={styles.trackUsageButtonText}>Log Watch Time</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }
+
                 const actionColor =
                   rec.action === 'cancel_now' ? '#EF4444' : '#F59E0B';
                 const actionIcon =
@@ -906,6 +952,8 @@ const styles = StyleSheet.create({
   upcomingLabel: { fontSize: 12, fontWeight: '600', marginBottom: 8 },
   upcomingItem: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   upcomingText: { fontSize: 13, flex: 1 },
+  trackUsageButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: 12, marginTop: 12, gap: 8 },
+  trackUsageButtonText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
   // Achievement Styles
   achievementCard: { borderRadius: 16, padding: 20, marginBottom: 24 },
   achievementHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },

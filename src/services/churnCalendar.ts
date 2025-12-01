@@ -24,7 +24,7 @@ export interface ChurnRecommendation {
   service: string;
   serviceId: string;
   monthlyCost: number;
-  action: 'cancel_now' | 'keep' | 'cancel_after_binge';
+  action: 'cancel_now' | 'keep' | 'cancel_after_binge' | 'track_usage';
   reason: string;
   upcomingContent: Array<{
     title: string;
@@ -32,7 +32,7 @@ export interface ChurnRecommendation {
     daysUntil: number | null;
   }>;
   lastWatchedDate: Date | null;
-  daysSinceLastWatch: number;
+  daysSinceLastWatch: number | null;
   potentialSavings: number; // How much you'd save if you cancel
 }
 
@@ -148,24 +148,55 @@ const getUpcomingReleases = async (userId: string): Promise<Map<string, any[]>> 
  * Calculate when user last watched content on each service
  */
 const getLastWatchDates = async (userId: string): Promise<Map<string, Date>> => {
-  const { data: watchlist } = await supabase
-    .from('watchlist_items')
-    .select('streaming_service, watched_at, updated_at, status')
-    .eq('user_id', userId)
-    .in('status', ['watching', 'watched'])
-    .order('watched_at', { ascending: false });
-
   const lastWatchByService = new Map<string, Date>();
 
-  if (!watchlist) return lastWatchByService;
+  try {
+    // Get last watch dates from watch_logs (more accurate)
+    const { data: watchLogs } = await supabase
+      .from('watch_logs')
+      .select(`
+        watched_date,
+        user_subscriptions (
+          service_name
+        )
+      `)
+      .eq('user_id', userId)
+      .order('watched_date', { ascending: false });
 
-  for (const item of watchlist) {
-    const service = (item.streaming_service || 'Unknown').toLowerCase();
-    const watchDate = new Date(item.watched_at || item.updated_at);
+    if (watchLogs) {
+      for (const log of watchLogs) {
+        const serviceName = (log.user_subscriptions as any)?.service_name;
+        if (!serviceName) continue;
 
-    if (!lastWatchByService.has(service) || watchDate > lastWatchByService.get(service)!) {
-      lastWatchByService.set(service, watchDate);
+        const service = serviceName.toLowerCase();
+        const watchDate = new Date(log.watched_date);
+
+        if (!lastWatchByService.has(service) || watchDate > lastWatchByService.get(service)!) {
+          lastWatchByService.set(service, watchDate);
+        }
+      }
     }
+
+    // Also check watchlist items for fallback
+    const { data: watchlist } = await supabase
+      .from('watchlist_items')
+      .select('streaming_service, watched_at, updated_at, status')
+      .eq('user_id', userId)
+      .in('status', ['watching', 'watched'])
+      .order('watched_at', { ascending: false });
+
+    if (watchlist) {
+      for (const item of watchlist) {
+        const service = (item.streaming_service || 'Unknown').toLowerCase();
+        const watchDate = new Date(item.watched_at || item.updated_at);
+
+        if (!lastWatchByService.has(service) || watchDate > lastWatchByService.get(service)!) {
+          lastWatchByService.set(service, watchDate);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('[ChurnCalendar] Error getting last watch dates:', error);
   }
 
   return lastWatchByService;
@@ -317,26 +348,51 @@ export const getChurnRecommendations = async (userId: string): Promise<ChurnReco
       const monthlyCost = sub.monthly_cost || sub.cost || 0;
       const upcoming = upcomingReleases.get(serviceName) || [];
       const lastWatch = lastWatchDates.get(serviceName);
+      const totalWatchHours = sub.total_watch_hours || 0;
 
+      // Calculate days since last watch (null if no watch data)
       const daysSinceWatch = lastWatch
         ? Math.floor((Date.now() - lastWatch.getTime()) / (1000 * 60 * 60 * 24))
-        : 999;
+        : null;
 
       // Determine action
-      let action: 'cancel_now' | 'keep' | 'cancel_after_binge' = 'keep';
+      let action: 'cancel_now' | 'keep' | 'cancel_after_binge' | 'track_usage' = 'keep';
       let reason = 'You have content to watch';
 
-      if (upcoming.length === 0 && daysSinceWatch > 30) {
+      // CASE 1: No watch data at all
+      if (daysSinceWatch === null && totalWatchHours === 0) {
+        action = 'track_usage';
+        reason = 'No viewing data yet. Log your watch time to track value and get better recommendations.';
+      }
+      // CASE 2: Haven't watched in 60+ days
+      else if (daysSinceWatch !== null && daysSinceWatch > 60) {
         action = 'cancel_now';
-        reason = `Haven't watched in ${daysSinceWatch} days. Cancel and save $${monthlyCost.toFixed(2)}/month.`;
-      } else if (upcoming.length === 0 && daysSinceWatch > 7) {
+        reason = `Last watched ${daysSinceWatch} days ago. Cancel and save $${monthlyCost.toFixed(2)}/month.`;
+      }
+      // CASE 3: Haven't watched in 30-60 days
+      else if (daysSinceWatch !== null && daysSinceWatch > 30) {
+        action = upcoming.length > 0 ? 'keep' : 'cancel_now';
+        reason = upcoming.length > 0
+          ? `Last watched ${daysSinceWatch} days ago, but you have upcoming watchlist content.`
+          : `Last watched ${daysSinceWatch} days ago. Consider canceling to save $${monthlyCost.toFixed(2)}/month.`;
+      }
+      // CASE 4: Watched recently but no upcoming content
+      else if (upcoming.length === 0 && daysSinceWatch !== null && daysSinceWatch > 14) {
         action = 'cancel_after_binge';
-        reason = `Finish watching your shows, then cancel to save $${monthlyCost.toFixed(2)}/month.`;
-      } else if (upcoming.length > 0) {
+        reason = `Finish watching your shows, then consider pausing until new content arrives.`;
+      }
+      // CASE 5: Upcoming content
+      else if (upcoming.length > 0) {
         const nextRelease = upcoming.reduce((earliest, curr) =>
-          curr.daysUntil < earliest.daysUntil ? curr : earliest
+          curr.daysUntil! < earliest.daysUntil! ? curr : earliest
         );
-        reason = `${nextRelease.title} ${nextRelease.type === 'episode' ? nextRelease.episodeInfo : ''} in ${nextRelease.daysUntil} days`;
+        const releaseInfo = nextRelease.type === 'episode' ? nextRelease.episodeInfo : 'releases';
+        reason = `${nextRelease.title} ${releaseInfo} in ${nextRelease.daysUntil} days. Keep active.`;
+      }
+      // CASE 6: Active user (watched within 14 days)
+      else if (daysSinceWatch !== null && daysSinceWatch <= 14) {
+        action = 'keep';
+        reason = `Active subscription. ${totalWatchHours > 0 ? `${totalWatchHours.toFixed(1)} hours watched.` : 'Recently used.'}`;
       }
 
       // Calculate potential savings (assuming you cancel for 2 months)
@@ -361,9 +417,9 @@ export const getChurnRecommendations = async (userId: string): Promise<ChurnReco
       });
     }
 
-    // Sort by action priority (cancel_now first)
+    // Sort by action priority (cancel_now first, track_usage last)
     recommendations.sort((a, b) => {
-      const priority = { cancel_now: 0, cancel_after_binge: 1, keep: 2 };
+      const priority = { cancel_now: 0, cancel_after_binge: 1, keep: 2, track_usage: 3 };
       return priority[a.action] - priority[b.action];
     });
 
