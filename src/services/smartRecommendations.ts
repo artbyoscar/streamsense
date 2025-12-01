@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
 import { getAdaptiveRecommendationParams } from './userBehavior';
 import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
+import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -555,11 +556,26 @@ export const getSmartRecommendations = async (
       maxPercentagePerGenre: 0.3, // 30% cap per genre
     });
 
+    // Build user DNA profile and apply DNA-based re-ranking
+    const userDNA = await buildUserDNAProfile(userId);
+    const dnaRanked = userDNA
+      ? rankByDNASimilarity(diversified, userDNA)
+      : diversified;
+
+    if (userDNA) {
+      console.log('[SmartRecs] Applied DNA matching:', {
+        tone: userDNA.preferredTone,
+        pace: userDNA.preferredPace,
+        complexity: userDNA.preferredComplexity,
+        confidence: userDNA.confidence,
+      });
+    }
+
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    const results = diversified.slice(0, limit);
+    const results = dnaRanked.slice(0, limit);
 
     // Track impressions for implicit signal learning
     // This allows us to learn what users DON'T like based on repeated exposure without engagement
