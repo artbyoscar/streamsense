@@ -69,75 +69,76 @@ export const DashboardScreen: React.FC = () => {
   }, []);
 
   // Calculate potential savings from recommendations
-  useEffect(() => {
-    const calculateSavings = async () => {
-      if (activeSubscriptions.length > 0) {
-        try {
-          const recommendations = await generateRecommendations(activeSubscriptions);
-          const totalSavings = recommendations.reduce((sum, rec) => {
-            return sum + (rec.potentialSavings || 0);
-          }, 0);
-          setPotentialSavings(totalSavings);
-        } catch (error) {
-          console.error('Error calculating savings:', error);
-        }
+  const calculateSavings = useCallback(async () => {
+    if (activeSubscriptions.length > 0) {
+      try {
+        const recommendations = await generateRecommendations(activeSubscriptions);
+        const totalSavings = recommendations.reduce((sum, rec) => {
+          return sum + (rec.potentialSavings || 0);
+        }, 0);
+        setPotentialSavings(totalSavings);
+      } catch (error) {
+        console.error('Error calculating savings:', error);
       }
-    };
+    }
+  }, [activeSubscriptions.length]);
+
+  useEffect(() => {
     calculateSavings();
-  }, [activeSubscriptions]);
+  }, [calculateSavings]);
 
   // Calculate value metrics for all subscriptions
+  const calculateMetrics = useCallback(async () => {
+    if (!user?.id || activeSubscriptions.length === 0) {
+      return;
+    }
+
+    try {
+      console.log('[Dashboard] Calculating value metrics for', activeSubscriptions.length, 'subscriptions');
+      const newMetrics = new Map<string, SubscriptionValueMetrics>();
+
+      await Promise.all(
+        activeSubscriptions.map(async (sub) => {
+          try {
+            const metrics = await calculateSubscriptionValue(user.id, sub.service_name, sub.price);
+            newMetrics.set(sub.id, metrics);
+          } catch (error) {
+            console.error(`[Dashboard] Error calculating metrics for ${sub.service_name}:`, error);
+          }
+        })
+      );
+
+      setValueMetrics(newMetrics);
+      console.log('[Dashboard] Value metrics calculated:', newMetrics.size, 'subscriptions');
+    } catch (error) {
+      console.error('[Dashboard] Error calculating value metrics:', error);
+    }
+  }, [activeSubscriptions.length, user?.id]);
+
   useEffect(() => {
-    const calculateMetrics = async () => {
-      if (!user?.id || activeSubscriptions.length === 0) {
-        return;
-      }
-
-      try {
-        console.log('[Dashboard] Calculating value metrics for', activeSubscriptions.length, 'subscriptions');
-        const newMetrics = new Map<string, SubscriptionValueMetrics>();
-
-        await Promise.all(
-          activeSubscriptions.map(async (sub) => {
-            try {
-              const metrics = await calculateSubscriptionValue(user.id, sub.service_name, sub.price);
-              newMetrics.set(sub.id, metrics);
-            } catch (error) {
-              console.error(`[Dashboard] Error calculating metrics for ${sub.service_name}:`, error);
-            }
-          })
-        );
-
-        setValueMetrics(newMetrics);
-        console.log('[Dashboard] Value metrics calculated:', newMetrics.size, 'subscriptions');
-      } catch (error) {
-        console.error('[Dashboard] Error calculating value metrics:', error);
-      }
-    };
-
     calculateMetrics();
-  }, [activeSubscriptions, user?.id]);
+  }, [calculateMetrics]);
 
   // Calculate break-even data for all subscriptions
+  const loadBreakEvenData = useCallback(async () => {
+    if (!user?.id || activeSubscriptions.length === 0) {
+      setBreakEvenData([]);
+      return;
+    }
+
+    try {
+      console.log('[Dashboard] Loading break-even data');
+      const data = await getAllBreakEvenData(user.id);
+      setBreakEvenData(data);
+      console.log('[Dashboard] Break-even data loaded:', data.length, 'subscriptions');
+    } catch (error) {
+      console.error('[Dashboard] Error loading break-even data:', error);
+    }
+  }, [activeSubscriptions.length, user?.id, refreshKey]);
+
   useEffect(() => {
-    const loadBreakEvenData = async () => {
-      if (!user?.id || activeSubscriptions.length === 0) {
-        setBreakEvenData([]);
-        return;
-      }
-
-      try {
-        console.log('[Dashboard] Loading break-even data');
-        const data = await getAllBreakEvenData(user.id);
-        setBreakEvenData(data);
-        console.log('[Dashboard] Break-even data loaded:', data.length, 'subscriptions');
-      } catch (error) {
-        console.error('[Dashboard] Error loading break-even data:', error);
-      }
-    };
-
     loadBreakEvenData();
-  }, [activeSubscriptions, user?.id, refreshKey]);
+  }, [loadBreakEvenData]);
 
   // Refresh when refreshKey changes (e.g., after adding a subscription)
   useEffect(() => {
