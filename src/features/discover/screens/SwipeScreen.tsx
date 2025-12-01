@@ -544,7 +544,7 @@ export const SwipeScreen: React.FC = () => {
             onPress={() => handleButtonPress('watching')}
           >
             <Ionicons name="play" size={24} color="#FFFFFF" />
-            <Text style={styles.watchingButtonText}>Watch Now</Text>
+            <Text style={styles.watchingButtonText}>Watching</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
