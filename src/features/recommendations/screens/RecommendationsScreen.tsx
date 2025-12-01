@@ -11,6 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
+  TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import {
   type Achievement
 } from '@/services/achievements';
 import { getPileOfShame, type ShameItem } from '@/services/pileOfShame';
+import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -102,6 +104,30 @@ export const RecommendationsScreen: React.FC = () => {
     progress: number;
   }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
   const [pileOfShame, setPileOfShame] = useState<ShameItem[]>([]);
+  const [selectedContent, setSelectedContent] = useState<any>(null);
+  const [showContentModal, setShowContentModal] = useState(false);
+
+  // Handle pile item press - transform to content format and show modal
+  const handlePileItemPress = useCallback((item: ShameItem) => {
+    console.log('[Tips] Pile item pressed:', item.title);
+
+    // Transform ShameItem to format expected by ContentDetailModal
+    const contentItem = {
+      id: item.id,
+      title: item.title,
+      name: item.type === 'tv' ? item.title : undefined,
+      poster_path: item.posterPath,
+      overview: item.overview,
+      vote_average: item.rating,
+      vote_count: item.voteCount,
+      media_type: item.type,
+      release_date: item.type === 'movie' ? `${item.releaseYear}-01-01` : undefined,
+      first_air_date: item.type === 'tv' ? `${item.releaseYear}-01-01` : undefined,
+    };
+
+    setSelectedContent(contentItem);
+    setShowContentModal(true);
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -420,9 +446,11 @@ export const RecommendationsScreen: React.FC = () => {
               contentContainerStyle={styles.shameScrollContainer}
             >
               {pileOfShame.slice(0, 6).map((item) => (
-                <View
+                <TouchableOpacity
                   key={`${item.type}-${item.id}`}
                   style={[styles.shameCard, { backgroundColor: colors.card }]}
+                  onPress={() => handlePileItemPress(item)}
+                  activeOpacity={0.7}
                 >
                   {/* Poster */}
                   {item.posterPath ? (
@@ -474,7 +502,7 @@ export const RecommendationsScreen: React.FC = () => {
                       </Text>
                     </View>
                   </View>
-                </View>
+                </TouchableOpacity>
               ))}
             </ScrollView>
 
@@ -765,6 +793,21 @@ export const RecommendationsScreen: React.FC = () => {
           </View>
         ))}
       </ScrollView>
+
+      {/* Content Detail Modal */}
+      <ContentDetailModal
+        visible={showContentModal}
+        content={selectedContent}
+        onClose={() => {
+          setShowContentModal(false);
+          setSelectedContent(null);
+        }}
+        onAddToWatchlist={() => {
+          // Refresh pile of shame after adding to watchlist
+          console.log('[Tips] Content added to watchlist, refreshing pile of shame');
+          loadData();
+        }}
+      />
     </View>
   );
 };
