@@ -23,6 +23,7 @@ import { getPosterUrl } from '@/services/tmdb';
 import { syncAllPlaidItems } from '@/services/plaid';
 import { isFeatureEnabled } from '@/config/env';
 import { calculateSubscriptionValue, SubscriptionValueMetrics } from '@/services/subscriptionValue';
+import { getAllBreakEvenData, type BreakEvenData } from '@/services/breakEven';
 import { COLORS, EmptyState, LoadingScreen, Card, PaywallModal } from '@/components';
 import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import { SubscriptionListItem } from '../components/SubscriptionListItem';
@@ -37,6 +38,7 @@ export const DashboardScreen: React.FC = () => {
   const [showPaywall, setShowPaywall] = useState(false);
   const [potentialSavings, setPotentialSavings] = useState(0);
   const [valueMetrics, setValueMetrics] = useState<Map<string, SubscriptionValueMetrics>>(new Map());
+  const [breakEvenData, setBreakEvenData] = useState<BreakEvenData[]>([]);
 
   // Premium feature check
   const { canAddSubscription, isPremium } = usePremiumFeature();
@@ -115,6 +117,27 @@ export const DashboardScreen: React.FC = () => {
 
     calculateMetrics();
   }, [activeSubscriptions, user?.id]);
+
+  // Calculate break-even data for all subscriptions
+  useEffect(() => {
+    const loadBreakEvenData = async () => {
+      if (!user?.id || activeSubscriptions.length === 0) {
+        setBreakEvenData([]);
+        return;
+      }
+
+      try {
+        console.log('[Dashboard] Loading break-even data');
+        const data = await getAllBreakEvenData(user.id);
+        setBreakEvenData(data);
+        console.log('[Dashboard] Break-even data loaded:', data.length, 'subscriptions');
+      } catch (error) {
+        console.error('[Dashboard] Error loading break-even data:', error);
+      }
+    };
+
+    loadBreakEvenData();
+  }, [activeSubscriptions, user?.id, refreshKey]);
 
   // Refresh when refreshKey changes (e.g., after adding a subscription)
   useEffect(() => {
@@ -392,6 +415,72 @@ export const DashboardScreen: React.FC = () => {
           </Card>
         </View>
 
+        {/* Break-Even Bars */}
+        {breakEvenData.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Monthly Value Tracker</Text>
+              <Text style={styles.sectionSubtitle}>
+                Watch time needed to break even at $1.50/hour
+              </Text>
+            </View>
+
+            {breakEvenData.map((data) => (
+              <Card key={data.subscriptionId} style={styles.breakEvenCard}>
+                {/* Header */}
+                <View style={styles.breakEvenHeader}>
+                  <Text style={styles.breakEvenServiceName}>{data.subscriptionName}</Text>
+                  <Text style={styles.breakEvenCost}>{formatCurrency(data.monthlyCost)}/mo</Text>
+                </View>
+
+                {/* Progress Bar */}
+                <View style={styles.progressBarContainer}>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${Math.min(data.percentComplete, 100)}%`,
+                          backgroundColor: data.color,
+                        },
+                      ]}
+                    />
+                  </View>
+                </View>
+
+                {/* Stats Row */}
+                <View style={styles.breakEvenStats}>
+                  <View style={styles.breakEvenStat}>
+                    <Text style={styles.breakEvenStatValue}>
+                      {data.hoursWatched.toFixed(1)} hrs
+                    </Text>
+                    <Text style={styles.breakEvenStatLabel}>watched</Text>
+                  </View>
+                  <View style={styles.breakEvenStat}>
+                    <Text style={[styles.breakEvenStatValue, { color: data.color }]}>
+                      ${data.currentRate.toFixed(2)}/hr
+                    </Text>
+                    <Text style={styles.breakEvenStatLabel}>current rate</Text>
+                  </View>
+                  <View style={styles.breakEvenStat}>
+                    <Text style={styles.breakEvenStatValue}>
+                      {data.breakEvenHours.toFixed(1)} hrs
+                    </Text>
+                    <Text style={styles.breakEvenStatLabel}>to break even</Text>
+                  </View>
+                </View>
+
+                {/* Message */}
+                <View style={[styles.breakEvenMessage, { backgroundColor: `${data.color}15` }]}>
+                  <Text style={[styles.breakEvenMessageText, { color: data.color }]}>
+                    💡 {data.message}
+                  </Text>
+                </View>
+              </Card>
+            ))}
+          </>
+        )}
+
         {/* Quick Actions */}
         <Card style={styles.quickActionsCard}>
           <Text style={styles.quickActionsTitle}>Quick Actions</Text>
@@ -626,6 +715,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: COLORS.gray,
     marginTop: 4,
+  },
+  sectionSubtitle: {
+    fontSize: 13,
+    color: COLORS.gray,
+    marginBottom: 12,
+    marginTop: -8,
+  },
+  breakEvenCard: {
+    marginBottom: 16,
+    padding: 16,
+  },
+  breakEvenHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  breakEvenServiceName: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+  },
+  breakEvenCost: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gray,
+  },
+  progressBarContainer: {
+    marginBottom: 12,
+  },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  breakEvenStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 12,
+  },
+  breakEvenStat: {
+    alignItems: 'center',
+  },
+  breakEvenStatValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+  },
+  breakEvenStatLabel: {
+    fontSize: 11,
+    color: COLORS.gray,
+    marginTop: 2,
+  },
+  breakEvenMessage: {
+    padding: 12,
+    borderRadius: 8,
+  },
+  breakEvenMessageText: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '500',
   },
   quickActionsCard: {
     marginBottom: 24,
