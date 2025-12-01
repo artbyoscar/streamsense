@@ -444,6 +444,13 @@ export interface GetRecommendationsResponse {
   recommendations: RecommendationItem[];
 }
 
+export interface ImpressionRecord {
+  contentId: number;
+  impressions: number;      // Times shown
+  lastShown: Date;
+  engaged: boolean;         // Did user interact?
+}
+
 // ============================================================================
 // NOTIFICATIONS
 // ============================================================================

@@ -192,6 +192,7 @@ export type {
   PaginationParams,
   PaginatedResponse,
   SuccessResponse,
+  ImpressionRecord,
 } from './api';
 
 // ============================================================================

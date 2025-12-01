@@ -6,6 +6,7 @@ import { getAdaptiveRecommendationParams } from './userBehavior';
 import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
 import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
 import { mixCollaborativeRecommendations } from './collaborativeFiltering';
+import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -632,11 +633,21 @@ export const getSmartRecommendations = async (
       withCollab: withCollaborative.length,
     });
 
+    // 6️⃣ Apply Recommendation Fatigue Filter (Strategy 6)
+    // Deprioritize or hide content seen too many times without engagement
+    const impressionHistory = await getImpressionHistory(userId);
+    const fatigueFiltered = applyFatigueFilter(withCollaborative, impressionHistory);
+
+    console.log('[SmartRecs] After fatigue filtering:', {
+      before: withCollaborative.length,
+      after: fatigueFiltered.length,
+    });
+
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    let results = withCollaborative.slice(0, limit);
+    let results = fatigueFiltered.slice(0, limit);
 
     // FALLBACK MECHANISM: For infinite feeds (Discover), NEVER return empty
     if (!excludeSessionItems && results.length === 0) {
@@ -678,9 +689,9 @@ export const getSmartRecommendations = async (
       }
     }
 
-    // Track impressions for implicit signal learning
-    // This allows us to learn what users DON'T like based on repeated exposure without engagement
+    // Track impressions for implicit signal learning AND fatigue system
     if (results.length > 0) {
+      // 1. Track for implicit signals (negative signal inference)
       await trackContentImpression(
         userId,
         results.map(r => ({
@@ -691,6 +702,12 @@ export const getSmartRecommendations = async (
           mediaType: r.media_type,
         })),
         excludeSessionItems ? 'for_you' : 'discover'
+      );
+
+      // 2. Track for fatigue system (simple counters)
+      // We do this in background to not slow down response
+      trackBatchImpressions(userId, results.map(r => r.id)).catch(err =>
+        console.error('[SmartRecs] Error tracking fatigue impressions:', err)
       );
     }
 
@@ -821,16 +838,16 @@ export const getGenreRecommendations = async ({
         const movieResponse = await tmdbApi.get('/discover/movie', {
           params: {
             with_genres: movieGenreIds.join('|'), // Use OR query for variety
-          page,
-          sort_by: 'popularity.desc',
-          'vote_count.gte': 100,
-          'vote_average.gte': 6.0,
-          // Special handling for Anime
-          ...(genre === 'Anime' && { with_original_language: 'ja' }),
-          // Exclude non-Japanese for regular Animation
-          ...(genre === 'Animation' && { without_original_language: 'ja' }),
-        },
-      });
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 100,
+            'vote_average.gte': 6.0,
+            // Special handling for Anime
+            ...(genre === 'Anime' && { with_original_language: 'ja' }),
+            // Exclude non-Japanese for regular Animation
+            ...(genre === 'Animation' && { without_original_language: 'ja' }),
+          },
+        });
 
         const movies = (movieResponse.data?.results || [])
           .filter((item: any) => !shouldExclude(item.id))
@@ -857,16 +874,16 @@ export const getGenreRecommendations = async ({
         const tvResponse = await tmdbApi.get('/discover/tv', {
           params: {
             with_genres: tvGenreIds.join('|'), // Use OR query for variety
-          page,
-          sort_by: 'popularity.desc',
-          'vote_count.gte': 50,
-          'vote_average.gte': 6.0,
-          // Special handling for Anime
-          ...(genre === 'Anime' && { with_original_language: 'ja' }),
-          // Exclude non-Japanese for regular Animation
-          ...(genre === 'Animation' && { without_original_language: 'ja' }),
-        },
-      });
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 50,
+            'vote_average.gte': 6.0,
+            // Special handling for Anime
+            ...(genre === 'Anime' && { with_original_language: 'ja' }),
+            // Exclude non-Japanese for regular Animation
+            ...(genre === 'Animation' && { without_original_language: 'ja' }),
+          },
+        });
 
         const tvShows = (tvResponse.data?.results || [])
           .filter((item: any) => !shouldExclude(item.id))

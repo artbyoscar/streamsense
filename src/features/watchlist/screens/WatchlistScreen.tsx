@@ -23,6 +23,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 // Removed getMixedRecommendations - now using getSmartRecommendations with parallel fetching
 import { getUserTopGenres } from '@/services/genreAffinity';
 import { getSmartRecommendations, getGenreRecommendations } from '@/services/smartRecommendations';
+import { markEngaged } from '@/services/recommendationFatigue';
 import { COLORS, EmptyState } from '@/components';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
@@ -504,6 +505,9 @@ export const WatchlistScreen: React.FC = () => {
 
   // Handle personalized content press
   const handleContentPress = (content: UnifiedContent) => {
+    if (user?.id) {
+      markEngaged(user.id, content.id);
+    }
     setSelectedContent(content);
     setShowContentDetail(true);
   };
