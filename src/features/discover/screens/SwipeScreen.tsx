@@ -31,7 +31,7 @@ import Animated, {
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
-import { trackGenreAffinity } from '@/services/genreAffinity';
+import { trackGenreInteraction } from '@/services/genreAffinity';
 import type { UnifiedContent } from '@/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -111,10 +111,20 @@ export const SwipeScreen: React.FC = () => {
         // Determine status based on action type
         const status = type === 'watching' ? 'watching' : type === 'watched' ? 'watched' : 'want_to_watch';
 
+        // Determine media type with fallback
+        // Cast to any to access properties that might exist at runtime but not in UnifiedContent type
+        const itemAny = item as any;
+        const mediaType = item.type || itemAny.media_type || (itemAny.first_air_date ? 'tv' : 'movie');
+
+        if (!mediaType) {
+          console.error('[Swipe] Missing mediaType for item:', item.id, item.title);
+          return;
+        }
+
         // Add to watchlist using the content table
         const insertData: any = {
           user_id: user.id,
-          content_id: `${item.type}-${item.id}`,
+          content_id: `${mediaType}-${item.id}`,
           status,
           priority: 'medium',
         };
@@ -141,17 +151,23 @@ export const SwipeScreen: React.FC = () => {
 
           // Track genre affinity based on rating for watched items
           if (type === 'watched' && rating) {
-            const itemGenres = item.genres || item.genre_ids || [];
-            if (itemGenres.length > 0) {
+            // Extract genre IDs (handle both UnifiedContent objects and raw TMDb data)
+            const rawGenres = item.genres || (item as any).genre_ids || [];
+            const genreIds = rawGenres.map((g: any) => typeof g === 'number' ? g : g.id);
+
+            if (genreIds.length > 0) {
+              // Use resolved mediaType (defaulting to 'movie' if somehow still missing, though check above prevents this)
+              const typeForTracking = (mediaType === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv';
+
               if (rating >= 4) {
-                await trackGenreAffinity(user.id, itemGenres, 'RATE_HIGH');
-                console.log('[Swipe] Tracked high rating for genres:', itemGenres);
+                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_HIGH');
+                console.log('[Swipe] Tracked high rating for genres:', genreIds);
               } else if (rating <= 2) {
-                await trackGenreAffinity(user.id, itemGenres, 'RATE_LOW');
-                console.log('[Swipe] Tracked low rating for genres:', itemGenres);
+                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_LOW');
+                console.log('[Swipe] Tracked low rating for genres:', genreIds);
               } else {
-                await trackGenreAffinity(user.id, itemGenres, 'RATE_MEDIUM');
-                console.log('[Swipe] Tracked medium rating for genres:', itemGenres);
+                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_MEDIUM');
+                console.log('[Swipe] Tracked medium rating for genres:', genreIds);
               }
             }
           }
@@ -391,11 +407,12 @@ export const SwipeScreen: React.FC = () => {
   const currentCard = cards[currentIndex];
 
   // Normalize card data to handle all possible field variations
-  const title = currentCard.title || currentCard.name || 'Unknown Title';
-  const posterPath = currentCard.poster_path || currentCard.posterPath;
-  const rating = currentCard.vote_average || currentCard.rating || 0;
-  const year = (currentCard.release_date || currentCard.first_air_date || currentCard.releaseDate || '').substring(0, 4);
-  const mediaType = (currentCard.media_type || currentCard.type || 'movie').toLowerCase();
+  const cardAny = currentCard as any;
+  const title = currentCard.title || cardAny.name || 'Unknown Title';
+  const posterPath = currentCard.posterPath || cardAny.poster_path;
+  const rating = currentCard.rating || cardAny.vote_average || 0;
+  const year = (currentCard.releaseDate || cardAny.release_date || cardAny.first_air_date || '').substring(0, 4);
+  const mediaType = (currentCard.type || cardAny.media_type || 'movie').toLowerCase();
   const overview = currentCard.overview || 'No description available.';
 
   const posterUrl = posterPath
@@ -445,55 +462,55 @@ export const SwipeScreen: React.FC = () => {
             </Animated.View>
 
             {/* Poster - Top 55% */}
-          {posterUrl ? (
-            <Image
-              source={{ uri: posterUrl }}
-              style={styles.cardPoster}
-              resizeMode="contain"
-            />
-          ) : (
-            <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
-              <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
-              <Text style={[styles.noImageText, { color: colors.textSecondary }]}>
-                No Image Available
-              </Text>
-            </View>
-          )}
-
-          {/* Content Info - Bottom 45% */}
-          <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
-            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
-              {title}
-            </Text>
-
-            <View style={styles.cardMetaRow}>
-              {rating > 0 && (
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={16} color="#FFD700" />
-                  <Text style={[styles.ratingText, { color: colors.text }]}>
-                    {rating.toFixed(1)}
-                  </Text>
-                </View>
-              )}
-              {year && (
-                <Text style={[styles.yearText, { color: colors.textSecondary }]}>
-                  {year}
+            {posterUrl ? (
+              <Image
+                source={{ uri: posterUrl }}
+                style={styles.cardPoster}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
+                <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
+                <Text style={[styles.noImageText, { color: colors.textSecondary }]}>
+                  No Image Available
                 </Text>
-              )}
-              <Text style={[styles.typeText, { color: colors.textSecondary }]}>
-                {mediaType === 'tv' ? '📺 TV Show' : '🎬 Movie'}
-              </Text>
-            </View>
+              </View>
+            )}
 
-            <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
-              About
-            </Text>
-            <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
-              <Text style={[styles.cardOverview, { color: colors.text }]}>
-                {overview}
+            {/* Content Info - Bottom 45% */}
+            <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+                {title}
               </Text>
-            </ScrollView>
-          </View>
+
+              <View style={styles.cardMetaRow}>
+                {rating > 0 && (
+                  <View style={styles.ratingContainer}>
+                    <Ionicons name="star" size={16} color="#FFD700" />
+                    <Text style={[styles.ratingText, { color: colors.text }]}>
+                      {rating.toFixed(1)}
+                    </Text>
+                  </View>
+                )}
+                {year && (
+                  <Text style={[styles.yearText, { color: colors.textSecondary }]}>
+                    {year}
+                  </Text>
+                )}
+                <Text style={[styles.typeText, { color: colors.textSecondary }]}>
+                  {mediaType === 'tv' ? '📺 TV Show' : '🎬 Movie'}
+                </Text>
+              </View>
+
+              <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
+                About
+              </Text>
+              <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
+                <Text style={[styles.cardOverview, { color: colors.text }]}>
+                  {overview}
+                </Text>
+              </ScrollView>
+            </View>
           </Animated.View>
         </GestureDetector>
       </View>
@@ -582,7 +599,7 @@ export const SwipeScreen: React.FC = () => {
             </Text>
             {pendingWatchedItem && (
               <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
-                {pendingWatchedItem.title || pendingWatchedItem.name}
+                {pendingWatchedItem.title || (pendingWatchedItem as any).name}
               </Text>
             )}
 

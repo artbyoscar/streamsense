@@ -764,25 +764,31 @@ export const getExclusionStats = () => ({
 const normalizeContentItem = (item: any, mediaType: 'movie' | 'tv') => {
   return {
     id: item.id,
-    media_type: mediaType,
+    type: mediaType,
+    media_type: mediaType, // Keep for backward compatibility
     // Normalize title - TV shows use 'name', movies use 'title'
     title: item.title || item.name || 'Unknown Title',
     name: item.name || item.title,
+    originalTitle: item.original_title || item.original_name || item.title || item.name,
     // Ensure poster_path has full URL or null
     poster_path: item.poster_path || null,
     posterPath: item.poster_path || null,
+    backdropPath: item.backdrop_path || null,
     // Normalize dates
     release_date: item.release_date || item.first_air_date,
     first_air_date: item.first_air_date || item.release_date,
+    releaseDate: item.release_date || item.first_air_date,
     // Include ratings
     vote_average: item.vote_average || 0,
     vote_count: item.vote_count || 0,
+    voteCount: item.vote_count || 0,
     rating: item.vote_average || 0,
     // Include other useful fields
     overview: item.overview || '',
     genre_ids: item.genre_ids || [],
-    genres: item.genre_ids || [],
+    genres: item.genre_ids || [], // UnifiedContent expects genres as TMDbGenre[], but this is number[]. This might be an issue.
     original_language: item.original_language,
+    language: item.original_language,
     popularity: item.popularity,
   };
 };
