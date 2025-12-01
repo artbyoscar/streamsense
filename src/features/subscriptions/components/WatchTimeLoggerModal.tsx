@@ -40,9 +40,9 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
   const handleSave = async () => {
     const hoursNum = parseFloat(hours);
 
-    // Validation - must be greater than 0 (matches database constraint)
-    if (isNaN(hoursNum) || hoursNum <= 0) {
-      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (minimum 0.1)');
+    // Validation - must be non-negative (matches database constraint)
+    if (isNaN(hoursNum) || hoursNum < 0) {
+      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (minimum 0)');
       return;
     }
 
@@ -72,12 +72,14 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
       Alert.alert(
         'Success',
         `Logged ${hoursNum} hour${hoursNum === 1 ? '' : 's'} of watch time!`,
-        [{ text: 'OK', onPress: () => {
-          setHours('');
-          setContentWatched('');
-          onSave();
-          onClose();
-        }}]
+        [{
+          text: 'OK', onPress: () => {
+            setHours('');
+            setContentWatched('');
+            onSave();
+            onClose();
+          }
+        }]
       );
     } catch (error) {
       console.error('[WatchTime] Error saving:', error);
@@ -156,7 +158,7 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
               autoFocus
             />
             <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-              Enter hours watched (minimum 0.1, maximum 24)
+              Enter hours watched (minimum 0, maximum 24)
             </Text>
           </View>
 
