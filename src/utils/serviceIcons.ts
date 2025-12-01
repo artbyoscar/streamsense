@@ -19,10 +19,10 @@ export const SERVICE_ICONS: Record<string, ServiceIconConfig> = {
   // Hulu
   'hulu': { icon: 'hulu', family: 'material-community' },
 
-  // Amazon Prime Video
-  'amazon prime': { icon: 'amazon', family: 'material-community' },
-  'amazon prime video': { icon: 'amazon', family: 'material-community' },
-  'prime video': { icon: 'amazon', family: 'material-community' },
+  // Amazon Prime Video - Using play-box since 'amazon' icon is not available in all versions
+  'amazon prime': { icon: 'play-box', family: 'material-community' },
+  'amazon prime video': { icon: 'play-box', family: 'material-community' },
+  'prime video': { icon: 'play-box', family: 'material-community' },
 
   // Disney+ - No official icon, use star-circle
   'disney+': { icon: 'star-circle', family: 'material-community' },
@@ -45,8 +45,8 @@ export const SERVICE_ICONS: Record<string, ServiceIconConfig> = {
   'paramount plus': { icon: 'alpha-p-circle', family: 'material-community' },
   'paramount': { icon: 'movie-filter', family: 'material-community' },
 
-  // Peacock
-  'peacock': { icon: 'feather', family: 'material-community' },
+  // Peacock - Using bird since feather may not be available in all versions
+  'peacock': { icon: 'bird', family: 'material-community' },
 
   // Spotify
   'spotify': { icon: 'spotify', family: 'material-community' },
