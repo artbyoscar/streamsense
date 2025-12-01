@@ -122,6 +122,9 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     const results = getFilteredRecommendations(mediaTypeFilter, activeGenreFilter);
 
     console.log(`[Watchlist] Filtered results: ${results.length} items (Type: ${mediaTypeFilter}, Genre: ${activeGenreFilter})`);
+    if (results.length === 0 && activeGenreFilter !== 'All') {
+      console.log('[Watchlist] Zero results for genre filter. Checking cache state...');
+    }
     return results;
   }, [mediaTypeFilter, activeGenreFilter, getFilteredRecommendations]);
 

@@ -67,7 +67,25 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
                     const genreItems = allRecs.filter(item => {
                         // Check genre IDs
-                        const itemGenreIds = item.genre_ids || item.genres?.map((g: any) => typeof g === 'number' ? g : g.id) || [];
+                        // Handle both number arrays (genre_ids) and object arrays (genres)
+                        const itemGenreIds: number[] = [];
+
+                        if (item.genre_ids && Array.isArray(item.genre_ids)) {
+                            itemGenreIds.push(...item.genre_ids);
+                        }
+
+                        if (item.genres && Array.isArray(item.genres)) {
+                            item.genres.forEach((g: any) => {
+                                if (typeof g === 'number') itemGenreIds.push(g);
+                                else if (g && g.id) itemGenreIds.push(g.id);
+                            });
+                        }
+
+                        // Debug log for first few items of first genre to verify structure
+                        if (genre === genreNames[0] && allRecs.indexOf(item) < 3) {
+                            console.log(`[RecCache] Item: ${item.title}, Genres:`, itemGenreIds);
+                        }
+
                         const hasMatch = itemGenreIds.some((id: number) => targetIds.includes(id));
 
                         // Special handling for Anime vs Animation
