@@ -741,7 +741,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 80,
+    marginBottom: 100,
     zIndex: 1,
   },
   card: {
@@ -817,10 +817,10 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 30,
     width: '100%',
-    zIndex: 10,
-    elevation: 10,
+    zIndex: 20,
+    elevation: 20,
     flexDirection: 'column', // Stack rows vertically
     justifyContent: 'center',
     alignItems: 'center',
