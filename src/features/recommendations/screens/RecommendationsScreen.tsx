@@ -477,9 +477,9 @@ export const RecommendationsScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.shameScrollContainer}
             >
-              {pileOfShame.slice(0, 6).map((item) => (
+              {pileOfShame.slice(0, 6).map((item, index) => (
                 <AnimatedCarouselItem
-                  key={`${item.type}-${item.id}`}
+                  key={`${item.type}-${item.id}-${item.blindspotReason}-${index}`}
                   animationType="combined"
                   duration={300}
                 >

@@ -421,22 +421,34 @@ export const generateBlindspotRecommendations = async (
       getServiceExclusiveBlindspots(userId, excludeIds),
     ]);
 
-    // Combine all blindspots
-    const allBlindspots = [
-      ...unexploredGenre,
-      ...hiddenGems,
-      ...classicGaps,
-      ...adjacentInterests,
-      ...serviceExclusives,
-    ];
+    // Combine all blindspots with deduplication
+    // Track seen IDs to prevent duplicates (same movie in multiple categories)
+    const allBlindspots: BlindspotItem[] = [];
+    const seenIds = new Set<number>();
 
-    console.log('[Blindspot] Generated blindspots:', {
+    const addIfNotSeen = (item: BlindspotItem) => {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        allBlindspots.push(item);
+      }
+    };
+
+    // Add items from each category, checking for duplicates
+    for (const item of unexploredGenre) addIfNotSeen(item);
+    for (const item of hiddenGems) addIfNotSeen(item);
+    for (const item of classicGaps) addIfNotSeen(item);
+    for (const item of adjacentInterests) addIfNotSeen(item);
+    for (const item of serviceExclusives) addIfNotSeen(item);
+
+    console.log('[Blindspot] Generated blindspots (unique):', {
       unexploredGenre: unexploredGenre.length,
       hiddenGems: hiddenGems.length,
       classicGaps: classicGaps.length,
       adjacentInterests: adjacentInterests.length,
       serviceExclusives: serviceExclusives.length,
-      total: allBlindspots.length,
+      totalBeforeDedup: unexploredGenre.length + hiddenGems.length + classicGaps.length + adjacentInterests.length + serviceExclusives.length,
+      totalAfterDedup: allBlindspots.length,
+      duplicatesRemoved: (unexploredGenre.length + hiddenGems.length + classicGaps.length + adjacentInterests.length + serviceExclusives.length) - allBlindspots.length,
     });
 
     // Shuffle and limit
