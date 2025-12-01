@@ -629,7 +629,7 @@ export const RecommendationsScreen: React.FC = () => {
             >
               {pileOfShame.map((item, index) => (
                 <AnimatedCarouselItem
-                  key={`${item.type}-${item.id}-${item.blindspotReason}-${index}`}
+                  key={`${item.type}-${item.id}`}
                   animationType="combined"
                   duration={300}
                 >
@@ -737,7 +737,7 @@ export const RecommendationsScreen: React.FC = () => {
             >
               {rewatchSuggestions.slice(0, 6).map((item, index) => (
                 <TouchableOpacity
-                  key={`${item.type}-${item.tmdbId}-${index}`}
+                  key={`${item.type}-${item.tmdbId}`}
                   style={[styles.shameCard, { backgroundColor: colors.card }]}
                   onPress={() => handleRewatchItemPress(item)}
                   activeOpacity={0.7}

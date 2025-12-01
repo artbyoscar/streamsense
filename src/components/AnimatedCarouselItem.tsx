@@ -50,7 +50,7 @@ export const AnimatedCarouselItem: React.FC<AnimatedCarouselItemProps> = ({
 
   return (
     <Animated.View
-      layout={Layout.springify().damping(15).stiffness(100)}
+      layout={Layout.duration(300)}
       exiting={getExitAnimation()}
       style={style}
       {...props}
