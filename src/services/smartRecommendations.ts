@@ -2,6 +2,7 @@ import { supabase } from './supabase';
 import { tmdbApi } from './tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
+import { getAdaptiveRecommendationParams } from './userBehavior';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -327,14 +328,37 @@ export const getSmartRecommendations = async (
   });
 
   try {
+    // Detect user behavior pattern and get adaptive strategy
+    const { pattern, strategy } = await getAdaptiveRecommendationParams(userId);
+
+    console.log('[SmartRecs] User behavior:', {
+      mode: pattern.mode,
+      avgItemsPerSession: pattern.averageItemsPerSession,
+      confidence: pattern.confidence,
+      strategy: strategy.description,
+    });
+
     // Get user genre affinity with temporal decay applied
     // Recent interactions are weighted more heavily than older ones
     const topGenresData = await getUserTopGenres(userId, 5, true); // useDecay=true
 
-    // Determine top genres
+    // Determine top genres based on user mode
     let topGenres: string[] = [];
     if (topGenresData && topGenresData.length > 0) {
-      topGenres = topGenresData.map(g => g.genreName);
+      const genreCount = pattern.mode === 'discovery' ? 5 : pattern.mode === 'intentional' ? 3 : 4;
+      topGenres = topGenresData.slice(0, genreCount).map(g => g.genreName);
+
+      // For discovery mode, potentially add a new genre
+      if (pattern.mode === 'discovery' && Math.random() < strategy.newGenreRatio) {
+        const allGenres = ['Drama', 'Action', 'Comedy', 'Adventure', 'Science Fiction', 'Thriller', 'Horror', 'Romance'];
+        const newGenres = allGenres.filter(g => !topGenres.includes(g));
+        if (newGenres.length > 0) {
+          const randomNewGenre = newGenres[Math.floor(Math.random() * newGenres.length)];
+          topGenres.push(randomNewGenre);
+          console.log('[SmartRecs] Discovery mode: Added new genre:', randomNewGenre);
+        }
+      }
+
       console.log('[SmartRecs] Top genres (with temporal decay):',
         topGenresData.map(g => `${g.genreName} (${g.score.toFixed(2)})`).join(', ')
       );
@@ -343,7 +367,7 @@ export const getSmartRecommendations = async (
       console.log('[SmartRecs] Using default genres (no affinity data)');
     }
 
-    console.log('[SmartRecs] Selected genres:', topGenres);
+    console.log('[SmartRecs] Selected genres for', pattern.mode, 'mode:', topGenres);
 
     const recommendations: any[] = [];
 
@@ -383,15 +407,21 @@ export const getSmartRecommendations = async (
 
       // Use first 2-3 genres with OR operator for variety (not too specific, not too broad)
       const movieGenreQuery = movieGenreIds.join('|');
-      console.log('[SmartRecs] Fetching movies with genre IDs:', movieGenreIds, 'query:', movieGenreQuery, 'page:', page);
+
+      // Adjust quality thresholds based on user mode
+      const minVoteCount = pattern.mode === 'passive' ? 500 : 100; // Passive mode: popular only
+      const minRating = pattern.mode === 'passive' ? 7.0 : pattern.mode === 'intentional' ? 6.5 : 6.0;
+
+      console.log('[SmartRecs] Fetching movies with genre IDs:', movieGenreIds, 'query:', movieGenreQuery, 'page:', page,
+        'mode:', pattern.mode, 'minRating:', minRating, 'minVotes:', minVoteCount);
 
       const movieResponse = await tmdbApi.get('/discover/movie', {
         params: {
           with_genres: movieGenreQuery,  // Use | for OR query instead of , for AND
           page,
           sort_by: 'popularity.desc',
-          'vote_count.gte': 100,
-          'vote_average.gte': 6.0,
+          'vote_count.gte': minVoteCount,
+          'vote_average.gte': minRating,
         },
       });
 
@@ -443,15 +473,21 @@ export const getSmartRecommendations = async (
 
       // Use only first 2 genres with OR operator to avoid overly specific queries
       const genreQuery = tvGenreIds.join('|');
-      console.log('[SmartRecs] Fetching TV with genre IDs:', tvGenreIds, 'query:', genreQuery, 'page:', page);
+
+      // Adjust quality thresholds based on user mode
+      const minVoteCount = pattern.mode === 'passive' ? 200 : 50; // Passive mode: popular only
+      const minRating = pattern.mode === 'passive' ? 7.0 : pattern.mode === 'intentional' ? 6.5 : 6.0;
+
+      console.log('[SmartRecs] Fetching TV with genre IDs:', tvGenreIds, 'query:', genreQuery, 'page:', page,
+        'mode:', pattern.mode, 'minRating:', minRating, 'minVotes:', minVoteCount);
 
       const tvResponse = await tmdbApi.get('/discover/tv', {
         params: {
           with_genres: genreQuery,  // Use | for OR query instead of , for AND
           page,
           sort_by: 'popularity.desc',
-          'vote_count.gte': 50,
-          'vote_average.gte': 6.0,
+          'vote_count.gte': minVoteCount,
+          'vote_average.gte': minRating,
         },
       });
 
