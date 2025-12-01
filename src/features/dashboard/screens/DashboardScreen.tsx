@@ -134,7 +134,7 @@ export const DashboardScreen: React.FC = () => {
     } catch (error) {
       console.error('[Dashboard] Error loading break-even data:', error);
     }
-  }, [activeSubscriptions.length, user?.id, refreshKey]);
+  }, [activeSubscriptions.length, user?.id]);
 
   useEffect(() => {
     loadBreakEvenData();
@@ -146,7 +146,8 @@ export const DashboardScreen: React.FC = () => {
       console.log('[Dashboard] Refreshing data due to refreshKey change');
       refetch();
     }
-  }, [refreshKey, refetch]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]); // Only run when refreshKey changes, not when refetch changes
 
   // Pull-to-refresh handler
   const handleRefresh = useCallback(async () => {
