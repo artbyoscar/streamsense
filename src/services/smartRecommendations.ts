@@ -3,6 +3,7 @@ import { tmdbApi } from './tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
 import { getAdaptiveRecommendationParams } from './userBehavior';
+import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -338,6 +339,16 @@ export const getSmartRecommendations = async (
       strategy: strategy.description,
     });
 
+    // Get negative signals (content user has repeatedly rejected)
+    const negativeSignals = await getNegativeSignals(userId);
+    if (negativeSignals.strongRejections.length > 0) {
+      console.log('[SmartRecs] Negative signals detected:', {
+        strongRejections: negativeSignals.strongRejections.length,
+        avoidGenres: negativeSignals.avoidGenres,
+        patterns: negativeSignals.rejectionPatterns.length,
+      });
+    }
+
     // Get user genre affinity with temporal decay applied
     // Recent interactions are weighted more heavily than older ones
     const topGenresData = await getUserTopGenres(userId, 5, true); // useDecay=true
@@ -534,8 +545,12 @@ export const getSmartRecommendations = async (
     // First shuffle for initial randomization
     const shuffled = recommendations.sort(() => Math.random() - 0.5);
 
+    // Apply negative signal filtering (remove content user has repeatedly rejected)
+    const negativeFiltered = filterByNegativeSignals(shuffled, negativeSignals);
+    console.log('[SmartRecs] After negative filtering:', negativeFiltered.length, 'of', shuffled.length);
+
     // Then apply smart diversification to prevent genre clustering
-    const diversified = diversifyRecommendations(shuffled, {
+    const diversified = diversifyRecommendations(negativeFiltered, {
       maxConsecutiveSameGenre: 2,
       maxPercentagePerGenre: 0.3, // 30% cap per genre
     });
@@ -545,6 +560,20 @@ export const getSmartRecommendations = async (
 
     // Return limited results
     const results = diversified.slice(0, limit);
+
+    // Track impressions for implicit signal learning
+    // This allows us to learn what users DON'T like based on repeated exposure without engagement
+    await trackContentImpression(
+      userId,
+      results.map(r => ({
+        id: r.id,
+        title: r.title || r.name,
+        genreIds: r.genre_ids || r.genres,
+        rating: r.vote_average || r.rating,
+        mediaType: r.media_type,
+      })),
+      'for_you'
+    );
 
     console.log('[SmartRecs] Returning', results.length, 'recommendations');
     console.log('[SmartRecs] First 5 IDs:', results.slice(0, 5).map(r => r.id));
