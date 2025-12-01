@@ -209,7 +209,7 @@ export const SwipeScreen: React.FC = () => {
             <Image
               source={{ uri: posterUrl }}
               style={styles.cardPoster}
-              resizeMode="cover"
+              resizeMode="contain"
             />
           ) : (
             <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
