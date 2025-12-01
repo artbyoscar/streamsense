@@ -14,7 +14,6 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -96,7 +95,11 @@ const STREAMING_SERVICES = [
   },
 ];
 
-export const RecommendationsScreen: React.FC = () => {
+interface RecommendationsScreenProps {
+  isFocused: boolean;
+}
+
+export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ isFocused }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -406,17 +409,17 @@ export const RecommendationsScreen: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isFocused) {
+      loadData();
+    }
+  }, [isFocused, loadData]);
 
   // Shuffle items when screen comes into focus for variety
-  useFocusEffect(
-    useCallback(() => {
-      if (pileOfShameData.length > 0) {
-        setPileOfShameData(prev => [...prev].sort(() => Math.random() - 0.5));
-      }
-    }, [])
-  );
+  useEffect(() => {
+    if (isFocused && pileOfShameData.length > 0) {
+      setPileOfShameData(prev => [...prev].sort(() => Math.random() - 0.5));
+    }
+  }, [isFocused]);
 
   const savingTips = [
     {
