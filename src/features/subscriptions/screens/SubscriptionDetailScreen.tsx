@@ -297,20 +297,13 @@ export const SubscriptionDetailScreen: React.FC = () => {
           const hours = subscription.monthly_viewing_hours || 0;
           const costPerHour = hours > 0 ? monthlyEquivalent / hours : 0;
 
-          let rating: 'excellent' | 'good' | 'poor' | 'unknown' = 'unknown';
-          if (hours > 0) {
-            if (costPerHour < 0.5) rating = 'excellent';
-            else if (costPerHour < 2.0) rating = 'good';
-            else rating = 'poor';
-          }
-
           return (
             <ValueScoreCard
               subscription={subscription}
               valueScore={{
                 totalWatchHours: hours,
                 costPerHour: costPerHour,
-                rating: rating
+                monthlyCost: monthlyEquivalent,
               }}
             />
           );

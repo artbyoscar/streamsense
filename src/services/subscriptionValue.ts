@@ -193,3 +193,89 @@ export const calculateAllSubscriptionValues = async (
 
   return results;
 };
+
+export interface ValueContext {
+  rating: 'unused' | 'minimal' | 'building' | 'fair' | 'good' | 'excellent';
+  headline: string;
+  detail: string;
+  suggestion: string | null;
+  color: string;
+  icon: string;
+}
+
+/**
+ * Get context-aware value messaging based on usage
+ */
+export const getValueContext = (
+  costPerHour: number,
+  totalHours: number,
+  monthlyCost: number
+): ValueContext => {
+  // 0 hours: Unused
+  if (totalHours === 0) {
+    return {
+      rating: 'unused',
+      headline: 'No Usage This Month',
+      detail: `You're paying $${monthlyCost.toFixed(2)}/month with no viewing.`,
+      suggestion: 'Consider pausing or explore content to watch.',
+      color: '#9CA3AF', // Gray
+      icon: 'pause-circle',
+    };
+  }
+
+  // < 1 hour: Minimal usage
+  if (totalHours < 1) {
+    return {
+      rating: 'minimal',
+      headline: 'Minimal Usage',
+      detail: `${(totalHours * 60).toFixed(0)} minutes watched on a $${monthlyCost.toFixed(2)} subscription.`,
+      suggestion: 'Watch 3+ hours to get reasonable value.',
+      color: '#F97316', // Orange
+      icon: 'alert-circle',
+    };
+  }
+
+  // 1-3 hours: Building value
+  if (totalHours < 3) {
+    return {
+      rating: 'building',
+      headline: 'Building Value',
+      detail: `${totalHours.toFixed(1)} hours so far. Watch ${(3 - totalHours).toFixed(1)} more hours for good value.`,
+      suggestion: null,
+      color: '#EAB308', // Yellow
+      icon: 'trending-up',
+    };
+  }
+
+  // 3+ hours: Calculate value rating
+  let rating: 'fair' | 'good' | 'excellent';
+  let color: string;
+  let icon: string;
+  let suggestion: string;
+
+  if (costPerHour < 2) {
+    rating = 'excellent';
+    color = '#22C55E'; // Green
+    icon = 'star';
+    suggestion = 'Great value! Keep it up.';
+  } else if (costPerHour < 4) {
+    rating = 'good';
+    color = '#84CC16'; // Light Green
+    icon = 'check-circle';
+    suggestion = 'Good value for your money.';
+  } else {
+    rating = 'fair';
+    color = '#F97316'; // Orange
+    icon = 'information';
+    suggestion = 'Watch more to improve value.';
+  }
+
+  return {
+    rating,
+    headline: `$${costPerHour.toFixed(2)}/hour`,
+    detail: `${totalHours.toFixed(1)} hours watched this month.`,
+    suggestion,
+    color,
+    icon,
+  };
+};

@@ -1,13 +1,15 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Text } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS } from '@/components';
 import type { UserSubscription } from '@/types';
+import { getValueContext } from '@/services/subscriptionValue';
 
 interface ValueScore {
     totalWatchHours: number;
     costPerHour: number;
-    rating: 'excellent' | 'good' | 'poor' | 'unknown';
+    monthlyCost: number;
 }
 
 interface Props {
@@ -16,44 +18,11 @@ interface Props {
 }
 
 export const ValueScoreCard = ({ subscription, valueScore }: Props) => {
-    const getValueExplanation = (costPerHour: number, rating: string) => {
-        if (rating === 'unknown') {
-            return {
-                headline: 'Start tracking',
-                explanation: 'Log your watch time to see if this subscription is worth it',
-                icon: '❓',
-                comparison: undefined,
-            };
-        }
-
-        if (rating === 'excellent') {
-            return {
-                headline: 'Excellent value!',
-                explanation: `Each hour of entertainment costs you less than 50¢`,
-                comparison: `That is cheaper than a cup of coffee per movie night`,
-                icon: '🌟',
-            };
-        }
-
-        if (rating === 'good') {
-            return {
-                headline: 'Good value',
-                explanation: `You are paying $${costPerHour.toFixed(2)} for each hour of content`,
-                comparison: `Watch ${Math.ceil(2 / costPerHour)} more hours this month to hit excellent value`,
-                icon: '✅',
-            };
-        }
-
-        // Poor value
-        return {
-            headline: 'Consider your usage',
-            explanation: `At $${costPerHour.toFixed(2)}/hour, you might save money renting individual titles`,
-            comparison: `Watch ${Math.ceil(subscription.price / 0.50)} hours to make this worthwhile`,
-            icon: '⚠️',
-        };
-    };
-
-    const valueInfo = getValueExplanation(valueScore.costPerHour, valueScore.rating);
+    const context = getValueContext(
+        valueScore.costPerHour,
+        valueScore.totalWatchHours,
+        valueScore.monthlyCost
+    );
 
     return (
         <View style={styles.card}>
@@ -70,48 +39,46 @@ export const ValueScoreCard = ({ subscription, valueScore }: Props) => {
                             styles.meterFill,
                             {
                                 width: `${Math.min(100, (valueScore.totalWatchHours / 20) * 100)}%`,
-                                backgroundColor: getColorForRating(valueScore.rating),
+                                backgroundColor: context.color,
                             }
                         ]}
                     />
                 </View>
                 <Text style={styles.meterLabel}>
-                    {valueScore.totalWatchHours}h watched this month
+                    {valueScore.totalWatchHours.toFixed(1)}h watched this month
                 </Text>
             </View>
 
             {/* Value explanation */}
             <View style={styles.valueSection}>
-                <Text style={styles.valueIcon}>{valueInfo.icon}</Text>
+                <MaterialCommunityIcons
+                    name={context.icon as any}
+                    size={24}
+                    color={context.color}
+                    style={styles.valueIcon}
+                />
                 <View style={styles.valueText}>
-                    <Text style={styles.valueHeadline}>{valueInfo.headline}</Text>
-                    <Text style={styles.valueExplanation}>{valueInfo.explanation}</Text>
-                    {valueInfo.comparison && (
-                        <Text style={styles.valueComparison}>{valueInfo.comparison}</Text>
+                    <Text style={styles.valueHeadline}>{context.headline}</Text>
+                    <Text style={styles.valueExplanation}>{context.detail}</Text>
+                    {context.suggestion && (
+                        <Text style={styles.valueComparison}>{context.suggestion}</Text>
                     )}
                 </View>
             </View>
 
-            {/* Cost breakdown */}
-            {valueScore.rating !== 'unknown' && (
+            {/* Cost breakdown - only show if meaningful (3+ hours) */}
+            {valueScore.totalWatchHours >= 3 && (
                 <View style={styles.breakdown}>
                     <Text style={styles.breakdownText}>
-                        ${subscription.price} ÷ {valueScore.totalWatchHours}h =
-                        <Text style={styles.costPerHour}> ${valueScore.costPerHour.toFixed(2)}/hour</Text>
+                        ${valueScore.monthlyCost.toFixed(2)} ÷ {valueScore.totalWatchHours.toFixed(1)}h =
+                        <Text style={[styles.costPerHour, { color: context.color }]}>
+                            {' '}${valueScore.costPerHour.toFixed(2)}/hour
+                        </Text>
                     </Text>
                 </View>
             )}
         </View>
     );
-};
-
-const getColorForRating = (rating: string) => {
-    switch (rating) {
-        case 'excellent': return '#22c55e';  // Green
-        case 'good': return '#84cc16';       // Light green
-        case 'poor': return '#f97316';       // Orange
-        default: return '#6b7280';           // Gray
-    }
 };
 
 const styles = StyleSheet.create({
@@ -164,10 +131,11 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 8,
         marginBottom: 12,
+        alignItems: 'flex-start',
     },
     valueIcon: {
-        fontSize: 24,
         marginRight: 12,
+        marginTop: 2,
     },
     valueText: {
         flex: 1,
@@ -201,6 +169,5 @@ const styles = StyleSheet.create({
     },
     costPerHour: {
         fontWeight: '700',
-        color: COLORS.text,
     },
 });
