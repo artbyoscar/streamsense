@@ -144,12 +144,13 @@ const shouldExclude = (tmdbId: number): boolean => {
   return false;
 };
 
-// Genre mappings
-const GENRE_NAME_TO_IDS: Record<string, number[]> = {
+// Separate genre mappings for movies and TV
+// TMDb uses different genre IDs for movies vs TV shows
+const MOVIE_GENRE_IDS: Record<string, number[]> = {
   'Drama': [18],
   'Adventure': [12],
-  'Action': [28, 10759], // Movie Action + TV Action & Adventure
-  'Science Fiction': [878, 10765], // Movie Sci-Fi + TV Sci-Fi & Fantasy
+  'Action': [28],
+  'Science Fiction': [878],
   'Animation': [16],
   'Anime': [16], // Same as animation, filtered by language
   'Comedy': [35],
@@ -159,11 +160,31 @@ const GENRE_NAME_TO_IDS: Record<string, number[]> = {
   'Documentary': [99],
   'Crime': [80],
   'Mystery': [9648],
-  'Fantasy': [14, 10765],
+  'Fantasy': [14],
   'Family': [10751],
   'War': [10752],
   'History': [36],
-  // TV specific
+};
+
+const TV_GENRE_IDS: Record<string, number[]> = {
+  'Drama': [18],
+  'Adventure': [12], // Note: TV doesn't have separate Adventure, using Action & Adventure
+  'Action': [10759], // Action & Adventure
+  'Science Fiction': [10765], // Sci-Fi & Fantasy
+  'Animation': [16],
+  'Anime': [16],
+  'Comedy': [35],
+  'Thriller': [53], // Note: TV doesn't have Thriller, but we keep for compatibility
+  'Horror': [27], // Note: TV doesn't have Horror, but we keep for compatibility
+  'Romance': [10749],
+  'Documentary': [99],
+  'Crime': [80],
+  'Mystery': [9648],
+  'Fantasy': [10765], // Sci-Fi & Fantasy
+  'Family': [10751],
+  'War': [10752], // War & Politics
+  'History': [36], // Note: TV doesn't have History, but we keep for compatibility
+  // TV-specific genres
   'Sci-Fi & Fantasy': [10765],
   'Action & Adventure': [10759],
 };
@@ -323,11 +344,6 @@ export const getSmartRecommendations = async (
 
     console.log('[SmartRecs] Top genres:', topGenres);
 
-    // Convert to genre IDs
-    const genreIds = topGenres
-      .flatMap(name => GENRE_NAME_TO_IDS[name] || [])
-      .slice(0, 3);
-
     const recommendations: any[] = [];
 
     // Random page for variety - use lower range for single media type to avoid empty pages
@@ -359,9 +375,14 @@ export const getSmartRecommendations = async (
     if (mediaType === 'movie' || mediaType === 'mixed') {
       let page = getRandomPage();
 
+      // Convert genre names to movie-specific genre IDs
+      const movieGenreIds = topGenres
+        .flatMap(name => MOVIE_GENRE_IDS[name] || [])
+        .slice(0, 3);
+
       // Use first 2-3 genres with OR operator for variety (not too specific, not too broad)
-      const movieGenreQuery = genreIds.slice(0, 3).join('|');
-      console.log('[SmartRecs] Fetching movies with genres:', movieGenreQuery, 'page:', page);
+      const movieGenreQuery = movieGenreIds.join('|');
+      console.log('[SmartRecs] Fetching movies with genre IDs:', movieGenreIds, 'query:', movieGenreQuery, 'page:', page);
 
       const movieResponse = await tmdbApi.get('/discover/movie', {
         params: {
@@ -412,18 +433,16 @@ export const getSmartRecommendations = async (
 
     // Fetch TV shows
     if (mediaType === 'tv' || mediaType === 'mixed') {
-      // Map movie genres to TV genres
-      const tvGenreIds = genreIds.map(id => {
-        if (id === 878) return 10765; // Sci-Fi -> Sci-Fi & Fantasy
-        if (id === 28) return 10759;  // Action -> Action & Adventure
-        return id;
-      });
+      // Convert genre names to TV-specific genre IDs
+      const tvGenreIds = topGenres
+        .flatMap(name => TV_GENRE_IDS[name] || [])
+        .slice(0, 2); // Use fewer genres for TV to avoid overly specific queries
 
       let page = getRandomPage();
 
       // Use only first 2 genres with OR operator to avoid overly specific queries
-      const genreQuery = tvGenreIds.slice(0, 2).join('|');
-      console.log('[SmartRecs] Fetching TV with genres:', genreQuery, 'page:', page);
+      const genreQuery = tvGenreIds.join('|');
+      console.log('[SmartRecs] Fetching TV with genre IDs:', tvGenreIds, 'query:', genreQuery, 'page:', page);
 
       const tvResponse = await tmdbApi.get('/discover/tv', {
         params: {
@@ -590,15 +609,6 @@ export const getGenreRecommendations = async ({
     watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
   }
 
-  // Get genre IDs from name
-  const genreIds = GENRE_NAME_TO_IDS[genre];
-  if (!genreIds || genreIds.length === 0) {
-    console.warn(`[SmartRecs] Unknown genre: ${genre}`);
-    return [];
-  }
-
-  console.log('[SmartRecs] Genre IDs:', genreIds);
-
   const recommendations: any[] = [];
 
   // Random page for variety (1-10)
@@ -607,12 +617,19 @@ export const getGenreRecommendations = async ({
   try {
     // Fetch movies
     if (mediaType === 'movie' || mediaType === 'mixed') {
-      const page = getRandomPage();
-      console.log('[SmartRecs] Fetching movies for genre, page:', page);
+      // Get movie-specific genre IDs
+      const movieGenreIds = MOVIE_GENRE_IDS[genre];
+      if (!movieGenreIds || movieGenreIds.length === 0) {
+        console.warn(`[SmartRecs] Unknown movie genre: ${genre}`);
+        if (mediaType === 'movie') return [];
+        // Continue to TV if mixed mode
+      } else {
+        const page = getRandomPage();
+        console.log('[SmartRecs] Fetching movies for genre:', genre, 'IDs:', movieGenreIds, 'page:', page);
 
-      const movieResponse = await tmdbApi.get('/discover/movie', {
-        params: {
-          with_genres: genreIds.join(','),
+        const movieResponse = await tmdbApi.get('/discover/movie', {
+          params: {
+            with_genres: movieGenreIds.join('|'), // Use OR query for variety
           page,
           sort_by: 'popularity.desc',
           'vote_count.gte': 100,
@@ -624,30 +641,31 @@ export const getGenreRecommendations = async ({
         },
       });
 
-      const movies = (movieResponse.data?.results || [])
-        .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => normalizeContentItem(item, 'movie'));
+        const movies = (movieResponse.data?.results || [])
+          .filter((item: any) => !shouldExclude(item.id))
+          .map((item: any) => normalizeContentItem(item, 'movie'));
 
-      console.log('[SmartRecs] Movies after filtering:', movies.length);
-      movies.forEach((m: any) => addToSessionCache(m.id));
-      recommendations.push(...movies);
+        console.log('[SmartRecs] Movies after filtering:', movies.length);
+        movies.forEach((m: any) => addToSessionCache(m.id));
+        recommendations.push(...movies);
+      }
     }
 
     // Fetch TV shows
     if (mediaType === 'tv' || mediaType === 'mixed') {
-      // Map movie genres to TV genres
-      const tvGenreIds = genreIds.map(id => {
-        if (id === 878) return 10765; // Sci-Fi -> Sci-Fi & Fantasy
-        if (id === 28) return 10759;  // Action -> Action & Adventure
-        return id;
-      });
+      // Get TV-specific genre IDs
+      const tvGenreIds = TV_GENRE_IDS[genre];
+      if (!tvGenreIds || tvGenreIds.length === 0) {
+        console.warn(`[SmartRecs] Unknown TV genre: ${genre}`);
+        if (mediaType === 'tv') return [];
+        // Continue if mixed mode
+      } else {
+        const page = getRandomPage();
+        console.log('[SmartRecs] Fetching TV for genre:', genre, 'IDs:', tvGenreIds, 'page:', page);
 
-      const page = getRandomPage();
-      console.log('[SmartRecs] Fetching TV for genre, page:', page);
-
-      const tvResponse = await tmdbApi.get('/discover/tv', {
-        params: {
-          with_genres: tvGenreIds.join(','),
+        const tvResponse = await tmdbApi.get('/discover/tv', {
+          params: {
+            with_genres: tvGenreIds.join('|'), // Use OR query for variety
           page,
           sort_by: 'popularity.desc',
           'vote_count.gte': 50,
@@ -659,13 +677,14 @@ export const getGenreRecommendations = async ({
         },
       });
 
-      const tvShows = (tvResponse.data?.results || [])
-        .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => normalizeContentItem(item, 'tv'));
+        const tvShows = (tvResponse.data?.results || [])
+          .filter((item: any) => !shouldExclude(item.id))
+          .map((item: any) => normalizeContentItem(item, 'tv'));
 
-      console.log('[SmartRecs] TV after filtering:', tvShows.length);
-      tvShows.forEach((t: any) => addToSessionCache(t.id));
-      recommendations.push(...tvShows);
+        console.log('[SmartRecs] TV after filtering:', tvShows.length);
+        tvShows.forEach((t: any) => addToSessionCache(t.id));
+        recommendations.push(...tvShows);
+      }
     }
 
     // First shuffle for initial randomization
