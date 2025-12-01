@@ -15,6 +15,7 @@
 import { supabase } from '@/config/supabase';
 import { tmdbApi } from '@/services/tmdb';
 import { getUserTopGenres } from './genreAffinity';
+import { getWatchlistIds } from './watchlistDataService';
 
 export type BlindspotReason =
   | 'unexplored_genre'    // Genre user hasn't touched
@@ -67,28 +68,17 @@ const ALL_GENRE_NAMES = [
  */
 const getUserExclusions = async (userId: string): Promise<Set<number>> => {
   try {
-    const { data: watchlistItems, error } = await supabase
-      .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+    const ids = await getWatchlistIds(userId);
 
-    if (error) {
-      console.error('[Blindspot] Supabase error fetching watchlist:', error);
-      return new Set();
-    }
+    // Convert to numbers for exclusion checking (TMDB IDs are numbers)
+    const excludeSet = new Set<number>();
+    ids.forEach(id => {
+      const num = Number(id);
+      if (!isNaN(num)) excludeSet.add(num);
+    });
 
-    if (!watchlistItems || watchlistItems.length === 0) {
-      console.log('[Blindspot] No watchlist items found for user');
-      return new Set();
-    }
-
-    const ids = watchlistItems
-      .filter(item => item.content)
-      .map(item => (item.content as any).tmdb_id)
-      .filter(id => id != null);
-    console.log('[Blindspot] Loaded', ids.length, 'watchlist IDs to exclude');
-
-    return new Set(ids);
+    console.log(`[Blindspot] Loaded ${excludeSet.size} exclusions`);
+    return excludeSet;
   } catch (error) {
     console.error('[Blindspot] Error fetching exclusions:', error);
     return new Set();
