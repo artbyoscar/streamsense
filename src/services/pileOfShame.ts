@@ -128,16 +128,26 @@ export const getPileOfShame = async (userId: string): Promise<ShameItem[]> => {
 
     console.log('[PileOfShame] User provider IDs:', userProviderIds);
 
-    // Get user's watchlist IDs to exclude
+    // Get user's watchlist IDs to exclude (only watched or currently watching)
     const { data: watchlist } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id, content_type');
+      .select('tmdb_id, content_type, status')
+      .eq('user_id', userId)
+      .in('status', ['watched', 'watching']); // Only exclude engaged content
 
     const watchedIds = new Set(
       (watchlist || []).map(w => `${w.content_type}-${w.tmdb_id}`)
     );
 
-    console.log('[PileOfShame] User has', watchedIds.size, 'items in watchlist');
+    console.log('[PileOfShame] User has', watchedIds.size, 'watched/watching items to exclude');
+    console.log('[PileOfShame] Excluded IDs sample:', Array.from(watchedIds).slice(0, 10));
+    if (watchlist && watchlist.length > 0) {
+      const statusBreakdown = watchlist.reduce((acc, item) => {
+        acc[item.status] = (acc[item.status] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      console.log('[PileOfShame] Status breakdown:', statusBreakdown);
+    }
 
     // Get top movies and TV shows
     const [topMovies, topTVShows] = await Promise.all([
