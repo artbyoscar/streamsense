@@ -465,21 +465,20 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                         key={star}
                         style={styles.starButton}
                         onPress={() => {
-                          // Cycle: empty → half → full → empty
-                          if (rating >= star) {
-                            // Full star, clear it (go to previous full star)
-                            setRating(star - 1);
-                          } else if (rating >= star - 0.5) {
-                            // Half star, make it full
-                            setRating(star);
-                          } else {
-                            // Empty, make it half
+                          if (rating === star) {
+                            // If currently full star, make it half
                             setRating(star - 0.5);
+                          } else if (rating === star - 0.5) {
+                            // If currently half star, clear it (go to previous full star)
+                            setRating(star - 1);
+                          } else {
+                            // Otherwise, set to full star
+                            setRating(star);
                           }
                         }}
                       >
                         <MaterialCommunityIcons
-                          name={isFull ? 'star' : isHalf ? 'star-half-full' : 'star-outline'}
+                          name={isFull ? 'star' : isHalf ? 'star-half' : 'star-outline'}
                           size={40}
                           color={isFull || isHalf ? COLORS.warning : colors.border}
                         />
@@ -493,7 +492,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                   </Text>
                 )}
                 <Text style={[styles.ratingHint, { color: colors.textSecondary }]}>
-                  Tap to cycle: empty → half → full
+                  Tap once for full star, twice for half star
                 </Text>
               </View>
             )}
