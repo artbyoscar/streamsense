@@ -10,6 +10,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { UserSubscription } from '@/types';
 import { COLORS } from '@/components';
 import type { SubscriptionValueMetrics } from '@/services/subscriptionValue';
+import { getServiceIconName } from '@/utils/serviceIcons';
 
 interface SubscriptionListItemProps {
   subscription: UserSubscription;
@@ -70,21 +71,7 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
   };
 
   const getServiceIcon = () => {
-    // Map of common services to icons
-    const iconMap: Record<string, string> = {
-      Netflix: 'netflix',
-      Spotify: 'spotify',
-      'Apple Music': 'apple',
-      'YouTube Premium': 'youtube',
-      Hulu: 'hulu',
-      'Disney+': 'star-circle', // Disney doesn't have an official icon in material-community
-      'Amazon Prime': 'amazon',
-      'HBO Max': 'television-box',
-      Paramount: 'plus-box',
-      Peacock: 'television-classic',
-    };
-
-    return iconMap[subscription.service_name] || 'play-box-outline';
+    return getServiceIconName(subscription.service_name);
   };
 
   return (

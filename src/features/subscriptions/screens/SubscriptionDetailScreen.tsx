@@ -21,25 +21,9 @@ import { useSubscription, useUpdateSubscription, useDeleteSubscription } from '.
 import { formatCurrency } from '../store/subscriptionsStore';
 import { COLORS, Card, LoadingScreen, Button } from '@/components';
 import type { BillingCycle, SubscriptionStatus } from '@/types';
+import { getServiceIconName } from '@/utils/serviceIcons';
 
 type SubscriptionDetailNavigationProp = StackNavigationProp<DashboardStackParamList, 'SubscriptionDetail'>;
-
-// Service icon mapping
-const SERVICE_ICONS: Record<string, string> = {
-  netflix: 'netflix',
-  spotify: 'spotify',
-  hulu: 'hulu',
-  'disney+': 'star-circle', // Disney doesn't have an official icon in material-community
-  'disney plus': 'star-circle',
-  'amazon prime': 'amazon',
-  'prime video': 'amazon',
-  'hbo max': 'hbo',
-  'apple tv+': 'apple',
-  'apple tv plus': 'apple',
-  'youtube premium': 'youtube',
-  paramount: 'movie-filter',
-  peacock: 'feather',
-};
 
 const BILLING_CYCLE_LABELS: Record<BillingCycle, string> = {
   weekly: 'Weekly',
@@ -93,8 +77,7 @@ export const SubscriptionDetailScreen: React.FC = () => {
 
   // Get service icon
   const getServiceIcon = (serviceName: string): string => {
-    const normalizedName = serviceName.toLowerCase();
-    return SERVICE_ICONS[normalizedName] || 'television';
+    return getServiceIconName(serviceName);
   };
 
   // Format next billing date
