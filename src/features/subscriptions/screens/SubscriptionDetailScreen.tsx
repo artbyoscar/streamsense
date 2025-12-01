@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import { Text, Divider } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import type { StackNavigationProp } from '@react-navigation/stack';
-import type { DashboardStackParamList } from '@/navigation/types';
+// import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+// import type { StackNavigationProp } from '@react-navigation/stack';
+// import type { DashboardStackParamList } from '@/navigation/types';
 import { useSubscription, useUpdateSubscription, useDeleteSubscription } from '../hooks/useSubscriptions';
 import { formatCurrency } from '../store/subscriptionsStore';
 import { COLORS, Card, LoadingScreen, Button } from '@/components';
@@ -24,7 +24,7 @@ import type { BillingCycle, SubscriptionStatus } from '@/types';
 import { getServiceIconName } from '@/utils/serviceIcons';
 import { ValueScoreCard } from '../components/ValueScoreCard';
 
-type SubscriptionDetailNavigationProp = StackNavigationProp<DashboardStackParamList, 'SubscriptionDetail'>;
+// type SubscriptionDetailNavigationProp = StackNavigationProp<DashboardStackParamList, 'SubscriptionDetail'>;
 
 const BILLING_CYCLE_LABELS: Record<BillingCycle, string> = {
   weekly: 'Weekly',
@@ -66,9 +66,11 @@ type RouteParams = {
 };
 
 export const SubscriptionDetailScreen: React.FC = () => {
-  const navigation = useNavigation<SubscriptionDetailNavigationProp>();
-  const route = useRoute<RouteProp<RouteParams, 'SubscriptionDetail'>>();
-  const { subscriptionId } = route.params;
+  // const navigation = useNavigation<SubscriptionDetailNavigationProp>();
+  // const route = useRoute<RouteProp<RouteParams, 'SubscriptionDetail'>>();
+  // const { subscriptionId } = route.params;
+  const navigation = { goBack: () => { } }; // Mock
+  const subscriptionId = ''; // Mock
 
   const { data: subscription, isLoading, error } = useSubscription(subscriptionId);
   const updateMutation = useUpdateSubscription();

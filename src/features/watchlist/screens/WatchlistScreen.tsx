@@ -17,7 +17,6 @@ import { Text, FAB } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/features/auth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
-import { useFocusEffect } from '@react-navigation/native';
 import Animated, { FadeOut, SlideOutRight, Layout } from 'react-native-reanimated';
 import { supabase } from '@/config/supabase';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
@@ -80,7 +79,7 @@ interface WatchlistItemWithContent {
 // MAIN COMPONENT
 // ============================================================================
 
-export const WatchlistScreen: React.FC = () => {
+export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused = true }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
   const {
@@ -244,11 +243,11 @@ export const WatchlistScreen: React.FC = () => {
   }, [fetchWatchlist]);
 
   // Refresh watchlist when screen gains focus (e.g. returning from detail view)
-  useFocusEffect(
-    useCallback(() => {
+  useEffect(() => {
+    if (isFocused) {
       fetchWatchlist();
-    }, [fetchWatchlist])
-  );
+    }
+  }, [isFocused, fetchWatchlist]);
 
   // Load user top genres for subtitle
   useEffect(() => {

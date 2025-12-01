@@ -47,7 +47,7 @@ const Navigator: React.FC = () => {
   const renderScreen = () => {
     switch (activeTab) {
       case 'Home': return <DashboardScreen />;
-      case 'Watchlist': return <WatchlistScreen />;
+      case 'Watchlist': return <WatchlistScreen isFocused={activeTab === 'Watchlist'} />;
       case 'Discover': return <SwipeScreen />;
       case 'Tips': return <RecommendationsScreen />;
       case 'Settings': return <SettingsScreen />;

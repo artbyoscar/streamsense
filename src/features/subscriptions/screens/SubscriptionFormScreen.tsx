@@ -17,7 +17,7 @@ import { Text, TextInput as PaperInput, Menu, Divider } from 'react-native-paper
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+// import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -73,9 +73,11 @@ type RouteParams = {
 // ============================================================================
 
 export const SubscriptionFormScreen: React.FC = () => {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RouteParams, 'SubscriptionForm'>>();
-  const subscriptionId = route.params?.subscriptionId;
+  // const navigation = useNavigation();
+  // const route = useRoute<RouteProp<RouteParams, 'SubscriptionForm'>>();
+  // const subscriptionId = route.params?.subscriptionId;
+  const navigation = { goBack: () => { } }; // Mock
+  const subscriptionId = undefined; // Mock
   const isEditMode = !!subscriptionId;
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -277,274 +279,274 @@ export const SubscriptionFormScreen: React.FC = () => {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-      <Card style={styles.formCard}>
-        <Text style={styles.formSubtitle}>
-          {isEditMode
-            ? 'Update your subscription details'
-            : 'Track a new streaming service or subscription'}
-        </Text>
-
-        <Divider style={styles.divider} />
-
-        {/* Service Selector */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>
-            Service <Text style={styles.required}>*</Text>
+        <Card style={styles.formCard}>
+          <Text style={styles.formSubtitle}>
+            {isEditMode
+              ? 'Update your subscription details'
+              : 'Track a new streaming service or subscription'}
           </Text>
 
-          <Menu
-            visible={serviceMenuVisible}
-            onDismiss={() => setServiceMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={[
-                  styles.menuButton,
-                  errors.serviceName && styles.menuButtonError,
-                ]}
-                onPress={() => setServiceMenuVisible(true)}
-              >
-                <Text
-                  style={[
-                    styles.menuButtonText,
-                    !selectedServiceName && styles.menuButtonPlaceholder,
-                  ]}
-                >
-                  {selectedServiceName || 'Select a service'}
-                </Text>
-                <MaterialCommunityIcons
-                  name={serviceMenuVisible ? 'chevron-up' : 'chevron-down'}
-                  size={24}
-                  color={COLORS.gray}
-                />
-              </TouchableOpacity>
-            }
-          >
-            <View style={styles.menuContent}>
-              {/* Search Input */}
-              <PaperInput
-                placeholder="Search services..."
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                mode="outlined"
-                style={styles.searchInput}
-                left={<PaperInput.Icon icon="magnify" />}
-              />
+          <Divider style={styles.divider} />
 
-              <ScrollView style={styles.menuScroll}>
-                {/* Filtered Services */}
-                {filteredServices.map((service) => (
-                  <Menu.Item
-                    key={service.id}
-                    onPress={() => handleServiceSelect(service)}
-                    title={service.name}
-                    titleStyle={
-                      selectedServiceId === service.id
-                        ? styles.selectedMenuItem
-                        : undefined
-                    }
-                  />
-                ))}
-
-                {/* Custom Service Option */}
-                <Divider />
-                <Menu.Item
-                  onPress={() => handleServiceSelect(null)}
-                  title="+ Add Custom Service"
-                  titleStyle={styles.customMenuItem}
-                />
-              </ScrollView>
-            </View>
-          </Menu>
-
-          {errors.serviceName && (
-            <Text style={styles.errorText}>{errors.serviceName.message}</Text>
-          )}
-        </View>
-
-        {/* Custom Service Name (if no service selected) */}
-        {selectedServiceId === null && (
+          {/* Service Selector */}
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>
-              Custom Service Name <Text style={styles.required}>*</Text>
+              Service <Text style={styles.required}>*</Text>
             </Text>
-            <Controller
-              control={control}
-              name="serviceName"
-              render={({ field: { onChange, onBlur, value } }) => (
+
+            <Menu
+              visible={serviceMenuVisible}
+              onDismiss={() => setServiceMenuVisible(false)}
+              anchor={
+                <TouchableOpacity
+                  style={[
+                    styles.menuButton,
+                    errors.serviceName && styles.menuButtonError,
+                  ]}
+                  onPress={() => setServiceMenuVisible(true)}
+                >
+                  <Text
+                    style={[
+                      styles.menuButtonText,
+                      !selectedServiceName && styles.menuButtonPlaceholder,
+                    ]}
+                  >
+                    {selectedServiceName || 'Select a service'}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={serviceMenuVisible ? 'chevron-up' : 'chevron-down'}
+                    size={24}
+                    color={COLORS.gray}
+                  />
+                </TouchableOpacity>
+              }
+            >
+              <View style={styles.menuContent}>
+                {/* Search Input */}
                 <PaperInput
+                  placeholder="Search services..."
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
                   mode="outlined"
-                  placeholder="Enter service name"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  error={!!errors.serviceName}
+                  style={styles.searchInput}
+                  left={<PaperInput.Icon icon="magnify" />}
                 />
-              )}
-            />
+
+                <ScrollView style={styles.menuScroll}>
+                  {/* Filtered Services */}
+                  {filteredServices.map((service) => (
+                    <Menu.Item
+                      key={service.id}
+                      onPress={() => handleServiceSelect(service)}
+                      title={service.name}
+                      titleStyle={
+                        selectedServiceId === service.id
+                          ? styles.selectedMenuItem
+                          : undefined
+                      }
+                    />
+                  ))}
+
+                  {/* Custom Service Option */}
+                  <Divider />
+                  <Menu.Item
+                    onPress={() => handleServiceSelect(null)}
+                    title="+ Add Custom Service"
+                    titleStyle={styles.customMenuItem}
+                  />
+                </ScrollView>
+              </View>
+            </Menu>
+
             {errors.serviceName && (
               <Text style={styles.errorText}>{errors.serviceName.message}</Text>
             )}
           </View>
-        )}
 
-        {/* Price Input */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>
-            Price <Text style={styles.required}>*</Text>
-          </Text>
-          <Controller
-            control={control}
-            name="price"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <PaperInput
-                mode="outlined"
-                placeholder="0.00"
-                value={value > 0 ? value.toString() : ''}
-                onChangeText={(text) => {
-                  const numValue = parseFloat(text.replace(/[^0-9.]/g, ''));
-                  onChange(isNaN(numValue) ? 0 : numValue);
-                }}
-                onBlur={onBlur}
-                keyboardType="decimal-pad"
-                left={<PaperInput.Affix text="$" />}
-                error={!!errors.price}
+          {/* Custom Service Name (if no service selected) */}
+          {selectedServiceId === null && (
+            <View style={styles.fieldContainer}>
+              <Text style={styles.fieldLabel}>
+                Custom Service Name <Text style={styles.required}>*</Text>
+              </Text>
+              <Controller
+                control={control}
+                name="serviceName"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <PaperInput
+                    mode="outlined"
+                    placeholder="Enter service name"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    error={!!errors.serviceName}
+                  />
+                )}
               />
-            )}
-          />
-          {errors.price && <Text style={styles.errorText}>{errors.price.message}</Text>}
-        </View>
+              {errors.serviceName && (
+                <Text style={styles.errorText}>{errors.serviceName.message}</Text>
+              )}
+            </View>
+          )}
 
-        {/* Billing Cycle Selector */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>
-            Billing Cycle <Text style={styles.required}>*</Text>
-          </Text>
-
-          <Menu
-            visible={billingCycleMenuVisible}
-            onDismiss={() => setBillingCycleMenuVisible(false)}
-            anchor={
-              <TouchableOpacity
-                style={styles.menuButton}
-                onPress={() => setBillingCycleMenuVisible(true)}
-              >
-                <Text style={styles.menuButtonText}>
-                  {BILLING_CYCLE_OPTIONS.find((opt) => opt.value === selectedBillingCycle)
-                    ?.label || 'Select billing cycle'}
-                </Text>
-                <MaterialCommunityIcons
-                  name={billingCycleMenuVisible ? 'chevron-up' : 'chevron-down'}
-                  size={24}
-                  color={COLORS.gray}
+          {/* Price Input */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>
+              Price <Text style={styles.required}>*</Text>
+            </Text>
+            <Controller
+              control={control}
+              name="price"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PaperInput
+                  mode="outlined"
+                  placeholder="0.00"
+                  value={value > 0 ? value.toString() : ''}
+                  onChangeText={(text) => {
+                    const numValue = parseFloat(text.replace(/[^0-9.]/g, ''));
+                    onChange(isNaN(numValue) ? 0 : numValue);
+                  }}
+                  onBlur={onBlur}
+                  keyboardType="decimal-pad"
+                  left={<PaperInput.Affix text="$" />}
+                  error={!!errors.price}
                 />
-              </TouchableOpacity>
-            }
-          >
-            {BILLING_CYCLE_OPTIONS.map((option) => (
-              <Menu.Item
-                key={option.value}
-                onPress={() => handleBillingCycleSelect(option.value)}
-                title={option.label}
-                titleStyle={
-                  selectedBillingCycle === option.value
-                    ? styles.selectedMenuItem
-                    : undefined
-                }
-              />
-            ))}
-          </Menu>
-        </View>
+              )}
+            />
+            {errors.price && <Text style={styles.errorText}>{errors.price.message}</Text>}
+          </View>
 
-        {/* Next Billing Date */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Next Billing Date (Optional)</Text>
+          {/* Billing Cycle Selector */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>
+              Billing Cycle <Text style={styles.required}>*</Text>
+            </Text>
 
-          <TouchableOpacity
-            style={styles.menuButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text
-              style={[
-                styles.menuButtonText,
-                !selectedDate && styles.menuButtonPlaceholder,
-              ]}
+            <Menu
+              visible={billingCycleMenuVisible}
+              onDismiss={() => setBillingCycleMenuVisible(false)}
+              anchor={
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={() => setBillingCycleMenuVisible(true)}
+                >
+                  <Text style={styles.menuButtonText}>
+                    {BILLING_CYCLE_OPTIONS.find((opt) => opt.value === selectedBillingCycle)
+                      ?.label || 'Select billing cycle'}
+                  </Text>
+                  <MaterialCommunityIcons
+                    name={billingCycleMenuVisible ? 'chevron-up' : 'chevron-down'}
+                    size={24}
+                    color={COLORS.gray}
+                  />
+                </TouchableOpacity>
+              }
             >
-              {selectedDate
-                ? selectedDate.toLocaleDateString('en-US', {
+              {BILLING_CYCLE_OPTIONS.map((option) => (
+                <Menu.Item
+                  key={option.value}
+                  onPress={() => handleBillingCycleSelect(option.value)}
+                  title={option.label}
+                  titleStyle={
+                    selectedBillingCycle === option.value
+                      ? styles.selectedMenuItem
+                      : undefined
+                  }
+                />
+              ))}
+            </Menu>
+          </View>
+
+          {/* Next Billing Date */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Next Billing Date (Optional)</Text>
+
+            <TouchableOpacity
+              style={styles.menuButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text
+                style={[
+                  styles.menuButtonText,
+                  !selectedDate && styles.menuButtonPlaceholder,
+                ]}
+              >
+                {selectedDate
+                  ? selectedDate.toLocaleDateString('en-US', {
                     month: 'long',
                     day: 'numeric',
                     year: 'numeric',
                   })
-                : 'Select date'}
-            </Text>
-            <MaterialCommunityIcons name="calendar" size={24} color={COLORS.gray} />
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={selectedDate || new Date()}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-              onChange={handleDateChange}
-              minimumDate={new Date()}
-            />
-          )}
-
-          {selectedDate && (
-            <TouchableOpacity
-              style={styles.clearButton}
-              onPress={() => setValue('nextBillingDate', null)}
-            >
-              <Text style={styles.clearButtonText}>Clear date</Text>
+                  : 'Select date'}
+              </Text>
+              <MaterialCommunityIcons name="calendar" size={24} color={COLORS.gray} />
             </TouchableOpacity>
-          )}
-        </View>
 
-        {/* Notes */}
-        <View style={styles.fieldContainer}>
-          <Text style={styles.fieldLabel}>Notes (Optional)</Text>
-          <Controller
-            control={control}
-            name="notes"
-            render={({ field: { onChange, onBlur, value } }) => (
-              <PaperInput
-                mode="outlined"
-                placeholder="Add any notes about this subscription..."
-                value={value || ''}
-                onChangeText={onChange}
-                onBlur={onBlur}
-                multiline
-                numberOfLines={4}
-                style={styles.notesInput}
+            {showDatePicker && (
+              <DateTimePicker
+                value={selectedDate || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleDateChange}
+                minimumDate={new Date()}
               />
             )}
-          />
+
+            {selectedDate && (
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={() => setValue('nextBillingDate', null)}
+              >
+                <Text style={styles.clearButtonText}>Clear date</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Notes */}
+          <View style={styles.fieldContainer}>
+            <Text style={styles.fieldLabel}>Notes (Optional)</Text>
+            <Controller
+              control={control}
+              name="notes"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <PaperInput
+                  mode="outlined"
+                  placeholder="Add any notes about this subscription..."
+                  value={value || ''}
+                  onChangeText={onChange}
+                  onBlur={onBlur}
+                  multiline
+                  numberOfLines={4}
+                  style={styles.notesInput}
+                />
+              )}
+            />
+          </View>
+        </Card>
+
+        {/* Action Buttons */}
+        <View style={styles.actionsSection}>
+          <Button
+            variant="primary"
+            onPress={handleSubmit(onSubmit)}
+            loading={createMutation.isPending || updateMutation.isPending}
+            disabled={!isValid}
+            style={styles.actionButton}
+          >
+            {isEditMode ? 'Update Subscription' : 'Add Subscription'}
+          </Button>
+
+          <Button
+            variant="outline"
+            onPress={() => navigation.goBack()}
+            style={styles.actionButton}
+          >
+            Cancel
+          </Button>
         </View>
-      </Card>
 
-      {/* Action Buttons */}
-      <View style={styles.actionsSection}>
-        <Button
-          variant="primary"
-          onPress={handleSubmit(onSubmit)}
-          loading={createMutation.isPending || updateMutation.isPending}
-          disabled={!isValid}
-          style={styles.actionButton}
-        >
-          {isEditMode ? 'Update Subscription' : 'Add Subscription'}
-        </Button>
-
-        <Button
-          variant="outline"
-          onPress={() => navigation.goBack()}
-          style={styles.actionButton}
-        >
-          Cancel
-        </Button>
-      </View>
-
-      <View style={styles.bottomPadding} />
-    </ScrollView>
+        <View style={styles.bottomPadding} />
+      </ScrollView>
     </View>
   );
 };
