@@ -14,6 +14,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -191,32 +192,45 @@ export const SwipeScreen: React.FC = () => {
         <View
           style={[styles.card, { backgroundColor: colors.card }]}
         >
-          {/* Card Content */}
+          {/* Poster - Top 60% */}
           <Image
             source={{ uri: `https://image.tmdb.org/t/p/w500${currentCard.posterPath}` }}
-            style={styles.cardImage}
+            style={styles.cardPoster}
             resizeMode="cover"
           />
 
-          <View style={styles.cardInfo}>
-            <Text style={[styles.cardTitle, { color: '#FFFFFF' }]} numberOfLines={2}>
+          {/* Content Info - Bottom 40% */}
+          <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
               {currentCard.title}
             </Text>
-            <View style={styles.cardMeta}>
+
+            <View style={styles.cardMetaRow}>
               <View style={styles.ratingContainer}>
                 <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={styles.ratingText}>
+                <Text style={[styles.ratingText, { color: colors.text }]}>
                   {currentCard.rating?.toFixed(1) || 'N/A'}
                 </Text>
               </View>
-              <Text style={styles.metaText}>
+              <Text style={[styles.yearText, { color: colors.textSecondary }]}>
+                {currentCard.releaseDate?.split('-')[0] || 'N/A'}
+              </Text>
+              <Text style={[styles.typeText, { color: colors.textSecondary }]}>
                 {currentCard.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
               </Text>
             </View>
+
             {currentCard.overview && (
-              <Text style={styles.cardOverview} numberOfLines={3}>
-                {currentCard.overview}
-              </Text>
+              <>
+                <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
+                  About
+                </Text>
+                <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
+                  <Text style={[styles.cardOverview, { color: colors.text }]}>
+                    {currentCard.overview}
+                  </Text>
+                </ScrollView>
+              </>
             )}
           </View>
         </View>
@@ -313,28 +327,25 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  cardImage: {
+  cardPoster: {
     width: '100%',
-    height: '100%',
+    height: '60%', // Poster takes 60% of card height
   },
-  cardInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+  cardContent: {
+    flex: 1, // Takes remaining 40%
+    padding: 16,
+    paddingBottom: 20,
   },
   cardTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
   },
-  cardMeta: {
+  cardMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   ratingContainer: {
     flexDirection: 'row',
@@ -342,18 +353,29 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
-  metaText: {
-    color: '#FFFFFF',
+  yearText: {
     fontSize: 14,
   },
+  typeText: {
+    fontSize: 14,
+  },
+  aboutLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  overviewScroll: {
+    flex: 1,
+    maxHeight: 90, // Limit overview height to prevent layout issues
+  },
   cardOverview: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   buttonsContainer: {
     flexDirection: 'row',
