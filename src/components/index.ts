@@ -44,3 +44,5 @@ export { OfflineBanner } from './OfflineBanner';
 
 export { ModalHeader } from './ModalHeader';
 export type { ModalHeaderProps } from './ModalHeader';
+
+export { BreakEvenBar } from './BreakEvenBar';
