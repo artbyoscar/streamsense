@@ -17,7 +17,7 @@ import { ContentDetailModal } from '@/features/watchlist/components/ContentDetai
 import { PlaidConnectionScreen } from '@/features/onboarding/screens/PlaidConnectionScreen';
 import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 import { useTheme } from '@/providers/ThemeProvider';
-import { useNotifications } from '@/hooks/useNotifications';
+// import { useNotifications } from '@/hooks/useNotifications'; // Disabled: requires dev build
 
 // Navigator component - uses the context
 const Navigator: React.FC = () => {
@@ -41,7 +41,7 @@ const Navigator: React.FC = () => {
   const { colors, isDark } = useTheme();
 
   // Initialize notifications
-  useNotifications();
+  // useNotifications(); // Disabled: requires dev build, enable when doing production build
 
   const renderScreen = () => {
     switch (activeTab) {
