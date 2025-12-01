@@ -24,6 +24,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { getUserTopGenres } from '@/services/genreAffinity';
 import { getSmartRecommendations, getGenreRecommendations } from '@/services/smartRecommendations';
 import { markEngaged } from '@/services/recommendationFatigue';
+import { useRecommendationCache } from '@/hooks/useRecommendationCache';
 import { COLORS, EmptyState } from '@/components';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
@@ -91,14 +92,18 @@ export const WatchlistScreen: React.FC = () => {
   const [watching, setWatching] = useState<WatchlistItemWithContent[]>([]);
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
-  // Cache all recommendations (movies + TV) for instant client-side filtering
-  const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
-  const [movieRecommendations, setMovieRecommendations] = useState<UnifiedContent[]>([]);
-  const [tvRecommendations, setTVRecommendations] = useState<UnifiedContent[]>([]);
+
+  // Use cached recommendations hook for instant filtering
+  const {
+    isLoading: loadingForYou,
+    getFiltered: getFilteredRecommendations,
+    refreshCache,
+    cache
+  } = useRecommendationCache(user?.id);
+
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
-  const [loadingForYou, setLoadingForYou] = useState(false);
   const [addedToWatchlistIds, setAddedToWatchlistIds] = useState<Set<number>>(new Set());
 
   // Fetch trending for suggestions
@@ -110,50 +115,19 @@ export const WatchlistScreen: React.FC = () => {
 
   // Select recommendations based on media type filter (client-side, instant!)
   // Select recommendations based on media type filter (client-side, instant!)
+  // Select recommendations based on media type filter (client-side, instant!)
   const selectedRecommendations = useMemo(() => {
-    // Helper for robust filtering
-    const filterByMediaType = (items: any[], filter: 'all' | 'movie' | 'tv') => {
-      if (filter === 'all') return items;
+    // Use the hook's getFiltered function which is already optimized
+    const results = getFilteredRecommendations(mediaTypeFilter, activeGenreFilter);
 
-      return items.filter(item => {
-        // Check both media_type and type fields
-        const itemType = (item.media_type || item.type || '').toLowerCase();
-
-        // Normalize the comparison
-        if (filter === 'movie') {
-          return itemType === 'movie';
-        }
-        if (filter === 'tv') {
-          return itemType === 'tv' || itemType === 'series';
-        }
-        return true;
-      });
-    };
-
-    console.log('[Watchlist] Filtering by media type:', mediaTypeFilter);
-    console.log('[Watchlist] Total items available:', allRecommendations.length);
-
-    // Debug sample items
-    if (allRecommendations.length > 0) {
-      console.log('[Watchlist] Sample item types:',
-        allRecommendations.slice(0, 3).map(i => ({
-          id: (i as any).id,
-          media_type: (i as any).media_type,
-          type: (i as any).type
-        }))
-      );
-    }
-
-    // Always filter from allRecommendations to ensure we catch everything using robust logic
-    const results = filterByMediaType(allRecommendations, mediaTypeFilter);
-    console.log(`[Watchlist] After media type filter (${mediaTypeFilter}): ${results.length} items`);
+    console.log(`[Watchlist] Filtered results: ${results.length} items (Type: ${mediaTypeFilter}, Genre: ${activeGenreFilter})`);
     return results;
-  }, [mediaTypeFilter, allRecommendations]);
+  }, [mediaTypeFilter, activeGenreFilter, getFilteredRecommendations]);
 
   // ROBUST filtering that handles different data structures
+  // Final filtering to remove items already in watchlist
   const filteredRecommendations = useMemo(() => {
     if (!selectedRecommendations || selectedRecommendations.length === 0) {
-      console.log('[Watchlist] No recommendations to filter');
       return [];
     }
 
@@ -172,91 +146,16 @@ export const WatchlistScreen: React.FC = () => {
       const itemId = item.id || item.tmdb_id;
       return !watchlistTmdbIds.has(itemId) && !addedToWatchlistIds.has(itemId);
     });
-    console.log(`[Watchlist] After watchlist exclusion: ${filtered.length} items`);
 
-    // Debug: Log first item structure
-    if (filtered.length > 0) {
-      const sample = filtered[0] as any;
-      console.log('[Watchlist] Sample item structure:', {
-        id: sample.id,
-        title: sample.title,
-        type: sample.type,
-        media_type: sample.media_type,
-        genre_ids: sample.genre_ids,
-        genres: sample.genres,
-      });
-    }
-
-    // Media type filtering now handled by selectedRecommendations memo above
-    // No need to filter again here - already filtered by cache selection
-
-    // Filter by genre
-    if (activeGenreFilter !== 'All') {
-      const targetGenreIds = GENRE_ID_MAP[activeGenreFilter] || [];
-
-      if (targetGenreIds.length > 0) {
-        filtered = filtered.filter((item: any) => {
-          // Try genre_ids first (array of numbers)
-          let itemGenreIds: number[] = [];
-
-          if (Array.isArray(item.genre_ids)) {
-            itemGenreIds = item.genre_ids;
-          }
-          // Try genres as array of objects with id
-          else if (Array.isArray(item.genres)) {
-            itemGenreIds = item.genres.map((g: any) =>
-              typeof g === 'number' ? g : (g.id || 0)
-            );
-          }
-
-          const hasMatch = itemGenreIds.some((id: number) => targetGenreIds.includes(id));
-
-          // Special handling for Anime vs Animation
-          if (activeGenreFilter === 'Anime') {
-            // Must be animation (16) AND Japanese origin
-            const isAnimated = itemGenreIds.includes(16);
-            const isJapanese = item.original_language === 'ja';
-            return isAnimated && isJapanese;
-          } else if (activeGenreFilter === 'Animation') {
-            // Must be animation (16) AND NOT Japanese origin
-            const isAnimated = itemGenreIds.includes(16);
-            const isJapanese = item.original_language === 'ja';
-            return isAnimated && !isJapanese;
-          }
-
-          return hasMatch;
-        });
-        console.log(`[Watchlist] After genre filter (${activeGenreFilter}): ${filtered.length} items`);
-      }
-    }
-
-    console.log(`[Watchlist] Final filtered: ${filtered.length} items`);
+    console.log(`[Watchlist] Final display count: ${filtered.length} items`);
     return filtered;
-  }, [selectedRecommendations, activeGenreFilter, watching, wantToWatch, watched, addedToWatchlistIds]);
+  }, [selectedRecommendations, watching, wantToWatch, watched, addedToWatchlistIds]);
 
   // ============================================================================
   // DEBUG - Log item structure when recommendations load
   // ============================================================================
 
-  useEffect(() => {
-    if (allRecommendations.length > 0) {
-      console.log('[Watchlist] DEBUG - First 3 items structure:');
-      allRecommendations.slice(0, 3).forEach((item, i) => {
-        const anyItem = item as any;
-        console.log(`Item ${i}:`, {
-          id: anyItem.id,
-          title: anyItem.title,
-          name: anyItem.name,
-          media_type: anyItem.media_type,
-          genre_ids: anyItem.genre_ids,
-          genres: anyItem.genres,
-          original_language: anyItem.original_language,
-          first_air_date: anyItem.first_air_date,
-          release_date: anyItem.release_date,
-        });
-      });
-    }
-  }, [allRecommendations]);
+
 
   // Clear temporarily tracked IDs when watchlist updates (items are now in actual watchlist)
   useEffect(() => {
@@ -279,45 +178,12 @@ export const WatchlistScreen: React.FC = () => {
   };
 
   // Handle genre filter tap - now uses client-side filtering (instant!)
-  const handleGenreFilterTap = useCallback(async (genre: string) => {
-    if (!user?.id) return;
-
+  // Handle genre filter tap - now uses client-side filtering (instant!)
+  const handleGenreFilterTap = useCallback((genre: string) => {
     console.log('[Watchlist] Genre filter tapped:', genre);
     setActiveGenreFilter(genre);
-
-    // ✅ OPTIMIZATION: Only fetch fresh data for specific genres
-    // "All" genre uses existing cached data (instant filter)
-    if (genre !== 'All') {
-      setLoadingForYou(true);
-      try {
-        // Load genre-specific recommendations (both movie and TV in parallel)
-        const [movieRecs, tvRecs] = await Promise.all([
-          getGenreRecommendations({
-            userId: user.id,
-            genre: genre,
-            mediaType: 'movie',
-            limit: 30,
-          }),
-          getGenreRecommendations({
-            userId: user.id,
-            genre: genre,
-            mediaType: 'tv',
-            limit: 30,
-          }),
-        ]);
-
-        // Update caches with genre-specific results
-        setMovieRecommendations(movieRecs);
-        setTVRecommendations(tvRecs);
-        setAllRecommendations([...movieRecs, ...tvRecs]);
-      } catch (error) {
-        console.error('[Watchlist] Genre filter error:', error);
-      } finally {
-        setLoadingForYou(false);
-      }
-    }
-    // For "All", the existing cache is used - no API call needed!
-  }, [user?.id]);
+    // No API call needed! Hook handles filtering automatically
+  }, []);
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -375,79 +241,21 @@ export const WatchlistScreen: React.FC = () => {
     fetchWatchlist();
   }, [fetchWatchlist]);
 
-  // Load personalized recommendations
+  // Load user top genres for subtitle
   useEffect(() => {
     if (user?.id) {
-      loadPersonalizedContent();
+      getUserTopGenres(user.id, 6).then(genres => {
+        setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
+      });
     }
   }, [user?.id]);
-
-  // ✅ Media type filtering is now instant via client-side cache
-  // No need to refetch on filter changes - handled by useMemo above
-
-  const loadPersonalizedContent = async (append: boolean = false) => {
-    if (!user?.id) return;
-
-    setLoadingForYou(true);
-    try {
-      // Pre-fetch BOTH movie and TV recommendations in parallel for instant filtering
-      const [movieRecs, tvRecs, genres] = await Promise.all([
-        getSmartRecommendations({
-          userId: user.id,
-          mediaType: 'movie',
-          limit: 50, // Get more for better variety
-          forceRefresh: false,
-        }),
-        getSmartRecommendations({
-          userId: user.id,
-          mediaType: 'tv',
-          limit: 50,
-          forceRefresh: false,
-        }),
-        getUserTopGenres(user.id, 6),
-      ]);
-
-      console.log('[Watchlist] Loaded', movieRecs.length, 'movies,', tvRecs.length, 'TV shows');
-
-      if (append) {
-        // Append new recommendations, avoiding duplicates
-        setMovieRecommendations(prev => {
-          const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
-          const newItems = movieRecs.filter(
-            item => !existingIds.has(`${item.type}-${item.id}`)
-          );
-          return [...prev, ...newItems];
-        });
-        setTVRecommendations(prev => {
-          const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
-          const newItems = tvRecs.filter(
-            item => !existingIds.has(`${item.type}-${item.id}`)
-          );
-          return [...prev, ...newItems];
-        });
-        setAllRecommendations(prev => [...prev, ...movieRecs, ...tvRecs].filter((item, index, self) =>
-          index === self.findIndex(t => `${t.type}-${t.id}` === `${item.type}-${item.id}`)
-        ));
-      } else {
-        // Cache separately for instant filtering
-        setMovieRecommendations(movieRecs);
-        setTVRecommendations(tvRecs);
-        setAllRecommendations([...movieRecs, ...tvRecs]);
-      }
-      setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
-    } catch (error) {
-      console.error('[Watchlist] Error loading personalized content:', error);
-    } finally {
-      setLoadingForYou(false);
-    }
-  };
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
       await Promise.all([
         fetchWatchlist(),
-        loadPersonalizedContent(),
+        refreshCache(),
       ]);
     } catch (error) {
       console.error('[Watchlist] Error refreshing:', error);
@@ -679,7 +487,7 @@ export const WatchlistScreen: React.FC = () => {
         </View>
 
         {/* Personalized For You Section */}
-        {allRecommendations.length > 0 ? (
+        {cache?.all && cache.all.length > 0 ? (
           <View style={styles.section}>
             <View style={styles.sectionHeaderWithSubtitle}>
               <View>
@@ -812,16 +620,7 @@ export const WatchlistScreen: React.FC = () => {
                   </TouchableOpacity>
                 ))}
 
-                {/* More Button */}
-                {filteredRecommendations.length > 0 && !loadingForYou && (
-                  <TouchableOpacity
-                    style={styles.moreButton}
-                    onPress={() => loadPersonalizedContent(true)}
-                  >
-                    <MaterialCommunityIcons name="plus-circle-outline" size={36} color={colors.primary} />
-                    <Text style={[styles.moreButtonText, { color: colors.primary }]}>More</Text>
-                  </TouchableOpacity>
-                )}
+
               </ScrollView>
             )}
           </View>
@@ -837,7 +636,7 @@ export const WatchlistScreen: React.FC = () => {
           </View>
         ) : null}
 
-        {loadingForYou && allRecommendations.length === 0 && (
+        {loadingForYou && (!cache?.all || cache.all.length === 0) && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color={colors.primary} />
             <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
