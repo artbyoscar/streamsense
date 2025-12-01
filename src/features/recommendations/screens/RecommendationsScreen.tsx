@@ -20,6 +20,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getUserValueScores } from '@/services/valueScore';
 import { getChurnRecommendations, type ChurnRecommendation } from '@/services/churnCalendar';
+import { getUserTopGenres } from '@/services/genreAffinity';
 import {
   getAchievementProgress,
   checkAchievements,
@@ -202,18 +203,15 @@ export const RecommendationsScreen: React.FC = () => {
         count: subs?.length || 0,
       });
 
-      // Load genre affinity
-      const { data: affinity } = await supabase
-        .from('user_genre_affinity')
-        .select('genre_name')
-        .eq('user_id', user.id)
-        .order('affinity_score', { ascending: false })
-        .limit(10);
-
-      const genres = (affinity || []).map(a => a.genre_name);
+      // Load genre affinity with temporal decay
+      // Recent viewing patterns are prioritized over older ones
+      const topGenres = await getUserTopGenres(user.id, 10, true); // useDecay=true
+      const genres = topGenres.map(g => g.genreName);
       setUserGenres(genres);
 
-      console.log('[Tips] User genres:', genres);
+      console.log('[Tips] User genres (with temporal decay):',
+        topGenres.map(g => `${g.genreName} (${g.score.toFixed(1)})`).join(', ')
+      );
       console.log('[Tips] User subscriptions:', subs?.length);
 
       // Score services

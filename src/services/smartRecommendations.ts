@@ -1,6 +1,7 @@
 import { supabase } from './supabase';
 import { tmdbApi } from './tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getUserTopGenres } from './genreAffinity';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -326,23 +327,23 @@ export const getSmartRecommendations = async (
   });
 
   try {
-    // Get user genre affinity
-    const { data: affinityData } = await supabase
-      .from('user_genre_affinity')
-      .select('genre_name, affinity_score')
-      .eq('user_id', userId)
-      .order('affinity_score', { ascending: false })
-      .limit(10);
+    // Get user genre affinity with temporal decay applied
+    // Recent interactions are weighted more heavily than older ones
+    const topGenresData = await getUserTopGenres(userId, 5, true); // useDecay=true
 
     // Determine top genres
     let topGenres: string[] = [];
-    if (affinityData && affinityData.length > 0) {
-      topGenres = affinityData.slice(0, 5).map(a => a.genre_name);
+    if (topGenresData && topGenresData.length > 0) {
+      topGenres = topGenresData.map(g => g.genreName);
+      console.log('[SmartRecs] Top genres (with temporal decay):',
+        topGenresData.map(g => `${g.genreName} (${g.score.toFixed(2)})`).join(', ')
+      );
     } else {
       topGenres = ['Drama', 'Action', 'Comedy', 'Adventure', 'Science Fiction'];
+      console.log('[SmartRecs] Using default genres (no affinity data)');
     }
 
-    console.log('[SmartRecs] Top genres:', topGenres);
+    console.log('[SmartRecs] Selected genres:', topGenres);
 
     const recommendations: any[] = [];
 
