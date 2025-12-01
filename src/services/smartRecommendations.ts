@@ -29,11 +29,15 @@ export const initializeExclusions = async (userId: string) => {
   try {
     const { data: watchlistItems } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('content(tmdb_id)')
       .eq('user_id', userId);
 
     if (watchlistItems) {
-      globalExcludeIds = new Set(watchlistItems.map(item => item.tmdb_id));
+      globalExcludeIds = new Set(
+        watchlistItems
+          .filter(item => item.content)
+          .map(item => (item.content as any).tmdb_id)
+      );
       console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items`);
     }
   } catch (error) {
@@ -99,11 +103,15 @@ const initializeCaches = async (userId: string) => {
     // Load FRESH watchlist IDs from database
     const { data: watchlistItems } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('content(tmdb_id)')
       .eq('user_id', userId);
 
     if (watchlistItems) {
-      watchlistTmdbIds = new Set(watchlistItems.map(item => item.tmdb_id));
+      watchlistTmdbIds = new Set(
+        watchlistItems
+          .filter(item => item.content)
+          .map(item => (item.content as any).tmdb_id)
+      );
       console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
 
       // Cache to storage
@@ -350,11 +358,15 @@ export const getSmartRecommendations = async (
   // ALWAYS refresh watchlist IDs to catch new additions
   const { data: freshWatchlist } = await supabase
     .from('watchlist_items')
-    .select('tmdb_id')
+    .select('content(tmdb_id)')
     .eq('user_id', userId);
 
   if (freshWatchlist) {
-    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
+    watchlistTmdbIds = new Set(
+      freshWatchlist
+        .filter(item => item.content)
+        .map(item => (item.content as any).tmdb_id)
+    );
   }
 
   const totalExcluded = watchlistTmdbIds.size + sessionShownIds.size;
@@ -776,11 +788,15 @@ export const getGenreRecommendations = async ({
   // ALWAYS refresh watchlist IDs to catch new additions
   const { data: freshWatchlist } = await supabase
     .from('watchlist_items')
-    .select('tmdb_id')
+    .select('content(tmdb_id)')
     .eq('user_id', userId);
 
   if (freshWatchlist) {
-    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
+    watchlistTmdbIds = new Set(
+      freshWatchlist
+        .filter(item => item.content)
+        .map(item => (item.content as any).tmdb_id)
+    );
   }
 
   const recommendations: any[] = [];

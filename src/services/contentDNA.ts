@@ -196,10 +196,10 @@ export const extractContentDNA = (item: any, mediaType: 'movie' | 'tv'): Content
  */
 export const buildUserDNAProfile = async (userId: string): Promise<UserDNAProfile | null> => {
   try {
-    // Get user's watchlist
+    // Get user's watchlist (JOIN with content table to get tmdb_id)
     const { data: watchlistItems, error } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id, title, media_type, genres, release_date, first_air_date, rating, runtime')
+      .select('content(tmdb_id, title, type, genres, release_date, vote_average, overview)')
       .eq('user_id', userId)
       .limit(100); // Sample last 100 items
 
@@ -210,25 +210,26 @@ export const buildUserDNAProfile = async (userId: string): Promise<UserDNAProfil
     }
 
     // Extract DNA for each item
-    const dnaProfiles = watchlistItems.map(item => {
-      const mediaType = item.media_type as 'movie' | 'tv';
-      const releaseYear = item.release_date
-        ? new Date(item.release_date).getFullYear()
-        : item.first_air_date
-        ? new Date(item.first_air_date).getFullYear()
-        : 2020;
+    const dnaProfiles = watchlistItems
+      .filter(item => item.content) // Filter out items without content
+      .map(item => {
+        const content = item.content as any;
+        const mediaType = content.type as 'movie' | 'tv';
+        const releaseYear = content.release_date
+          ? new Date(content.release_date).getFullYear()
+          : 2020;
 
-      return extractContentDNA({
-        id: item.tmdb_id,
-        title: item.title,
-        genre_ids: item.genres || [],
-        release_date: item.release_date,
-        first_air_date: item.first_air_date,
-        vote_average: item.rating || 7.0,
-        runtime: item.runtime || 0,
-        vote_count: 1000,
-      }, mediaType);
-    });
+        return extractContentDNA({
+          id: content.tmdb_id,
+          title: content.title,
+          genre_ids: content.genres || [],
+          release_date: content.release_date,
+          first_air_date: content.release_date, // Use release_date for both
+          vote_average: content.vote_average || 7.0,
+          runtime: 0, // Runtime not stored in content table
+          vote_count: 1000,
+        }, mediaType);
+      });
 
     // Aggregate patterns
     const tones = dnaProfiles.map(d => d.tone);

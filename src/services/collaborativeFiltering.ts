@@ -52,10 +52,10 @@ export const findSimilarUsers = async (
   userId: string
 ): Promise<SimilarUserProfile[]> => {
   try {
-    // Get current user's watchlist
+    // Get current user's watchlist (JOIN with content table to get tmdb_id)
     const { data: userWatchlist, error: watchlistError } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('content(tmdb_id)')
       .eq('user_id', userId);
 
     if (watchlistError) throw watchlistError;
@@ -64,13 +64,17 @@ export const findSimilarUsers = async (
       return [];
     }
 
-    const userWatchlistIds = new Set(userWatchlist.map(w => w.tmdb_id));
+    const userWatchlistIds = new Set(
+      userWatchlist
+        .filter(w => w.content)
+        .map(w => (w.content as any).tmdb_id)
+    );
     const userWatchlistSize = userWatchlistIds.size;
 
-    // Get all other users' watchlists
+    // Get all other users' watchlists (JOIN with content table to get tmdb_id)
     const { data: otherUsersWatchlists, error: othersError } = await supabase
       .from('watchlist_items')
-      .select('user_id, tmdb_id')
+      .select('user_id, content(tmdb_id)')
       .neq('user_id', userId); // Exclude current user
 
     if (othersError) throw othersError;
@@ -82,10 +86,12 @@ export const findSimilarUsers = async (
     // Group by user
     const userWatchlistsMap = new Map<string, Set<number>>();
     otherUsersWatchlists.forEach(item => {
-      if (!userWatchlistsMap.has(item.user_id)) {
-        userWatchlistsMap.set(item.user_id, new Set());
+      if (item.content) { // Only process items with content
+        if (!userWatchlistsMap.has(item.user_id)) {
+          userWatchlistsMap.set(item.user_id, new Set());
+        }
+        userWatchlistsMap.get(item.user_id)!.add((item.content as any).tmdb_id);
       }
-      userWatchlistsMap.get(item.user_id)!.add(item.tmdb_id);
     });
 
     // Calculate overlap with each user
@@ -157,18 +163,22 @@ export const getCollaborativeRecommendations = async (
     // Get current user's watchlist (to exclude)
     const { data: userWatchlist, error: watchlistError } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('content(tmdb_id)')
       .eq('user_id', userId);
 
     if (watchlistError) throw watchlistError;
 
-    const userWatchlistIds = new Set(userWatchlist?.map(w => w.tmdb_id) || []);
+    const userWatchlistIds = new Set(
+      (userWatchlist || [])
+        .filter(w => w.content)
+        .map(w => (w.content as any).tmdb_id)
+    );
 
     // Get watchlist items from similar users
     const similarUserIds = similarUsers.map(u => u.userId);
     const { data: similarUsersItems, error: itemsError } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id, title, media_type, genres, rating')
+      .select('content(tmdb_id, title, type, genres, vote_average)')
       .in('user_id', similarUserIds);
 
     if (itemsError) throw itemsError;
@@ -186,20 +196,24 @@ export const getCollaborativeRecommendations = async (
     }>();
 
     similarUsersItems.forEach(item => {
+      if (!item.content) return; // Skip items without content
+
+      const content = item.content as any;
+
       // Skip if current user already has this
-      if (userWatchlistIds.has(item.tmdb_id)) {
+      if (userWatchlistIds.has(content.tmdb_id)) {
         return;
       }
 
-      if (itemCounts.has(item.tmdb_id)) {
-        itemCounts.get(item.tmdb_id)!.count++;
+      if (itemCounts.has(content.tmdb_id)) {
+        itemCounts.get(content.tmdb_id)!.count++;
       } else {
-        itemCounts.set(item.tmdb_id, {
+        itemCounts.set(content.tmdb_id, {
           count: 1,
-          title: item.title || 'Unknown',
-          mediaType: item.media_type as 'movie' | 'tv' || 'movie',
-          genres: item.genres || [],
-          rating: item.rating || 0,
+          title: content.title || 'Unknown',
+          mediaType: content.type as 'movie' | 'tv' || 'movie',
+          genres: content.genres || [],
+          rating: content.vote_average || 0,
         });
       }
     });
@@ -320,7 +334,7 @@ export const getCollaborativeAnalytics = async (userId: string) => {
 
     const { data: userWatchlist } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('id')
       .eq('user_id', userId);
 
     return {

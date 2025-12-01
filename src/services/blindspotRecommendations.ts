@@ -69,7 +69,7 @@ const getUserExclusions = async (userId: string): Promise<Set<number>> => {
   try {
     const { data: watchlistItems, error } = await supabase
       .from('watchlist_items')
-      .select('tmdb_id')
+      .select('content(tmdb_id)')
       .eq('user_id', userId);
 
     if (error) {
@@ -82,7 +82,10 @@ const getUserExclusions = async (userId: string): Promise<Set<number>> => {
       return new Set();
     }
 
-    const ids = watchlistItems.map(item => item.tmdb_id).filter(id => id != null);
+    const ids = watchlistItems
+      .filter(item => item.content)
+      .map(item => (item.content as any).tmdb_id)
+      .filter(id => id != null);
     console.log('[Blindspot] Loaded', ids.length, 'watchlist IDs to exclude');
 
     return new Set(ids);
