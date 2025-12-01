@@ -5,6 +5,7 @@ import { getUserTopGenres } from './genreAffinity';
 import { getAdaptiveRecommendationParams } from './userBehavior';
 import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
 import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
+import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -292,6 +293,42 @@ const diversifyRecommendations = (
   return result;
 };
 
+/**
+ * 🎯 Smart Recommendations Engine
+ *
+ * 5-Tier Adaptive Intelligence Pipeline:
+ *
+ * 1️⃣ Genre Affinity with Temporal Decay (genreAffinity.ts)
+ *    - Tracks genre preferences from watchlist
+ *    - Applies 30-day half-life decay (recent tastes weighted more)
+ *    - Base layer for understanding user preferences
+ *
+ * 2️⃣ Interaction Velocity Tracking (userBehavior.ts)
+ *    - Detects user mode: Discovery (5+ items/session) | Intentional (1-4) | Passive (<1)
+ *    - Adapts variety ratio, genre exploration, quality thresholds per mode
+ *    - Discovery: High variety, explore new genres
+ *    - Intentional: Deep matches, curated quality
+ *    - Passive: Highlights, popular re-engagement
+ *
+ * 3️⃣ Negative Signal Inference (implicitSignals.ts)
+ *    - Tracks content shown but not added (implicit rejection)
+ *    - Identifies patterns: rejected genres, rating ranges, media types
+ *    - Filters out content with strong rejection signals (shown 10+ times)
+ *
+ * 4️⃣ Content DNA Matching (contentDNA.ts)
+ *    - Analyzes deep attributes: tone, pace, era, complexity, audience type
+ *    - Builds user DNA profile from watchlist patterns
+ *    - Re-ranks recommendations by DNA similarity (0-100 score)
+ *
+ * 5️⃣ Collaborative Filtering Lite (collaborativeFiltering.ts)
+ *    - Finds similar users (15%+ watchlist overlap via Jaccard similarity)
+ *    - Recommends items popular among similar users
+ *    - Privacy-conscious: only public watchlist data, no personal info
+ *    - Mixes 30% collaborative recommendations into final results
+ *
+ * Pipeline Flow:
+ * Fetch → Filter → Diversify → Negative Signals → DNA Rank → Collaborative Mix → Return
+ */
 export const getSmartRecommendations = async (
   options: RecommendationOptions
 ): Promise<any[]> => {
@@ -571,11 +608,23 @@ export const getSmartRecommendations = async (
       });
     }
 
+    // Mix in collaborative filtering recommendations (Strategy 5)
+    // "Users like you also enjoyed..."
+    const withCollaborative = await mixCollaborativeRecommendations(
+      userId,
+      dnaRanked,
+      0.3 // 30% collaborative recommendations
+    );
+    console.log('[SmartRecs] Mixed collaborative recommendations:', {
+      original: dnaRanked.length,
+      withCollab: withCollaborative.length,
+    });
+
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    const results = dnaRanked.slice(0, limit);
+    const results = withCollaborative.slice(0, limit);
 
     // Track impressions for implicit signal learning
     // This allows us to learn what users DON'T like based on repeated exposure without engagement
@@ -778,11 +827,18 @@ export const getGenreRecommendations = async ({
       maxPercentagePerGenre: 0.5, // 50% cap for genre-specific
     });
 
+    // Mix in collaborative filtering (lighter ratio for genre-specific browsing)
+    const withCollaborative = await mixCollaborativeRecommendations(
+      userId,
+      diversified,
+      0.2 // 20% collaborative recommendations (lighter than main recs)
+    );
+
     // Save session cache
     await saveSessionCache();
 
     // Return limited results
-    const results = diversified.slice(0, limit);
+    const results = withCollaborative.slice(0, limit);
 
     console.log('[SmartRecs] Returning', results.length, 'genre recommendations for', genre);
     return results;
