@@ -77,7 +77,7 @@ export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
       'Apple Music': 'apple',
       'YouTube Premium': 'youtube',
       Hulu: 'hulu',
-      'Disney+': 'disney',
+      'Disney+': 'star-circle', // Disney doesn't have an official icon in material-community
       'Amazon Prime': 'amazon',
       'HBO Max': 'television-box',
       Paramount: 'plus-box',

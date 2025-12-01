@@ -29,8 +29,8 @@ const SERVICE_ICONS: Record<string, string> = {
   netflix: 'netflix',
   spotify: 'spotify',
   hulu: 'hulu',
-  'disney+': 'disney',
-  'disney plus': 'disney',
+  'disney+': 'star-circle', // Disney doesn't have an official icon in material-community
+  'disney plus': 'star-circle',
   'amazon prime': 'amazon',
   'prime video': 'amazon',
   'hbo max': 'hbo',
