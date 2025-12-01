@@ -375,6 +375,12 @@ export async function logWatchTime({
   date: string;
   contentDescription?: string;
 }): Promise<void> {
+  // Validate UUID format before making any database calls
+  if (!subscriptionId || subscriptionId === 'undefined' || subscriptionId.length !== 36) {
+    console.error('[WatchTime] Invalid subscription ID format:', subscriptionId);
+    throw new Error('Invalid subscription ID');
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -382,6 +388,8 @@ export async function logWatchTime({
   if (!user) {
     throw new Error('User not authenticated');
   }
+
+  console.log(`[WatchTime] Logging ${hours}h for subscription ${subscriptionId}`);
 
   // Get current total watch hours
   const { data: subscription, error: fetchError } = await supabase

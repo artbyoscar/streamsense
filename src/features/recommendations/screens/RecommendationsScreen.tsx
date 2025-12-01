@@ -134,8 +134,21 @@ export const RecommendationsScreen: React.FC = () => {
 
   // Handle log watch time button press
   const handleLogWatchTime = useCallback((subscription: any) => {
-    console.log('[Tips] Log watch time for:', subscription.service_name);
-    setSelectedSubscription(subscription);
+    // Normalize the subscription object - ChurnRecommendations have serviceId, regular subs have id
+    const normalizedSubscription = {
+      ...subscription,
+      id: subscription.id || subscription.serviceId, // ChurnRecommendation has serviceId
+      service_name: subscription.service_name || subscription.service,
+      price: subscription.price || subscription.monthlyCost || 0,
+    };
+
+    if (!normalizedSubscription.id || normalizedSubscription.id === 'undefined') {
+      console.error('[Tips] Cannot log watch time - missing subscription ID:', subscription);
+      return;
+    }
+
+    console.log('[Tips] Log watch time for:', normalizedSubscription.service_name, 'ID:', normalizedSubscription.id);
+    setSelectedSubscription(normalizedSubscription);
     setShowWatchTimeModal(true);
   }, []);
 

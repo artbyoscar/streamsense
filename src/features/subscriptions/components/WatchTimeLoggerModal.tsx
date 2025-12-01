@@ -51,9 +51,17 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
       return;
     }
 
+    // Validate subscription ID before attempting to save
+    if (!subscription?.id || subscription.id === 'undefined' || subscription.id.length !== 36) {
+      console.error('[WatchTime] Invalid subscription ID:', subscription?.id);
+      Alert.alert('Error', 'Invalid subscription. Please try again.');
+      return;
+    }
+
     try {
       setSaving(true);
 
+      console.log('[WatchTime] Saving watch time for subscription:', subscription.id);
       await logWatchTime({
         subscriptionId: subscription.id,
         hours: hoursNum,
