@@ -20,7 +20,7 @@ import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { supabase } from '@/config/supabase';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { useTheme } from '@/providers/ThemeProvider';
-import { getMixedRecommendations } from '@/services/personalizedRecommendations';
+// Removed getMixedRecommendations - now using getSmartRecommendations with parallel fetching
 import { getUserTopGenres } from '@/services/genreAffinity';
 import { getSmartRecommendations, getGenreRecommendations } from '@/services/smartRecommendations';
 import { COLORS, EmptyState } from '@/components';
@@ -90,7 +90,10 @@ export const WatchlistScreen: React.FC = () => {
   const [watching, setWatching] = useState<WatchlistItemWithContent[]>([]);
   const [wantToWatch, setWantToWatch] = useState<WatchlistItemWithContent[]>([]);
   const [watched, setWatched] = useState<WatchlistItemWithContent[]>([]);
+  // Cache all recommendations (movies + TV) for instant client-side filtering
   const [allRecommendations, setAllRecommendations] = useState<UnifiedContent[]>([]);
+  const [movieRecommendations, setMovieRecommendations] = useState<UnifiedContent[]>([]);
+  const [tvRecommendations, setTVRecommendations] = useState<UnifiedContent[]>([]);
   const [userTopGenres, setUserTopGenres] = useState<{ id: number; name: string }[]>([]);
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
@@ -104,14 +107,26 @@ export const WatchlistScreen: React.FC = () => {
   // DERIVED STATE - Use useMemo to avoid infinite loops
   // ============================================================================
 
+  // Select recommendations based on media type filter (client-side, instant!)
+  const selectedRecommendations = useMemo(() => {
+    switch (mediaTypeFilter) {
+      case 'movie':
+        return movieRecommendations;
+      case 'tv':
+        return tvRecommendations;
+      default:
+        return allRecommendations;
+    }
+  }, [mediaTypeFilter, allRecommendations, movieRecommendations, tvRecommendations]);
+
   // ROBUST filtering that handles different data structures
   const filteredRecommendations = useMemo(() => {
-    if (!allRecommendations || allRecommendations.length === 0) {
+    if (!selectedRecommendations || selectedRecommendations.length === 0) {
       console.log('[Watchlist] No recommendations to filter');
       return [];
     }
 
-    let filtered = [...allRecommendations];
+    let filtered = [...selectedRecommendations];
 
     // Filter out items already in watchlist or recently added
     const watchlistTmdbIds = new Set<number>();
@@ -141,27 +156,8 @@ export const WatchlistScreen: React.FC = () => {
       });
     }
 
-    // Filter by media type
-    if (mediaTypeFilter !== 'all') {
-      filtered = filtered.filter((item: any) => {
-        // UnifiedContent uses 'type' field (not 'media_type')
-        const itemType = item.type || item.media_type;
-
-        if (itemType) {
-          return itemType === mediaTypeFilter;
-        }
-
-        // Fallback: Check if it has 'title' (movie) or 'name' (TV)
-        if (mediaTypeFilter === 'movie') {
-          return item.title && !item.first_air_date;
-        }
-        if (mediaTypeFilter === 'tv') {
-          return item.name || item.first_air_date;
-        }
-        return true;
-      });
-      console.log(`[Watchlist] After media type filter (${mediaTypeFilter}): ${filtered.length} items`);
-    }
+    // Media type filtering now handled by selectedRecommendations memo above
+    // No need to filter again here - already filtered by cache selection
 
     // Filter by genre
     if (activeGenreFilter !== 'All') {
@@ -205,7 +201,7 @@ export const WatchlistScreen: React.FC = () => {
 
     console.log(`[Watchlist] Final filtered: ${filtered.length} items`);
     return filtered;
-  }, [allRecommendations, activeGenreFilter, mediaTypeFilter, watching, wantToWatch, watched, addedToWatchlistIds]);
+  }, [selectedRecommendations, activeGenreFilter, watching, wantToWatch, watched, addedToWatchlistIds]);
 
   // ============================================================================
   // DEBUG - Log item structure when recommendations load
@@ -251,40 +247,46 @@ export const WatchlistScreen: React.FC = () => {
     return [...baseFilters, ...topGenres, ...extraGenres];
   };
 
-  // Handle genre filter tap - fetch fresh content for that genre (Netflix-style)
+  // Handle genre filter tap - now uses client-side filtering (instant!)
   const handleGenreFilterTap = useCallback(async (genre: string) => {
     if (!user?.id) return;
 
     console.log('[Watchlist] Genre filter tapped:', genre);
     setActiveGenreFilter(genre);
-    setLoadingForYou(true);
 
-    try {
-      if (genre === 'All') {
-        // Load mixed recommendations
-        const recs = await getSmartRecommendations({
-          userId: user.id,
-          mediaType: mediaTypeFilter === 'all' ? 'mixed' : mediaTypeFilter,
-          limit: 20,
-          forceRefresh: true,
-        });
-        setAllRecommendations(recs);
-      } else {
-        // Load genre-specific recommendations
-        const recs = await getGenreRecommendations({
-          userId: user.id,
-          genre: genre,
-          mediaType: mediaTypeFilter === 'all' ? 'mixed' : mediaTypeFilter,
-          limit: 20,
-        });
-        setAllRecommendations(recs);
+    // ✅ OPTIMIZATION: Only fetch fresh data for specific genres
+    // "All" genre uses existing cached data (instant filter)
+    if (genre !== 'All') {
+      setLoadingForYou(true);
+      try {
+        // Load genre-specific recommendations (both movie and TV in parallel)
+        const [movieRecs, tvRecs] = await Promise.all([
+          getGenreRecommendations({
+            userId: user.id,
+            genre: genre,
+            mediaType: 'movie',
+            limit: 30,
+          }),
+          getGenreRecommendations({
+            userId: user.id,
+            genre: genre,
+            mediaType: 'tv',
+            limit: 30,
+          }),
+        ]);
+
+        // Update caches with genre-specific results
+        setMovieRecommendations(movieRecs);
+        setTVRecommendations(tvRecs);
+        setAllRecommendations([...movieRecs, ...tvRecs]);
+      } catch (error) {
+        console.error('[Watchlist] Genre filter error:', error);
+      } finally {
+        setLoadingForYou(false);
       }
-    } catch (error) {
-      console.error('[Watchlist] Genre filter error:', error);
-    } finally {
-      setLoadingForYou(false);
     }
-  }, [user?.id, mediaTypeFilter]);
+    // For "All", the existing cache is used - no API call needed!
+  }, [user?.id]);
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -349,38 +351,57 @@ export const WatchlistScreen: React.FC = () => {
     }
   }, [user?.id]);
 
-  // Refetch when media type filter changes
-  useEffect(() => {
-    if (user?.id && allRecommendations.length > 0) {
-      // Re-apply current genre filter with new media type
-      handleGenreFilterTap(activeGenreFilter);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaTypeFilter]); // Only run when mediaTypeFilter changes
+  // ✅ Media type filtering is now instant via client-side cache
+  // No need to refetch on filter changes - handled by useMemo above
 
   const loadPersonalizedContent = async (append: boolean = false) => {
     if (!user?.id) return;
 
     setLoadingForYou(true);
     try {
-      const [recommendations, genres] = await Promise.all([
-        getMixedRecommendations(user.id, 20),
+      // Pre-fetch BOTH movie and TV recommendations in parallel for instant filtering
+      const [movieRecs, tvRecs, genres] = await Promise.all([
+        getSmartRecommendations({
+          userId: user.id,
+          mediaType: 'movie',
+          limit: 50, // Get more for better variety
+          forceRefresh: false,
+        }),
+        getSmartRecommendations({
+          userId: user.id,
+          mediaType: 'tv',
+          limit: 50,
+          forceRefresh: false,
+        }),
         getUserTopGenres(user.id, 6),
       ]);
 
-      console.log('[Watchlist] Loaded', recommendations.length, 'recommendations');
+      console.log('[Watchlist] Loaded', movieRecs.length, 'movies,', tvRecs.length, 'TV shows');
 
       if (append) {
         // Append new recommendations, avoiding duplicates
-        setAllRecommendations(prev => {
+        setMovieRecommendations(prev => {
           const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
-          const newItems = recommendations.filter(
+          const newItems = movieRecs.filter(
             item => !existingIds.has(`${item.type}-${item.id}`)
           );
           return [...prev, ...newItems];
         });
+        setTVRecommendations(prev => {
+          const existingIds = new Set(prev.map(item => `${item.type}-${item.id}`));
+          const newItems = tvRecs.filter(
+            item => !existingIds.has(`${item.type}-${item.id}`)
+          );
+          return [...prev, ...newItems];
+        });
+        setAllRecommendations(prev => [...prev, ...movieRecs, ...tvRecs].filter((item, index, self) =>
+          index === self.findIndex(t => `${t.type}-${t.id}` === `${item.type}-${item.id}`)
+        ));
       } else {
-        setAllRecommendations(recommendations);
+        // Cache separately for instant filtering
+        setMovieRecommendations(movieRecs);
+        setTVRecommendations(tvRecs);
+        setAllRecommendations([...movieRecs, ...tvRecs]);
       }
       setUserTopGenres(genres.map(g => ({ id: g.genreId, name: g.genreName })));
     } catch (error) {
