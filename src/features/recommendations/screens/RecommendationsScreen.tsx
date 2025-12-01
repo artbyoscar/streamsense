@@ -29,6 +29,7 @@ import {
   type Achievement
 } from '@/services/achievements';
 import { getPileOfShame, type ShameItem } from '@/services/pileOfShame';
+import { getRewatchSuggestions, type RewatchSuggestion } from '@/services/rewatchSuggestions';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 import { WatchTimeLoggerModal } from '@/features/subscriptions/components/WatchTimeLoggerModal';
 import { AnimatedCarouselItem, useAnimatedCarousel } from '@/components';
@@ -110,6 +111,7 @@ export const RecommendationsScreen: React.FC = () => {
   }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
   const [pileOfShameData, setPileOfShameData] = useState<ShameItem[]>([]);
   const { items: pileOfShame, removeItem: removePileItem } = useAnimatedCarousel(pileOfShameData);
+  const [rewatchSuggestions, setRewatchSuggestions] = useState<RewatchSuggestion[]>([]);
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [showContentModal, setShowContentModal] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
@@ -131,6 +133,23 @@ export const RecommendationsScreen: React.FC = () => {
       media_type: item.type,
       release_date: item.type === 'movie' ? `${item.releaseYear}-01-01` : undefined,
       first_air_date: item.type === 'tv' ? `${item.releaseYear}-01-01` : undefined,
+    };
+
+    setSelectedContent(contentItem);
+    setShowContentModal(true);
+  }, []);
+
+  // Handle rewatch item press - transform to content format and show modal
+  const handleRewatchItemPress = useCallback((item: RewatchSuggestion) => {
+    console.log('[Tips] Rewatch item pressed:', item.title);
+
+    // Transform RewatchSuggestion to format expected by ContentDetailModal
+    const contentItem = {
+      id: item.tmdbId,
+      title: item.title,
+      name: item.type === 'tv' ? item.title : undefined,
+      poster_path: item.posterPath,
+      media_type: item.type,
     };
 
     setSelectedContent(contentItem);
@@ -277,6 +296,11 @@ export const RecommendationsScreen: React.FC = () => {
       const shame = await getPileOfShame(user.id);
       console.log('[Tips] Pile of shame:', shame);
       setPileOfShameData(shame);
+
+      // Load rewatch suggestions
+      const rewatch = await getRewatchSuggestions(user.id, 10);
+      console.log('[Tips] Rewatch suggestions:', rewatch);
+      setRewatchSuggestions(rewatch);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -552,6 +576,94 @@ export const RecommendationsScreen: React.FC = () => {
             {pileOfShame.length > 6 && (
               <Text style={[styles.shameFooter, { color: colors.textSecondary }]}>
                 +{pileOfShame.length - 6} more hidden gems worth discovering
+              </Text>
+            )}
+          </>
+        )}
+
+        {/* Worth Rewatching Section */}
+        {rewatchSuggestions.length > 0 && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              🔁 Worth Rewatching
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
+              Favorites you can stream now on your services
+            </Text>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.shameScrollContainer}
+            >
+              {rewatchSuggestions.slice(0, 6).map((item, index) => (
+                <TouchableOpacity
+                  key={`${item.type}-${item.tmdbId}-${index}`}
+                  style={[styles.shameCard, { backgroundColor: colors.card }]}
+                  onPress={() => handleRewatchItemPress(item)}
+                  activeOpacity={0.7}
+                >
+                  {/* Poster */}
+                  {item.posterPath ? (
+                    <Image
+                      source={{ uri: `https://image.tmdb.org/t/p/w342${item.posterPath}` }}
+                      style={styles.shamePoster}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View style={[styles.shamePoster, { backgroundColor: colors.background }]}>
+                      <Ionicons name="film-outline" size={40} color={colors.textSecondary} />
+                    </View>
+                  )}
+
+                  {/* Rating Badge */}
+                  <View style={[styles.shameRatingBadge, { backgroundColor: 'rgba(0, 0, 0, 0.8)' }]}>
+                    <Text style={styles.shameRatingText}>
+                      {'⭐'.repeat(Math.min(Math.ceil(item.rating / 2), 5))}
+                    </Text>
+                  </View>
+
+                  {/* Info */}
+                  <View style={styles.shameInfo}>
+                    <Text
+                      style={[styles.shameTitle, { color: colors.text }]}
+                      numberOfLines={2}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text style={[styles.shameYear, { color: colors.textSecondary }]}>
+                      {item.type === 'movie' ? '🎬' : '📺'} • {
+                        item.daysSinceWatched < 30
+                          ? 'Watched recently'
+                          : item.daysSinceWatched < 365
+                            ? `${Math.floor(item.daysSinceWatched / 30)} mo ago`
+                            : `${Math.floor(item.daysSinceWatched / 365)} yr ago`
+                      }
+                    </Text>
+                    <View style={[styles.shameMessage, { backgroundColor: colors.background }]}>
+                      <Ionicons name="information-circle" size={14} color={colors.primary} />
+                      <Text
+                        style={[styles.shameMessageText, { color: colors.textSecondary }]}
+                        numberOfLines={2}
+                      >
+                        {item.rewatchReason}
+                      </Text>
+                    </View>
+                    <View style={[styles.availabilityBadge, { backgroundColor: `${colors.primary}15` }]}>
+                      <Ionicons name="tv" size={12} color={colors.primary} />
+                      <Text style={[styles.availabilityText, { color: colors.primary }]}>
+                        {item.availableOn.slice(0, 2).join(', ')}
+                        {item.availableOn.length > 2 ? ` +${item.availableOn.length - 2}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {rewatchSuggestions.length > 6 && (
+              <Text style={[styles.shameFooter, { color: colors.textSecondary }]}>
+                +{rewatchSuggestions.length - 6} more favorites ready to rewatch
               </Text>
             )}
           </>
@@ -1047,6 +1159,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  // Rewatch Availability Badge Styles
+  availabilityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  availabilityText: {
+    fontSize: 10,
+    fontWeight: '600',
+    flex: 1,
   },
 });
 
