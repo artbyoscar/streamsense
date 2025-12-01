@@ -1,371 +1,319 @@
 # StreamSense
 
-**Rocket Money for Streaming, with Watching Recommendations**
+**Rocket Money for streaming, with Netflix-level recommendations.**
 
-StreamSense is a React Native mobile application that bridges the gap between subscription financial management and entertainment content intelligence. It helps users optimize their streaming spending while discovering personalized content recommendations.
-
----
-
-## Overview
-
-The average US household spends $61-70 monthly on streaming subscriptions, with 69% reporting subscription fatigue and 110 hours wasted annually deciding what to watch. StreamSense addresses both problems in a single application by combining financial tracking with Netflix-level content recommendations.
-
-### Value Proposition
-
-- **Track Spending**: Monitor all streaming subscriptions in one place
-- **Measure Value**: Calculate cost-per-hour to see which services deliver real value
-- **Discover Content**: Personalized recommendations based on viewing preferences
-- **Optimize Subscriptions**: Smart suggestions for when to cancel, pause, or rotate services
+StreamSense helps users optimize their streaming spending while discovering personalized content. The app bridges the gap between subscription management tools (which treat streaming like any other bill) and content discovery platforms (which ignore costs entirely).
 
 ---
 
-## Current Status
+## 📊 Project Status
 
-**Development Progress: ~80% Complete**
+### Overall Completion: **78%**
 
-### Working Features
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Authentication | ✅ Complete | Email/password auth via Supabase |
-| Dashboard | ✅ Complete | Spending overview, quick actions, upcoming renewals |
-| Manual Subscription Entry | ✅ Complete | Add/edit streaming services manually |
-| Watchlist Management | ✅ Complete | Track content across Currently Watching, Want to Watch, Watched |
-| TMDb Integration | ✅ Complete | Movie/TV metadata, posters, ratings, streaming availability |
-| Genre Affinity Tracking | ✅ Complete | Learns preferences from user interactions |
-| Smart Recommendations | ✅ Complete | Personalized "For You" recommendations |
-| Content Search | ✅ Complete | Search movies and TV shows |
-| Tips & Insights | ✅ Complete | Value analysis, cancellation suggestions, service recommendations |
-| Discover (Swipe) | ✅ Complete | Tinder-style content discovery |
-| Dark Mode | ✅ Complete | System-wide dark theme |
-
-### In Progress
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| Plaid Integration | 🔄 Pending | Automatic subscription detection via bank connections |
-| Watch Time Logging | 🔄 In Progress | Manual watch time entry for value calculations |
-| Netflix-Style Filtering | 🔄 In Progress | Load fresh content per genre filter |
-
-### Planned Features
-
-| Feature | Priority | Description |
-|---------|----------|-------------|
-| Push Notifications | High | Renewal reminders, new content alerts |
-| Subscription Rotation | Medium | Smart rotation scheduling |
-| Household Sharing | Medium | Multi-user support |
-| AI Chat Assistant | Low | Natural language queries about subscriptions |
+| Category | Status | Completion |
+|----------|--------|------------|
+| Core Infrastructure | ✅ Complete | 100% |
+| Authentication | ✅ Complete | 100% |
+| Subscription Management | ✅ Complete | 95% |
+| Watchlist System | ✅ Complete | 95% |
+| Genre Affinity Learning | ✅ Complete | 100% |
+| Smart Recommendations | 🔧 Refining | 85% |
+| Value Score Analytics | ✅ Complete | 90% |
+| Discover (Swipe) Page | 🔧 In Progress | 70% |
+| Tips & Insights | 🔧 Refining | 80% |
+| Worth Discovering (Blindspots) | ✅ Complete | 90% |
+| Rewatch Suggestions | 🚧 Blocked | 40% |
+| UI Polish | 🔧 In Progress | 60% |
+| Bug Fixes | 🔧 In Progress | 70% |
 
 ---
 
-## Tech Stack
+## ✅ What Works
 
-### Frontend
-- **React Native** (Expo SDK 54)
-- **TypeScript**
-- **React Navigation** (Custom tab implementation)
-- **React Native Paper** (UI components)
-- **Expo Vector Icons**
+### Authentication & User Management
+- Email/password authentication via Supabase
+- Secure session management
+- User profile persistence
 
-### Backend & Services
-- **Supabase**
-  - Authentication (email/password, OAuth ready)
-  - PostgreSQL database with Row Level Security
-  - Real-time subscriptions
-- **TMDb API** (The Movie Database)
-  - Content metadata
-  - Streaming availability
-  - Trending/popular content
-- **Plaid** (Pending production approval)
-  - Bank account connections
-  - Transaction categorization
+### Subscription Tracking
+- Manual subscription entry with service name, price, billing cycle
+- Watch time logging per service
+- Total monthly cost calculation
+- Value score calculation (cost per hour watched)
+- Service recommendations based on genre preferences
 
-### Key Dependencies
-```json
-{
-  "expo": "~54.0.0",
-  "react-native": "0.76.x",
-  "@supabase/supabase-js": "^2.x",
-  "react-native-paper": "^5.x",
-  "@react-navigation/native": "^7.x",
-  "axios": "^1.x"
-}
+### Watchlist Management
+- Add content with status: Want to Watch, Watching, Watched
+- 5-star rating system
+- Filter by media type (All, Movies, TV Shows)
+- Filter by genre
+- Content persists across sessions
+- 190+ items tracked in testing
+
+### Genre Affinity Learning
+- Tracks user interactions: add, rate, watch, skip
+- Temporal decay (recent preferences weighted higher)
+- 22 genre affinities tracked
+- Influences all recommendation algorithms
+
+### Smart Recommendations ("For You")
+- Personalized picks based on genre affinity
+- Deep cuts from favorite genre combinations
+- "Because You Liked" categories
+- Discovery mode for users exploring widely
+- Content DNA matching (pace, tone, complexity, era)
+- Session-based exclusion to prevent repeats
+- Watchlist exclusion (never recommend what you have)
+
+### Worth Discovering (Blindspots)
+- Unexplored genres (highly-rated content in genres you have not tried)
+- Hidden gems (high rating, low vote count)
+- Adjacent interests (fans of X also love Y)
+- Service exclusives (content on your subscriptions)
+- Deduplication across categories
+
+### Tips & Insights Page
+- Monthly spending overview
+- Value score per service (Excellent/Good/Poor/Unknown)
+- Service recommendations (what to add/keep/consider)
+- Churn predictions (usage-based keep/cancel suggestions)
+- Achievement system (7 achievements unlocked in testing)
+- Worth Discovering carousel
+
+### Technical Infrastructure
+- Expo SDK 54 with React Native
+- TypeScript throughout
+- Supabase backend with Row Level Security
+- TMDb API integration for content metadata
+- Custom state-based tab navigation (Android compatible)
+- Dark mode implementation
+
+---
+
+## 🔧 Known Issues (In Progress)
+
+### Critical Bugs
+| Bug | Impact | Status |
+|-----|--------|--------|
+| Cannot log 0 watch hours | Database constraint blocks valid input | Fix ready, needs DB migration |
+| Discover swipe fails | UUID undefined error | Fix ready, needs implementation |
+| TV "Adventure" filter returns empty | Wrong genre ID for TV API | Fix ready, needs implementation |
+| Fragment/key React errors | Console spam, potential performance | Needs file search to locate |
+
+### UX Issues
+| Issue | Impact | Status |
+|-------|--------|--------|
+| Watchlist filtering slow | API call on each filter change | Fix designed (client-side filtering) |
+| Discover buttons overflow | Do not fit on smaller screens | Fix designed (icon buttons) |
+| No swipe gestures in Discover | Missing expected Tinder-like UX | Implementation ready |
+| Worth Discovering no "Load More" | Cannot get fresh recommendations | Implementation ready |
+| Carousel items persist after add | Content remains visible after watchlist add | Fix designed |
+
+### Data Issues
+| Issue | Impact | Status |
+|-------|--------|--------|
+| Rewatch feature blocked | Column `updated_at` missing | Needs DB migration |
+| Service insights empty | Feature not fully implemented | In progress |
+
+---
+
+## 🚀 Development Pipeline
+
+### Phase 1: Bug Fixes (Next Sprint)
+**Priority: Critical**
+
+1. **Database Migrations**
+   - [ ] Allow 0 hours in `watch_logs` constraint
+   - [ ] Add `updated_at` column to `watchlist_items`
+   - [ ] Verify column names match code (`content_id` vs `tmdb_id`)
+
+2. **Code Fixes**
+   - [ ] Fix Discover swipe UUID error (pass user.id from useAuth)
+   - [ ] Fix TV genre ID mapping (use 10759 for Action & Adventure)
+   - [ ] Find and fix all Fragment `index=` to `key=` errors
+   - [ ] Fix Rewatch query to use `created_at`
+
+### Phase 2: UX Improvements (Following Sprint)
+**Priority: High**
+
+1. **Discover Page Overhaul**
+   - [ ] Implement Tinder-like swipe gestures (left/right/up)
+   - [ ] Add swipe overlays ("Want to Watch", "Not Interested", "Already Watched")
+   - [ ] Replace text buttons with icon buttons
+   - [ ] Add "Already Watched" flow with rating modal
+
+2. **Performance Optimization**
+   - [ ] Pre-fetch movies and TV on Watchlist load
+   - [ ] Client-side filtering (no API calls on filter change)
+   - [ ] Cache recommendations by genre
+
+3. **Carousel Improvements**
+   - [ ] Animate item removal after watchlist add
+   - [ ] Add "Load More" card at end of Worth Discovering
+   - [ ] Prevent full refresh on single item add
+
+### Phase 3: Feature Completion (Week 3)
+**Priority: Medium**
+
+1. **Rewatch Suggestions**
+   - [ ] Complete database schema updates
+   - [ ] Show 4-5 star rated content available on user services
+   - [ ] Display "time since watched" context
+   - [ ] Add to Tips page as new section
+
+2. **Service Insights**
+   - [ ] Calculate "favorites on this service" count
+   - [ ] Show badge on subscription cards
+   - [ ] Factor into churn recommendations
+
+3. **Have Watched Flow**
+   - [ ] Third action in Discover (swipe up or button)
+   - [ ] Rating modal after selection
+   - [ ] Track as "watched" status with rating
+   - [ ] Update genre affinity based on rating
+
+### Phase 4: Polish & Launch Prep (Week 4)
+**Priority: Medium**
+
+1. **UI Refinement**
+   - [ ] Loading states and skeletons
+   - [ ] Empty state designs
+   - [ ] Error state handling with retry
+   - [ ] Haptic feedback on actions
+
+2. **Onboarding**
+   - [ ] First-run tutorial
+   - [ ] Subscription setup wizard
+   - [ ] Genre preference quick-pick
+
+3. **Analytics & Monitoring**
+   - [ ] Event tracking setup
+   - [ ] Error monitoring (Sentry or similar)
+   - [ ] Performance monitoring
+
+---
+
+## 📈 Metrics from Testing
+
+```
+User Interactions:     190+ watchlist items
+Genre Affinities:      22 genres tracked
+Top Genres:            Drama (395), Adventure (372), Action (287)
+Behavior Mode:         Discovery (exploring widely)
+Session Average:       13.1 items per session
+Achievements:          7 unlocked
+Subscriptions:         3 active (Hulu, Disney+, Prime Video)
+Monthly Spend:         $28.97
 ```
 
 ---
 
-## Project Structure
+## 🛠 Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | React Native + Expo SDK 54 |
+| Language | TypeScript |
+| Backend | Supabase (Auth, Database, Storage) |
+| Content API | TMDb (The Movie Database) |
+| Banking | Plaid (subscription detection) |
+| Navigation | Custom state-based tabs |
+| Styling | StyleSheet + Dark mode |
+
+---
+
+## 📁 Project Structure
 
 ```
-streamsense/
-├── src/
-│   ├── components/           # Shared UI components
-│   │   ├── Card.tsx
-│   │   ├── ContentDetailModal.tsx
-│   │   ├── ContentSearchModal.tsx
-│   │   └── ...
-│   ├── config/               # Configuration files
-│   │   ├── supabase.ts
-│   │   └── env.ts
-│   ├── features/             # Feature-based modules
-│   │   ├── auth/
-│   │   │   ├── screens/
-│   │   │   └── hooks/
-│   │   ├── dashboard/
-│   │   │   ├── screens/
-│   │   │   │   └── DashboardScreen.tsx
-│   │   │   └── components/
-│   │   ├── watchlist/
-│   │   │   ├── screens/
-│   │   │   │   └── WatchlistScreen.tsx
-│   │   │   └── components/
-│   │   ├── discover/
-│   │   │   └── screens/
-│   │   │       └── DiscoverScreen.tsx
-│   │   ├── tips/
-│   │   │   └── screens/
-│   │   │       └── TipsScreen.tsx
-│   │   ├── settings/
-│   │   │   └── screens/
-│   │   │       └── SettingsScreen.tsx
-│   │   └── subscriptions/
-│   │       ├── screens/
-│   │       └── components/
-│   ├── navigation/           # Navigation configuration
-│   │   └── MainNavigator.tsx
-│   ├── services/             # Business logic & API calls
-│   │   ├── tmdb.ts
-│   │   ├── smartRecommendations.ts
-│   │   ├── genreAffinity.ts
-│   │   ├── valueScore.ts
-│   │   ├── churnPrediction.ts
-│   │   └── pileOfShame.ts
-│   ├── hooks/                # Custom React hooks
-│   │   ├── useAuth.ts
-│   │   └── useTheme.ts
-│   ├── context/              # React Context providers
-│   │   ├── AuthContext.tsx
-│   │   └── ThemeContext.tsx
-│   └── types/                # TypeScript type definitions
-│       └── index.ts
-├── assets/                   # Static assets
-├── app.config.js             # Expo configuration
-├── package.json
-└── tsconfig.json
+src/
+├── components/          # Reusable UI components
+├── contexts/            # React contexts (Auth, Theme)
+├── hooks/               # Custom hooks
+├── screens/             # Screen components
+│   ├── DashboardScreen
+│   ├── DiscoverScreen
+│   ├── WatchlistScreen
+│   ├── TipsScreen
+│   └── SettingsScreen
+├── services/            # API and business logic
+│   ├── smartRecommendations.ts
+│   ├── blindspotRecommendations.ts
+│   ├── genreAffinity.ts
+│   ├── valueScore.ts
+│   ├── contentDNA.ts
+│   └── collaborativeFiltering.ts
+├── types/               # TypeScript interfaces
+└── utils/               # Helper functions
 ```
 
 ---
 
-## Database Schema
+## 🎯 Target Market
 
-### Core Tables
-
-```sql
--- User subscriptions (streaming services)
-user_subscriptions (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users,
-  service_name TEXT,
-  price DECIMAL,
-  billing_cycle TEXT,
-  next_billing_date DATE,
-  status TEXT,
-  total_watch_hours DECIMAL,
-  detected_from TEXT,
-  created_at TIMESTAMPTZ
-)
-
--- Watchlist items
-watchlist_items (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users,
-  tmdb_id INTEGER,
-  media_type TEXT,
-  title TEXT,
-  poster_path TEXT,
-  status TEXT,
-  rating INTEGER,
-  genres JSONB,
-  streaming_services JSONB,
-  created_at TIMESTAMPTZ
-)
-
--- Genre affinity tracking
-genre_affinity (
-  id UUID PRIMARY KEY,
-  user_id UUID REFERENCES auth.users,
-  genre_id INTEGER,
-  genre_name TEXT,
-  affinity_score DECIMAL,
-  interaction_count INTEGER,
-  updated_at TIMESTAMPTZ
-)
-```
+- **Primary:** Streaming subscribers with 3+ services
+- **Pain Point:** Subscription fatigue, paying for unused services
+- **Behavior:** Want recommendations but also want to save money
+- **Market Size:** $97B streaming market, households average 5-7 services
 
 ---
 
-## Getting Started
+## 💰 Business Model
 
-### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- Expo CLI (`npm install -g expo-cli`)
-- Expo Go app on your mobile device
-- Supabase account
-- TMDb API key
-
-### Environment Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/streamsense.git
-   cd streamsense
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-   
-   Create a `.env` file in the root directory:
-   ```env
-   EXPO_PUBLIC_SUPABASE_URL=your_supabase_url
-   EXPO_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   EXPO_PUBLIC_TMDB_API_KEY=your_tmdb_api_key
-   EXPO_PUBLIC_TMDB_ACCESS_TOKEN=your_tmdb_access_token
-   ```
-
-4. **Set up Supabase**
-   
-   Run the migration scripts in the Supabase SQL Editor (see `/docs/migrations/`)
-
-5. **Start the development server**
-   ```bash
-   npx expo start -c
-   ```
-
-6. **Run on device**
-   
-   Scan the QR code with Expo Go (Android) or Camera app (iOS)
+- **Freemium:** Basic subscription tracking free
+- **Premium:** $2.99-4.99/month for advanced features
+  - Smart recommendations
+  - Value analytics
+  - Rotation suggestions
+  - Churn predictions
+- **Strategy:** One-month free trial to demonstrate value
 
 ---
 
-## Recommendation Algorithm
+## 📅 Timeline to Launch
 
-StreamSense uses a multi-factor recommendation system inspired by Netflix and TikTok:
-
-### Genre Affinity Tracking
-
-User interactions are weighted and tracked:
-
-| Action | Weight |
-|--------|--------|
-| Add to Watchlist | +1.0 |
-| Start Watching | +1.5 |
-| Complete Watching | +2.0 |
-| Rate High (4-5 stars) | +2.5 |
-| Rate Low (1-2 stars) | -1.0 |
-| Skip/Dismiss | -0.5 |
-
-### Recommendation Sources
-
-1. **For You** - Weighted by top genre affinities
-2. **Because You Liked [Genre]** - Genre-specific recommendations
-3. **Discovery** - Exploration of less-watched genres
-4. **Trending** - Popular content across all users
-
-### Content Exclusion
-
-- Items in user's watchlist (any status) are excluded
-- Session-shown items are tracked to prevent repetition
-- Previously dismissed items are deprioritized
+| Milestone | Target Date | Status |
+|-----------|-------------|--------|
+| Bug fixes complete | Week 1 | 🔧 In Progress |
+| UX improvements | Week 2 | ⏳ Pending |
+| Feature completion | Week 3 | ⏳ Pending |
+| Polish & testing | Week 4 | ⏳ Pending |
+| Waitlist launch | Week 5 | ⏳ Pending |
+| Alpha release | Week 6-7 | ⏳ Pending |
+| Public beta | Week 8-10 | ⏳ Pending |
 
 ---
 
-## Value Score Calculation
+## 📝 Recent Updates
 
-The value score helps users understand their subscription ROI:
+**Session 4 (Current)**
+- Value Score now calculating correctly
+- Blindspot deduplication working
+- Identified 5 critical bugs with fixes ready
+- Designed Tinder-like swipe gestures
+- Planned "Load More" for Worth Discovering
 
-```typescript
-// Break-even calculation
-const BREAK_EVEN_RATE = 1.50; // dollars per hour (industry average)
-const breakEvenHours = monthlyCost / BREAK_EVEN_RATE;
-const costPerHour = watchHours > 0 ? monthlyCost / watchHours : 0;
+**Session 3**
+- Fixed aggressive recommendation filtering
+- Implemented temporal decay for genre affinity
+- Added user behavior detection (discovery vs. focused mode)
+- Created comprehensive bug fix documentation
 
-// Value ratings
-if (costPerHour === 0) rating = 'unknown';
-else if (costPerHour < 0.50) rating = 'excellent';
-else if (costPerHour < 1.00) rating = 'good';
-else if (costPerHour < 2.00) rating = 'fair';
-else rating = 'poor';
-```
+**Session 2**
+- Implemented Blindspot algorithm (5 discovery types)
+- Fixed type/media_type inconsistencies
+- Added genre affinity tracking on all interactions
 
----
-
-## Security & Compliance
-
-StreamSense implements enterprise-level security:
-
-- **Multi-Factor Authentication** on all administrative accounts
-- **Row Level Security (RLS)** on all database tables
-- **GitHub Dependabot** for vulnerability scanning
-- **HTTPS/TLS** for all API communications
-- **Plaid Compliance** (13 attestations completed)
-
-Privacy Policy: [https://artbyoscar.github.io/streamsense/privacy.html](https://artbyoscar.github.io/streamsense/privacy.html)
+**Session 1**
+- Core app structure complete
+- Authentication working
+- Basic subscription and watchlist management
 
 ---
 
-## Business Model
+## 🔗 Related Documents
 
-### Freemium Subscription
-
-| Tier | Price | Features |
-|------|-------|----------|
-| Free | $0 | 1 bank connection, basic tracking, 5 watchlist items |
-| Premium | $4.99/mo | Unlimited connections, full recommendations, household sharing |
-| Early Adopter | $2.99/mo | Premium features at reduced rate (limited time) |
-
-### Launch Strategy
-
-1. **Waitlist Phase** - Build interest, gather feedback
-2. **Alpha/Beta** - Target 40%+ product-market fit score
-3. **Public Launch** - Zero-budget marketing tactics
+- `journal.txt` - Development transcript catalog
 
 ---
 
-## Contributing
-
-This is currently a solo development project. Contributions may be accepted in the future.
-
----
-
-## License
-
-Proprietary - All rights reserved
-
----
-
-## Acknowledgments
-
-- [TMDb](https://www.themoviedb.org/) for content metadata
-- [Supabase](https://supabase.com/) for backend infrastructure
-- [Expo](https://expo.dev/) for React Native tooling
-- [Plaid](https://plaid.com/) for financial data integration
-
----
-
-## Contact
-
-**Developer**: Oscar Nunez
-
-**Project**: StreamSense
-
-**Status**: Active Development
-
----
-
-*Last Updated: November 30, 2025*
+*Last updated: December 1, 2025*
