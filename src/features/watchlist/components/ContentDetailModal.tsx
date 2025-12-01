@@ -22,6 +22,7 @@ import { useAuth } from '@/features/auth';
 import { supabase } from '@/config/supabase';
 import { getBackdropUrl, getPosterUrl, getUSWatchProviders } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
+import { addToExclusions, removeFromExclusions } from '@/services/smartRecommendations';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 import { COLORS } from '@/components';
 
@@ -262,6 +263,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
         }
 
         Alert.alert('Success', 'Added to watchlist!');
+
+        // Add to global exclusions to prevent showing in recommendations
+        addToExclusions(content.id);
       }
 
       // Notify parent

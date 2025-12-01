@@ -9,6 +9,73 @@ let sessionShownIds: Set<number> = new Set();
 let watchlistTmdbIds: Set<number> = new Set();
 let cacheInitialized = false;
 
+// ============================================================================
+// GLOBAL EXCLUSION SYSTEM
+// Centralized exclusion list to prevent watchlist items from appearing in recommendations
+// ============================================================================
+
+let globalExcludeIds: Set<number> = new Set();
+
+/**
+ * Initialize global exclusions from watchlist
+ * Call this when user logs in or app starts
+ */
+export const initializeExclusions = async (userId: string) => {
+  try {
+    const { data: watchlistItems } = await supabase
+      .from('watchlist_items')
+      .select('tmdb_id')
+      .eq('user_id', userId);
+
+    if (watchlistItems) {
+      globalExcludeIds = new Set(watchlistItems.map(item => item.tmdb_id));
+      console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items`);
+    }
+  } catch (error) {
+    console.error('[SmartRecs] Error initializing exclusions:', error);
+  }
+};
+
+/**
+ * Add a single item to exclusions
+ * Call this when user adds content to watchlist
+ */
+export const addToExclusions = (tmdbId: number) => {
+  globalExcludeIds.add(tmdbId);
+  console.log(`[SmartRecs] Added to exclusions: ${tmdbId}. Total: ${globalExcludeIds.size}`);
+};
+
+/**
+ * Remove an item from exclusions
+ * Call this when user removes content from watchlist
+ */
+export const removeFromExclusions = (tmdbId: number) => {
+  globalExcludeIds.delete(tmdbId);
+  console.log(`[SmartRecs] Removed from exclusions: ${tmdbId}. Total: ${globalExcludeIds.size}`);
+};
+
+/**
+ * Check if an item is excluded
+ */
+export const isExcluded = (tmdbId: number): boolean => {
+  return globalExcludeIds.has(tmdbId);
+};
+
+/**
+ * Filter array of items to remove excluded ones
+ */
+export const filterExcluded = (items: any[]): any[] => {
+  return items.filter(item => !globalExcludeIds.has(item.id));
+};
+
+/**
+ * Get exclusion stats for debugging
+ */
+export const getExclusionInfo = () => ({
+  total: globalExcludeIds.size,
+  sample: Array.from(globalExcludeIds).slice(0, 10),
+});
+
 // Initialize caches
 const initializeCaches = async (userId: string) => {
   if (cacheInitialized) return;
@@ -66,11 +133,12 @@ const addToSessionCache = (id: number) => {
 
 // Check if item should be excluded
 const shouldExclude = (tmdbId: number): boolean => {
-  // Exclude if in watchlist OR already shown this session
+  // Exclude if in global exclusions, watchlist, OR already shown this session
+  const isGloballyExcluded = globalExcludeIds.has(tmdbId);
   const inWatchlist = watchlistTmdbIds.has(tmdbId);
   const alreadyShown = sessionShownIds.has(tmdbId);
 
-  if (inWatchlist || alreadyShown) {
+  if (isGloballyExcluded || inWatchlist || alreadyShown) {
     return true;
   }
   return false;

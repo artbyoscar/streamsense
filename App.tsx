@@ -11,6 +11,7 @@ import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
 import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/ThemeProvider';
+import { initializeExclusions } from './src/services/smartRecommendations';
 
 // Suppress Fragment warning (likely from third-party library)
 LogBox.ignoreLogs(['Invalid prop `index` supplied to `React.Fragment`']);
@@ -43,6 +44,7 @@ function AppContent() {
   const initialize = useAuthStore((state) => state.initialize);
   const isInitialized = useAuthStore((state) => state.isInitialized);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const user = useAuthStore((state) => state.user);
   const { colors, isDark } = useTheme();
 
   useEffect(() => {
@@ -51,6 +53,14 @@ function AppContent() {
       console.log('[App] Auth initialization completed');
     });
   }, [initialize]);
+
+  // Initialize exclusions when user is authenticated
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      console.log('[App] Initializing exclusions for user:', user.id);
+      initializeExclusions(user.id);
+    }
+  }, [isAuthenticated, user?.id]);
 
   // Show loading while initializing
   if (!isInitialized) {
