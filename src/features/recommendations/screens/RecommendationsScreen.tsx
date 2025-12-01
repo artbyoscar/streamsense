@@ -908,11 +908,25 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
                   {/* Value Metrics */}
                   <View style={styles.valueMetricsRow}>
                     <View style={styles.valueMetric}>
-                      <Text style={[styles.valueMetricAmount, { color: ratingColor }]}>
-                        ${score.costPerHour.toFixed(2)}
+                      <Text
+                        style={[
+                          styles.valueMetricAmount,
+                          {
+                            color: (score.displayLabel === 'LOW USAGE' || score.displayLabel === 'UNUSED')
+                              ? '#F59E0B'
+                              : ratingColor,
+                            fontSize: (score.displayLabel === 'LOW USAGE' || score.displayLabel === 'UNUSED')
+                              ? 16
+                              : 22
+                          }
+                        ]}
+                        numberOfLines={1}
+                        adjustsFontSizeToFit
+                      >
+                        {score.displayLabel}
                       </Text>
                       <Text style={[styles.valueMetricLabel, { color: colors.textSecondary }]}>
-                        per hour
+                        {(score.displayLabel === 'LOW USAGE' || score.displayLabel === 'UNUSED') ? 'status' : 'value'}
                       </Text>
                     </View>
                     <View style={[styles.valueMetricDivider, { backgroundColor: colors.textSecondary }]} />

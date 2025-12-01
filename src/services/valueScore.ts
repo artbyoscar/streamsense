@@ -17,6 +17,7 @@ interface ValueScoreResult {
   costPerHour: number;
   rating: 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
   recommendation: string;
+  displayLabel: string;
 }
 
 /**
@@ -24,26 +25,45 @@ interface ValueScoreResult {
  */
 export const calculateValueScore = (
   monthlyCost: number,
-  watchHours: number
-): { costPerHour: number; rating: string } => {
-  if (watchHours === 0 || monthlyCost === 0) {
-    return { costPerHour: 0, rating: 'unknown' };
+  hoursWatched: number
+): { 
+  score: 'excellent' | 'good' | 'fair' | 'poor' | 'unknown';
+  costPerHour: number; 
+  displayLabel: string;
+  message: string;
+} => {
+  // 1. The "Unused" Case
+  if (hoursWatched === 0) {
+    return {
+      score: 'poor',
+      costPerHour: monthlyCost, // Technically infinite, but we show cost
+      displayLabel: 'UNUSED',
+      message: `You paid $${monthlyCost} for 0 hours of entertainment.`
+    };
   }
 
-  const costPerHour = monthlyCost / watchHours;
-
-  let rating: string;
-  if (costPerHour < 1) {
-    rating = 'excellent';
-  } else if (costPerHour < 2) {
-    rating = 'good';
-  } else if (costPerHour < 5) {
-    rating = 'fair';
-  } else {
-    rating = 'poor';
+  // 2. The "Low Usage" Case (The fix for your $60/hr issue)
+  if (hoursWatched < 1) {
+    return {
+      score: 'poor',
+      costPerHour: monthlyCost / hoursWatched, // We keep the math for backend, but hide it in UI
+      displayLabel: 'LOW USAGE', // <--- SHOW THIS INSTEAD OF PRICE
+      message: `Only ${(hoursWatched * 60).toFixed(0)} mins watched. Use it or lose it!`
+    };
   }
 
-  return { costPerHour, rating };
+  // 3. The Standard Case (Normal math)
+  const cph = monthlyCost / hoursWatched;
+  let score: 'excellent' | 'good' | 'fair' | 'poor' = 'fair';
+  if (cph < 1.0) score = 'excellent';
+  else if (cph < 3.0) score = 'good';
+
+  return {
+    score,
+    costPerHour: cph,
+    displayLabel: `$${cph.toFixed(2)}/hr`,
+    message: score === 'excellent' ? 'Great value!' : 'Standard value.'
+  };
 };
 
 /**
@@ -69,20 +89,7 @@ export const getUserValueScores = async (
       // Read watch hours directly from subscription record (logged via watch time feature)
       const watchHours = sub.total_watch_hours || 0;
       const monthlyCost = sub.monthly_cost || (sub as any).cost || (sub as any).price || 0;
-      const { costPerHour, rating } = calculateValueScore(monthlyCost, watchHours);
-
-      let recommendation = '';
-      if (rating === 'excellent') {
-        recommendation = 'Great value! Keep this subscription.';
-      } else if (rating === 'good') {
-        recommendation = 'Good value. Consider watching more content.';
-      } else if (rating === 'fair') {
-        recommendation = 'Average value. Review your watching habits.';
-      } else if (rating === 'poor') {
-        recommendation = 'Consider canceling or pausing this service.';
-      } else {
-        recommendation = 'Start watching to track value.';
-      }
+      const { score, costPerHour, displayLabel, message } = calculateValueScore(monthlyCost, watchHours);
 
       return {
         subscriptionId: sub.id,
@@ -90,8 +97,9 @@ export const getUserValueScores = async (
         monthlyCost,
         totalWatchHours: Math.round(watchHours * 10) / 10,
         costPerHour: Math.round(costPerHour * 100) / 100,
-        rating: rating as any,
-        recommendation,
+        rating: score,
+        recommendation: message,
+        displayLabel
       };
     });
 
