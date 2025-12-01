@@ -22,6 +22,7 @@ import { formatCurrency } from '../store/subscriptionsStore';
 import { COLORS, Card, LoadingScreen, Button } from '@/components';
 import type { BillingCycle, SubscriptionStatus } from '@/types';
 import { getServiceIconName } from '@/utils/serviceIcons';
+import { ValueScoreCard } from '../components/ValueScoreCard';
 
 type SubscriptionDetailNavigationProp = StackNavigationProp<DashboardStackParamList, 'SubscriptionDetail'>;
 
@@ -283,23 +284,36 @@ export const SubscriptionDetailScreen: React.FC = () => {
         </View>
       </Card>
 
-      {/* Usage Section */}
-      <Card style={styles.section}>
+      {/* Usage & Value Score */}
+      <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="chart-bar" size={24} color={COLORS.primary} />
-          <Text style={styles.sectionTitle}>Usage Statistics</Text>
+          <Text style={styles.sectionTitle}>Value Score</Text>
         </View>
 
-        <View style={styles.placeholderBox}>
-          <MaterialCommunityIcons name="chart-arc" size={48} color={COLORS.lightGray} />
-          <Text style={styles.placeholderText}>
-            Usage tracking coming soon
-          </Text>
-          <Text style={styles.placeholderSubtext}>
-            Track hours used and cost per hour
-          </Text>
-        </View>
-      </Card>
+        {(() => {
+          const hours = subscription.monthly_viewing_hours || 0;
+          const costPerHour = hours > 0 ? monthlyEquivalent / hours : 0;
+
+          let rating: 'excellent' | 'good' | 'poor' | 'unknown' = 'unknown';
+          if (hours > 0) {
+            if (costPerHour < 0.5) rating = 'excellent';
+            else if (costPerHour < 2.0) rating = 'good';
+            else rating = 'poor';
+          }
+
+          return (
+            <ValueScoreCard
+              subscription={subscription}
+              valueScore={{
+                totalWatchHours: hours,
+                costPerHour: costPerHour,
+                rating: rating
+              }}
+            />
+          );
+        })()}
+      </View>
 
       {/* Price History Chart */}
       <Card style={styles.section}>
@@ -482,6 +496,9 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: 16,
     padding: 16,
+  },
+  sectionContainer: {
+    marginBottom: 16,
   },
   sectionHeader: {
     flexDirection: 'row',

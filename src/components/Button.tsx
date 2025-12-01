@@ -12,7 +12,7 @@ import { COLORS } from './theme';
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'success' | 'error';
 
 export interface ButtonProps {
-  children: string;
+  children: React.ReactNode;
   onPress: () => void;
   variant?: ButtonVariant;
   loading?: boolean;
