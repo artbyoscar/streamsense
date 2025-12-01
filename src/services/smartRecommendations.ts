@@ -279,14 +279,7 @@ export const getSmartRecommendations = async (
       });
 
       let movies = (movieResponse.data?.results || [])
-        .map((item: any) => ({
-          ...item,
-          media_type: 'movie',  // FORCE set media_type
-          // Normalize genre_ids from genres if needed
-          genre_ids: item.genre_ids || (item.genres?.map((g: any) =>
-            typeof g === 'number' ? g : g.id
-          )) || [],
-        }));
+        .map((item: any) => normalizeContentItem(item, 'movie'));
 
       movies = filterItems(movies);
 
@@ -308,11 +301,7 @@ export const getSmartRecommendations = async (
         });
 
         const moreMovies = (secondResponse.data?.results || [])
-          .map((item: any) => ({
-            ...item,
-            media_type: 'movie',
-            genre_ids: item.genre_ids || [],
-          }));
+          .map((item: any) => normalizeContentItem(item, 'movie'));
 
         const filteredMoreMovies = filterItems(moreMovies);
         console.log('[SmartRecs] More movies after filtering:', filteredMoreMovies.length);
@@ -349,14 +338,7 @@ export const getSmartRecommendations = async (
       });
 
       let tvShows = (tvResponse.data?.results || [])
-        .map((item: any) => ({
-          ...item,
-          media_type: 'tv',  // FORCE set media_type
-          // Normalize genre_ids from genres if needed
-          genre_ids: item.genre_ids || (item.genres?.map((g: any) =>
-            typeof g === 'number' ? g : g.id
-          )) || [],
-        }));
+        .map((item: any) => normalizeContentItem(item, 'tv'));
 
       tvShows = filterItems(tvShows);
 
@@ -378,11 +360,7 @@ export const getSmartRecommendations = async (
         });
 
         const moreTVShows = (secondResponse.data?.results || [])
-          .map((item: any) => ({
-            ...item,
-            media_type: 'tv',
-            genre_ids: item.genre_ids || [],
-          }));
+          .map((item: any) => normalizeContentItem(item, 'tv'));
 
         const filteredMoreTV = filterItems(moreTVShows);
         console.log('[SmartRecs] More TV after filtering:', filteredMoreTV.length);
@@ -449,6 +427,36 @@ export const getExclusionStats = () => ({
 // GENRE-SPECIFIC RECOMMENDATIONS (Netflix-style)
 // ============================================================================
 
+/**
+ * Normalize content item to ensure consistent data structure
+ * TV shows use 'name' field, movies use 'title' field
+ */
+const normalizeContentItem = (item: any, mediaType: 'movie' | 'tv') => {
+  return {
+    id: item.id,
+    media_type: mediaType,
+    // Normalize title - TV shows use 'name', movies use 'title'
+    title: item.title || item.name || 'Unknown Title',
+    name: item.name || item.title,
+    // Ensure poster_path has full URL or null
+    poster_path: item.poster_path || null,
+    posterPath: item.poster_path || null,
+    // Normalize dates
+    release_date: item.release_date || item.first_air_date,
+    first_air_date: item.first_air_date || item.release_date,
+    // Include ratings
+    vote_average: item.vote_average || 0,
+    vote_count: item.vote_count || 0,
+    rating: item.vote_average || 0,
+    // Include other useful fields
+    overview: item.overview || '',
+    genre_ids: item.genre_ids || [],
+    genres: item.genre_ids || [],
+    original_language: item.original_language,
+    popularity: item.popularity,
+  };
+};
+
 export const getGenreRecommendations = async ({
   userId,
   genre,
@@ -511,11 +519,7 @@ export const getGenreRecommendations = async ({
 
       const movies = (movieResponse.data?.results || [])
         .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => ({
-          ...item,
-          media_type: 'movie',
-          genre_ids: item.genre_ids || [],
-        }));
+        .map((item: any) => normalizeContentItem(item, 'movie'));
 
       console.log('[SmartRecs] Movies after filtering:', movies.length);
       movies.forEach((m: any) => addToSessionCache(m.id));
@@ -550,11 +554,7 @@ export const getGenreRecommendations = async ({
 
       const tvShows = (tvResponse.data?.results || [])
         .filter((item: any) => !shouldExclude(item.id))
-        .map((item: any) => ({
-          ...item,
-          media_type: 'tv',
-          genre_ids: item.genre_ids || [],
-        }));
+        .map((item: any) => normalizeContentItem(item, 'tv'));
 
       console.log('[SmartRecs] TV after filtering:', tvShows.length);
       tvShows.forEach((t: any) => addToSessionCache(t.id));
