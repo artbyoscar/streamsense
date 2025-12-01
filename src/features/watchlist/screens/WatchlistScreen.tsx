@@ -22,6 +22,7 @@ import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { useTheme } from '@/providers/ThemeProvider';
 import { getMixedRecommendations } from '@/services/personalizedRecommendations';
 import { getUserTopGenres } from '@/services/genreAffinity';
+import { getSmartRecommendations, getGenreRecommendations } from '@/services/smartRecommendations';
 import { COLORS, EmptyState } from '@/components';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
@@ -226,11 +227,40 @@ export const WatchlistScreen: React.FC = () => {
     return [...baseFilters, ...topGenres, ...extraGenres];
   };
 
-  // Handle genre filter tap - just update state, no side effects
-  const handleGenreFilterTap = useCallback((genre: string) => {
+  // Handle genre filter tap - fetch fresh content for that genre (Netflix-style)
+  const handleGenreFilterTap = useCallback(async (genre: string) => {
+    if (!user?.id) return;
+
     console.log('[Watchlist] Genre filter tapped:', genre);
     setActiveGenreFilter(genre);
-  }, []);
+    setLoadingForYou(true);
+
+    try {
+      if (genre === 'All') {
+        // Load mixed recommendations
+        const recs = await getSmartRecommendations({
+          userId: user.id,
+          mediaType: mediaTypeFilter === 'all' ? 'mixed' : mediaTypeFilter,
+          limit: 20,
+          forceRefresh: true,
+        });
+        setAllRecommendations(recs);
+      } else {
+        // Load genre-specific recommendations
+        const recs = await getGenreRecommendations({
+          userId: user.id,
+          genre: genre,
+          mediaType: mediaTypeFilter === 'all' ? 'mixed' : mediaTypeFilter,
+          limit: 20,
+        });
+        setAllRecommendations(recs);
+      }
+    } catch (error) {
+      console.error('[Watchlist] Genre filter error:', error);
+    } finally {
+      setLoadingForYou(false);
+    }
+  }, [user?.id, mediaTypeFilter]);
 
   // Fetch watchlist from Supabase
   const fetchWatchlist = useCallback(async () => {
@@ -294,6 +324,15 @@ export const WatchlistScreen: React.FC = () => {
       loadPersonalizedContent();
     }
   }, [user?.id]);
+
+  // Refetch when media type filter changes
+  useEffect(() => {
+    if (user?.id && allRecommendations.length > 0) {
+      // Re-apply current genre filter with new media type
+      handleGenreFilterTap(activeGenreFilter);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaTypeFilter]); // Only run when mediaTypeFilter changes
 
   const loadPersonalizedContent = async (append: boolean = false) => {
     if (!user?.id) return;
@@ -646,50 +685,59 @@ export const WatchlistScreen: React.FC = () => {
               ))}
             </ScrollView>
 
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.horizontalScroll}
-            >
-              {filteredRecommendations.map(item => (
-                <TouchableOpacity
-                  key={`foryou-${item.id}-${item.type}`}
-                  onPress={() => handleContentPress(item)}
-                  style={styles.posterCard}
-                >
-                  <Image
-                    source={{
-                      uri: item.posterPath
-                        ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
-                        : 'https://via.placeholder.com/120x180'
-                    }}
-                    style={[styles.poster, { backgroundColor: colors.card }]}
-                  />
-                  <Text
-                    numberOfLines={2}
-                    style={[styles.posterTitle, { color: colors.text }]}
+            {loadingForYou ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={colors.primary} />
+                <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                  Loading {activeGenreFilter !== 'All' ? activeGenreFilter : ''} recommendations...
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScroll}
+              >
+                {filteredRecommendations.map(item => (
+                  <TouchableOpacity
+                    key={`foryou-${item.id}-${item.type}`}
+                    onPress={() => handleContentPress(item)}
+                    style={styles.posterCard}
                   >
-                    {item.title}
-                  </Text>
-                  <View style={styles.contentMeta}>
-                    <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
-                      {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                    <Image
+                      source={{
+                        uri: item.posterPath
+                          ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
+                          : 'https://via.placeholder.com/120x180'
+                      }}
+                      style={[styles.poster, { backgroundColor: colors.card }]}
+                    />
+                    <Text
+                      numberOfLines={2}
+                      style={[styles.posterTitle, { color: colors.text }]}
+                    >
+                      {item.title}
                     </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
+                    <View style={styles.contentMeta}>
+                      <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
+                        {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
 
-              {/* More Button */}
-              {filteredRecommendations.length > 0 && !loadingForYou && (
-                <TouchableOpacity
-                  style={styles.moreButton}
-                  onPress={() => loadPersonalizedContent(true)}
-                >
-                  <MaterialCommunityIcons name="plus-circle-outline" size={36} color={colors.primary} />
-                  <Text style={[styles.moreButtonText, { color: colors.primary }]}>More</Text>
-                </TouchableOpacity>
-              )}
-            </ScrollView>
+                {/* More Button */}
+                {filteredRecommendations.length > 0 && !loadingForYou && (
+                  <TouchableOpacity
+                    style={styles.moreButton}
+                    onPress={() => loadPersonalizedContent(true)}
+                  >
+                    <MaterialCommunityIcons name="plus-circle-outline" size={36} color={colors.primary} />
+                    <Text style={[styles.moreButtonText, { color: colors.primary }]}>More</Text>
+                  </TouchableOpacity>
+                )}
+              </ScrollView>
+            )}
           </View>
         ) : !loadingForYou && totalItems > 0 ? (
           <View style={[styles.onboardingCard, { backgroundColor: colors.card }]}>

@@ -80,9 +80,10 @@ const shouldExclude = (tmdbId: number): boolean => {
 const GENRE_NAME_TO_IDS: Record<string, number[]> = {
   'Drama': [18],
   'Adventure': [12],
-  'Action': [28],
-  'Science Fiction': [878],
+  'Action': [28, 10759], // Movie Action + TV Action & Adventure
+  'Science Fiction': [878, 10765], // Movie Sci-Fi + TV Sci-Fi & Fantasy
   'Animation': [16],
+  'Anime': [16], // Same as animation, filtered by language
   'Comedy': [35],
   'Thriller': [53],
   'Horror': [27],
@@ -90,7 +91,7 @@ const GENRE_NAME_TO_IDS: Record<string, number[]> = {
   'Documentary': [99],
   'Crime': [80],
   'Mystery': [9648],
-  'Fantasy': [14],
+  'Fantasy': [14, 10765],
   'Family': [10751],
   'War': [10752],
   'History': [36],
@@ -293,3 +294,136 @@ export const getExclusionStats = () => ({
   watchlistSample: Array.from(watchlistTmdbIds).slice(0, 10),
   sessionSample: Array.from(sessionShownIds).slice(0, 10),
 });
+
+// ============================================================================
+// GENRE-SPECIFIC RECOMMENDATIONS (Netflix-style)
+// ============================================================================
+
+export const getGenreRecommendations = async ({
+  userId,
+  genre,
+  mediaType = 'mixed',
+  limit = 20,
+}: {
+  userId: string;
+  genre: string;
+  mediaType?: 'movie' | 'tv' | 'mixed';
+  limit?: number;
+}): Promise<any[]> => {
+  console.log('[SmartRecs] Getting genre recommendations:', { genre, mediaType, limit });
+
+  // Initialize caches
+  await initializeCaches(userId);
+
+  // ALWAYS refresh watchlist IDs to catch new additions
+  const { data: freshWatchlist } = await supabase
+    .from('watchlist_items')
+    .select('tmdb_id')
+    .eq('user_id', userId);
+
+  if (freshWatchlist) {
+    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
+  }
+
+  // Get genre IDs from name
+  const genreIds = GENRE_NAME_TO_IDS[genre];
+  if (!genreIds || genreIds.length === 0) {
+    console.warn(`[SmartRecs] Unknown genre: ${genre}`);
+    return [];
+  }
+
+  console.log('[SmartRecs] Genre IDs:', genreIds);
+
+  const recommendations: any[] = [];
+
+  // Random page for variety (1-10)
+  const getRandomPage = () => Math.floor(Math.random() * 10) + 1;
+
+  try {
+    // Fetch movies
+    if (mediaType === 'movie' || mediaType === 'mixed') {
+      const page = getRandomPage();
+      console.log('[SmartRecs] Fetching movies for genre, page:', page);
+
+      const movieResponse = await tmdbApi.get('/discover/movie', {
+        params: {
+          with_genres: genreIds.join(','),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 100,
+          'vote_average.gte': 6.0,
+          // Special handling for Anime
+          ...(genre === 'Anime' && { with_original_language: 'ja' }),
+          // Exclude non-Japanese for regular Animation
+          ...(genre === 'Animation' && { without_original_language: 'ja' }),
+        },
+      });
+
+      const movies = (movieResponse.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id))
+        .map((item: any) => ({
+          ...item,
+          media_type: 'movie',
+          genre_ids: item.genre_ids || [],
+        }));
+
+      console.log('[SmartRecs] Movies after filtering:', movies.length);
+      movies.forEach((m: any) => addToSessionCache(m.id));
+      recommendations.push(...movies);
+    }
+
+    // Fetch TV shows
+    if (mediaType === 'tv' || mediaType === 'mixed') {
+      // Map movie genres to TV genres
+      const tvGenreIds = genreIds.map(id => {
+        if (id === 878) return 10765; // Sci-Fi -> Sci-Fi & Fantasy
+        if (id === 28) return 10759;  // Action -> Action & Adventure
+        return id;
+      });
+
+      const page = getRandomPage();
+      console.log('[SmartRecs] Fetching TV for genre, page:', page);
+
+      const tvResponse = await tmdbApi.get('/discover/tv', {
+        params: {
+          with_genres: tvGenreIds.join(','),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 50,
+          'vote_average.gte': 6.0,
+          // Special handling for Anime
+          ...(genre === 'Anime' && { with_original_language: 'ja' }),
+          // Exclude non-Japanese for regular Animation
+          ...(genre === 'Animation' && { without_original_language: 'ja' }),
+        },
+      });
+
+      const tvShows = (tvResponse.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id))
+        .map((item: any) => ({
+          ...item,
+          media_type: 'tv',
+          genre_ids: item.genre_ids || [],
+        }));
+
+      console.log('[SmartRecs] TV after filtering:', tvShows.length);
+      tvShows.forEach((t: any) => addToSessionCache(t.id));
+      recommendations.push(...tvShows);
+    }
+
+    // Shuffle for variety
+    const shuffled = recommendations.sort(() => Math.random() - 0.5);
+
+    // Save session cache
+    await saveSessionCache();
+
+    // Return limited results
+    const results = shuffled.slice(0, limit);
+
+    console.log('[SmartRecs] Returning', results.length, 'genre recommendations for', genre);
+    return results;
+  } catch (error) {
+    console.error('[SmartRecs] Error fetching genre recommendations:', error);
+    return [];
+  }
+};
