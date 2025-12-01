@@ -325,17 +325,22 @@ export const getSmartRecommendations = async (
       });
 
       let page = getRandomPage();
-      console.log('[SmartRecs] Fetching TV, page:', page);
+
+      // Use only first 2 genres with OR operator to avoid overly specific queries
+      const genreQuery = tvGenreIds.slice(0, 2).join('|');
+      console.log('[SmartRecs] Fetching TV with genres:', genreQuery, 'page:', page);
 
       const tvResponse = await tmdbApi.get('/discover/tv', {
         params: {
-          with_genres: tvGenreIds.join(','),
+          with_genres: genreQuery,  // Use | for OR query instead of , for AND
           page,
           sort_by: 'popularity.desc',
           'vote_count.gte': 50,
           'vote_average.gte': 6.0,
         },
       });
+
+      console.log('[SmartRecs] TV API returned:', tvResponse.data?.results?.length || 0, 'items');
 
       let tvShows = (tvResponse.data?.results || [])
         .map((item: any) => normalizeContentItem(item, 'tv'));
@@ -344,26 +349,27 @@ export const getSmartRecommendations = async (
 
       console.log('[SmartRecs] TV after filtering:', tvShows.length, 'of', tvResponse.data?.results?.length);
 
-      // If we got very few results and this is TV-only mode, try another page
+      // If we got very few results and this is TV-only mode, try fallback strategies
       if (mediaType === 'tv' && tvShows.length < 5) {
-        page = page + 3; // Try a few pages ahead
-        console.log('[SmartRecs] Fetching more TV, page:', page);
+        console.log('[SmartRecs] Got few TV results, trying fallback...');
 
-        const secondResponse = await tmdbApi.get('/discover/tv', {
+        // Try fetching popular TV without genre filter
+        const fallbackResponse = await tmdbApi.get('/discover/tv', {
           params: {
-            with_genres: tvGenreIds.join(','),
-            page,
+            page: getRandomPage(),
             sort_by: 'popularity.desc',
-            'vote_count.gte': 50,
-            'vote_average.gte': 6.0,
+            'vote_count.gte': 100,
+            'vote_average.gte': 6.5,
           },
         });
 
-        const moreTVShows = (secondResponse.data?.results || [])
+        console.log('[SmartRecs] Fallback TV (no genre filter) returned:', fallbackResponse.data?.results?.length || 0, 'items');
+
+        const moreTVShows = (fallbackResponse.data?.results || [])
           .map((item: any) => normalizeContentItem(item, 'tv'));
 
         const filteredMoreTV = filterItems(moreTVShows);
-        console.log('[SmartRecs] More TV after filtering:', filteredMoreTV.length);
+        console.log('[SmartRecs] Fallback TV after filtering:', filteredMoreTV.length);
         tvShows = [...tvShows, ...filteredMoreTV];
       }
 
