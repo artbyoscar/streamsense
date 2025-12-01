@@ -4,6 +4,7 @@
  */
 
 import { supabase } from '@/config/supabase';
+import { getContentDetails } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
 import { refreshWatchlistCache } from '@/services/smartRecommendations';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
@@ -15,7 +16,10 @@ import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/
 /**
  * Fetch all watchlist items for the current user
  */
-export async function fetchWatchlist(): Promise<WatchlistItem[]> {
+/**
+ * Fetch all watchlist items for the current user
+ */
+export async function fetchWatchlist(): Promise<any[]> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -24,20 +28,62 @@ export async function fetchWatchlist(): Promise<WatchlistItem[]> {
     throw new Error('User not authenticated');
   }
 
-  const { data, error } = await supabase
-    .from('watchlist_items')
-    .select(`
-      *,
-      content:content(*)
-    `)
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false });
+  try {
+    // 1. Fetch the watchlist items (WITHOUT the join)
+    const { data: items, error } = await supabase
+      .from('watchlist_items')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) throw error;
+    if (!items || items.length === 0) return [];
+
+    // 2. Hydrate the data manually (Fetch details for each item)
+    const enrichedItems = await Promise.all(
+      items.map(async (item) => {
+        try {
+          // Use tmdb_id and media_type/type from the item
+          // Fallback to 'movie' if type is missing, or skip if no ID
+          const tmdbId = item.tmdb_id;
+          const mediaType = item.media_type || item.type || 'movie';
+
+          if (tmdbId) {
+            // Fetch fresh details from TMDb
+            const details = await getContentDetails(tmdbId, mediaType as 'movie' | 'tv');
+            return {
+              ...item,
+              // Merge API data into the shape your UI expects
+              title: details.title,
+              poster_path: details.posterPath,
+              vote_average: details.rating,
+              genres: details.genres,
+              // Add content object to satisfy some UI expectations if needed
+              content: {
+                id: item.content_id, // Keep original content_id if available
+                tmdb_id: tmdbId,
+                title: details.title,
+                type: mediaType,
+                poster_url: details.posterPath, // Map posterPath to poster_url
+                overview: details.overview,
+                vote_average: details.rating,
+                genres: details.genres
+              }
+            };
+          }
+          return item; // Return as-is if missing ID
+        } catch (err) {
+          console.warn(`[Watchlist] Failed to hydrate item ${item.id}`, err);
+          return item;
+        }
+      })
+    );
+
+    return enrichedItems;
+  } catch (error: any) {
+    console.error('[Watchlist] Error fetching watchlist:', error);
+    throw new Error(error.message || 'Failed to fetch watchlist');
   }
-
-  return data || [];
 }
 
 /**
