@@ -12,6 +12,7 @@ import {
   Image,
   Alert,
   TouchableOpacity,
+  Modal,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
@@ -29,7 +30,9 @@ import { usePremiumFeature } from '@/hooks/usePremiumFeature';
 import { SubscriptionListItem } from '../components/SubscriptionListItem';
 import { QuickActionsCard } from '../components/QuickActionsCard';
 import { SuggestionsAlert } from '../components/SuggestionsAlert';
+import { WatchTimeSlider } from '@/components/FluidSlider/WatchTimeSlider';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { supabase } from '@/config/supabase';
 
 export const DashboardScreen: React.FC = () => {
   const { setActiveTab, navigateToScreen, refreshKey } = useCustomNavigation();
@@ -39,6 +42,8 @@ export const DashboardScreen: React.FC = () => {
   const [potentialSavings, setPotentialSavings] = useState(0);
   const [valueMetrics, setValueMetrics] = useState<Map<string, SubscriptionValueMetrics>>(new Map());
   const [breakEvenData, setBreakEvenData] = useState<BreakEvenData[]>([]);
+  const [showWatchTimeSlider, setShowWatchTimeSlider] = useState(false);
+  const [selectedSubscriptionForLog, setSelectedSubscriptionForLog] = useState<any>(null);
 
   // Premium feature check
   const { canAddSubscription, isPremium } = usePremiumFeature();
@@ -214,6 +219,42 @@ export const DashboardScreen: React.FC = () => {
     setActiveTab('Watchlist');
   };
 
+  const handleLogTime = (subscription: any) => {
+    setSelectedSubscriptionForLog(subscription);
+    setShowWatchTimeSlider(true);
+  };
+
+  const handleSaveWatchTime = async (hours: number) => {
+    if (!selectedSubscriptionForLog || !user?.id) return;
+
+    try {
+      // Update local state immediately for responsiveness
+      // In a real app, we'd want to optimistic update the query cache
+
+      const { error } = await supabase
+        .from('user_subscriptions')
+        .update({
+          total_watch_hours: (selectedSubscriptionForLog.total_watch_hours || 0) + hours,
+          last_watched_at: new Date().toISOString()
+        })
+        .eq('id', selectedSubscriptionForLog.id);
+
+      if (error) throw error;
+
+      // Refresh data
+      refetch();
+      calculateMetrics();
+
+      setShowWatchTimeSlider(false);
+      setSelectedSubscriptionForLog(null);
+
+      Alert.alert('Success', `Logged ${hours} hours for ${selectedSubscriptionForLog.service_name}!`);
+    } catch (error) {
+      console.error('Error saving watch time:', error);
+      Alert.alert('Error', 'Failed to save watch time');
+    }
+  };
+
   // Helper: Format billing date
   const formatBillingDate = (dateString: string | null | undefined): string => {
     if (!dateString) return 'Not set';
@@ -248,9 +289,9 @@ export const DashboardScreen: React.FC = () => {
   const getGreeting = () => {
     const hour = new Date().getHours();
     const firstName = user?.user_metadata?.full_name?.split(' ')[0] ||
-                      user?.user_metadata?.first_name ||
-                      user?.email?.split('@')[0] ||
-                      'there';
+      user?.user_metadata?.first_name ||
+      user?.email?.split('@')[0] ||
+      'there';
 
     if (hour < 12) return `Good morning, ${firstName}!`;
     if (hour < 17) return `Good afternoon, ${firstName}!`;
@@ -530,6 +571,7 @@ export const DashboardScreen: React.FC = () => {
               subscription={subscription}
               valueMetrics={valueMetrics.get(subscription.id)}
               onPress={() => handleSubscriptionPress(subscription.id)}
+              onLogTime={() => handleLogTime(subscription)}
             />
           ))}
         </View>
@@ -564,6 +606,26 @@ export const DashboardScreen: React.FC = () => {
         limit={3}
         current={totalActive}
       />
+
+      {/* Watch Time Slider Modal */}
+      <Modal
+        visible={showWatchTimeSlider}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShowWatchTimeSlider(false)}
+      >
+        {selectedSubscriptionForLog && (
+          <View style={{ flex: 1, backgroundColor: '#000' }}>
+            <WatchTimeSlider
+              serviceName={selectedSubscriptionForLog.service_name}
+              monthlyPrice={selectedSubscriptionForLog.price}
+              currentHours={selectedSubscriptionForLog.total_watch_hours || 0}
+              onSave={handleSaveWatchTime}
+              onClose={() => setShowWatchTimeSlider(false)}
+            />
+          </View>
+        )}
+      </Modal>
     </ScrollView>
   );
 };

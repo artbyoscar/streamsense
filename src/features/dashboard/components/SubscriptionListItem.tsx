@@ -15,12 +15,14 @@ interface SubscriptionListItemProps {
   subscription: UserSubscription;
   valueMetrics?: SubscriptionValueMetrics;
   onPress?: () => void;
+  onLogTime?: () => void;
 }
 
 export const SubscriptionListItem: React.FC<SubscriptionListItemProps> = ({
   subscription,
   valueMetrics,
   onPress,
+  onLogTime,
 }) => {
   const formatPrice = (price: number, cycle: string) => {
     const cycleAbbrev = {
@@ -246,5 +248,24 @@ const styles = StyleSheet.create({
   valueBadgeText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    marginTop: 12,
+    justifyContent: 'flex-end',
+  },
+  logButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '15',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  logButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.primary,
+    marginLeft: 4,
   },
 });
