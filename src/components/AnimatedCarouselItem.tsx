@@ -28,8 +28,6 @@ export const AnimatedCarouselItem: React.FC<AnimatedCarouselItemProps> = ({
   style,
   ...props
 }) => {
-  const [isRemoving, setIsRemoving] = useState(false);
-
   // Get the appropriate exit animation based on type
   const getExitAnimation = () => {
     switch (animationType) {
@@ -49,21 +47,6 @@ export const AnimatedCarouselItem: React.FC<AnimatedCarouselItemProps> = ({
         });
     }
   };
-
-  // Trigger haptic feedback when starting removal
-  const triggerRemoval = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setIsRemoving(true);
-  };
-
-  // Expose the trigger function via ref if needed
-  React.useImperativeHandle(props as any, () => ({
-    remove: triggerRemoval,
-  }));
-
-  if (isRemoving) {
-    return null;
-  }
 
   return (
     <Animated.View
