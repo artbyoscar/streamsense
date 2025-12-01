@@ -8,23 +8,23 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ## 📊 Project Status
 
-### Overall Completion: **78%**
+### Overall Completion: **82%**
 
-| Category | Status | Completion |
-|----------|--------|------------|
-| Core Infrastructure | ✅ Complete | 100% |
-| Authentication | ✅ Complete | 100% |
-| Subscription Management | ✅ Complete | 95% |
-| Watchlist System | ✅ Complete | 95% |
-| Genre Affinity Learning | ✅ Complete | 100% |
-| Smart Recommendations | 🔧 Refining | 85% |
-| Value Score Analytics | ✅ Complete | 90% |
-| Discover (Swipe) Page | 🔧 In Progress | 70% |
-| Tips & Insights | 🔧 Refining | 80% |
-| Worth Discovering (Blindspots) | ✅ Complete | 90% |
-| Rewatch Suggestions | 🚧 Blocked | 40% |
-| UI Polish | 🔧 In Progress | 60% |
-| Bug Fixes | 🔧 In Progress | 70% |
+| Category | Status | Completion | Notes |
+|----------|--------|------------|-------|
+| Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, Custom Navigation |
+| Authentication | ✅ Complete | 100% | Supabase Auth (Email/Pass) |
+| Subscription Management | ✅ Complete | 98% | **Fixed:** 0-hour logging now works |
+| Watchlist System | ✅ Complete | 95% | **Fixed:** Decoupled from DB joins |
+| Genre Affinity Learning | ✅ Complete | 100% | Real-time preference tracking |
+| Smart Recommendations | 🔧 Refining | 85% | Blindspots & Content DNA active |
+| Value Score Analytics | ✅ Complete | 100% | **New:** Human-readable logic active |
+| Discover (Swipe) Page | 🔧 In Progress | 75% | Layout fixed, tuning performance |
+| Tips & Insights | 🔧 Refining | 85% | Churn predictions active |
+| Worth Discovering (Blindspots) | ✅ Complete | 90% | Deduplication logic improved |
+| Rewatch Suggestions | ⏳ Pending | 40% | Schema updates required |
+| UI Polish | 🔧 In Progress | 65% | Dark mode & spacing updates |
+| Bug Fixes | 🔧 In Progress | 80% | Critical crashers resolved |
 
 ---
 
@@ -37,18 +37,18 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ### Subscription Tracking
 - Manual subscription entry with service name, price, billing cycle
-- Watch time logging per service
+- **NEW:** 0-hour logging support for unused services
 - Total monthly cost calculation
-- Value score calculation (cost per hour watched)
+- **NEW:** Human-Readable Value Score ("Low Usage", "Good Value" vs raw $)
 - Service recommendations based on genre preferences
 
 ### Watchlist Management
+- **NEW:** Decoupled architecture (Fetch IDs -> Hydrate via API) for stability
 - Add content with status: Want to Watch, Watching, Watched
 - 5-star rating system
 - Filter by media type (All, Movies, TV Shows)
 - Filter by genre
 - Content persists across sessions
-- 190+ items tracked in testing
 
 ### Genre Affinity Learning
 - Tracks user interactions: add, rate, watch, skip
@@ -70,7 +70,7 @@ StreamSense helps users optimize their streaming spending while discovering pers
 - Hidden gems (high rating, low vote count)
 - Adjacent interests (fans of X also love Y)
 - Service exclusives (content on your subscriptions)
-- Deduplication across categories
+- Deduplication across categories (Fix applied for duplicates)
 
 ### Tips & Insights Page
 - Monthly spending overview
@@ -92,110 +92,66 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ## 🔧 Known Issues (In Progress)
 
-### Critical Bugs
+### High Priority
 | Bug | Impact | Status |
 |-----|--------|--------|
-| Cannot log 0 watch hours | Database constraint blocks valid input | Fix ready, needs DB migration |
-| Discover swipe fails | UUID undefined error | Fix ready, needs DB schema change (`UUID` -> `TEXT`) |
-| TV "Adventure" filter returns empty | Wrong genre ID for TV API | Fix ready, needs implementation |
-| Fragment/key React errors | Console spam, potential performance | Needs file search to locate |
-
-### UX Issues
-| Issue | Impact | Status |
-|-------|--------|--------|
-| Watchlist filtering slow | API call on each filter change | Fix designed (client-side filtering) |
-| Discover buttons overflow | Do not fit on smaller screens | Fix designed (icon buttons) |
-| No swipe gestures in Discover | Missing expected Tinder-like UX | Implementation ready |
-| Worth Discovering no "Load More" | Cannot get fresh recommendations | Implementation ready |
-| Carousel items persist after add | Content remains visible after watchlist add | Fix designed |
-
-### Data Issues
-| Issue | Impact | Status |
-|-------|--------|--------|
 | Rewatch feature blocked | Column `updated_at` missing | Needs DB migration |
-| Service insights empty | Feature not fully implemented | In progress |
+| Swipe Latency | 2-5s delay between swipes | **Next Sprint:** Batch fetching |
+| Ratings | No half-star support (3.5 stars) | Planned Feature |
+| Fragment/key React errors | Console spam | Fix instructions pending |
+
+### Recently Resolved (Verified)
+| Bug | Resolution |
+|-----|------------|
+| **App Crash on Load** | Fixed by removing `useFocusEffect` and decoupling DB joins |
+| **Empty Watchlist** | Fixed by hydrating data via API instead of SQL join |
+| **Discover Buttons Overlap** | Fixed by adding `contentContainerStyle` padding |
+| **Value Score Confusion** | Fixed by replacing "$60/hr" with "Low Usage" label |
+| **Discover Swipe UUID Error** | Fixed by dropping DB Foreign Key constraint |
 
 ---
 
 ## 🚀 Development Pipeline
 
-### Phase 1: Bug Fixes (Next Sprint)
-**Priority: Critical**
-
-1. **Database Migrations**
-   - [ ] Allow 0 hours in `watch_logs` constraint
-   - [ ] Add `updated_at` column to `watchlist_items`
-   - [ ] **Hotfix:** Change `watchlist_items.content_id` from UUID to TEXT
-
-2. **Code Fixes**
-   - [ ] Fix Discover swipe UUID error (pass user.id from useAuth)
-   - [ ] Fix TV genre ID mapping (use 10759 for Action & Adventure)
-   - [ ] Find and fix all Fragment `index=` to `key=` errors
-   - [ ] Fix Rewatch query to use `created_at`
-
-### Phase 2: UX Improvements (Following Sprint)
+### Phase 1: Performance & Polish (Next Sprint)
 **Priority: High**
 
-1. **Discover Page Overhaul**
-   - [ ] Implement Tinder-like swipe gestures (left/right/up)
-   - [ ] Add swipe overlays ("Want to Watch", "Not Interested", "Already Watched")
-   - [ ] Replace text buttons with icon buttons
-   - [ ] Add "Already Watched" flow with rating modal
+1.  **Discover Speed**
+    - [ ] Implement batch-fetching (fetch 5 items at once)
+    - [ ] Add image pre-fetching for next 3 cards
+    - [ ] Reduce re-renders on swipe
 
-2. **Performance Optimization**
-   - [ ] Pre-fetch movies and TV on Watchlist load
-   - [ ] Client-side filtering (no API calls on filter change)
-   - [ ] Cache recommendations by genre
+2.  **Rating System Upgrade**
+    - [ ] Implement 0.5 increment support
+    - [ ] Update database schema for decimal ratings
+    - [ ] Update UI star component
 
-3. **Carousel Improvements**
-   - [ ] Animate item removal after watchlist add
-   - [ ] Add "Load More" card at end of Worth Discovering
-   - [ ] Prevent full refresh on single item add
+3.  **Code Hygiene**
+    - [ ] Apply `key={}` fixes to all `React.Fragment` loops
+    - [ ] Remove unused imports/legacy navigation code
 
-### Phase 3: Feature Completion (Week 3)
+### Phase 2: Feature Completion (Week 3)
 **Priority: Medium**
 
-1. **Rewatch Suggestions**
-   - [ ] Complete database schema updates
-   - [ ] Show 4-5 star rated content available on user services
-   - [ ] Display "time since watched" context
-   - [ ] Add to Tips page as new section
+1.  **Rewatch Suggestions**
+    - [ ] Complete database schema updates (`updated_at` column)
+    - [ ] Logic: Show 4-5 star content not watched in >6 months
+    - [ ] Add to Tips page as new section
 
-2. **Service Insights**
-   - [ ] Calculate "favorites on this service" count
-   - [ ] Show badge on subscription cards
-   - [ ] Factor into churn recommendations
+2.  **Service Insights**
+    - [ ] Calculate "favorites on this service" count
+    - [ ] Show badge on subscription cards ("Best for Drama")
 
-3. **Have Watched Flow**
-   - [ ] Third action in Discover (swipe up or button)
-   - [ ] Rating modal after selection
-   - [ ] Track as "watched" status with rating
-   - [ ] Update genre affinity based on rating
-
-### Phase 4: Polish & Launch Prep (Week 4)
-**Priority: Medium**
-
-1. **UI Refinement**
-   - [ ] Loading states and skeletons
-   - [ ] Empty state designs
-   - [ ] Error state handling with retry
-   - [ ] Haptic feedback on actions
-
-2. **Onboarding**
-   - [ ] First-run tutorial
-   - [ ] Subscription setup wizard
-   - [ ] Genre preference quick-pick
-
-3. **Analytics & Monitoring**
-   - [ ] Event tracking setup
-   - [ ] Error monitoring (Sentry or similar)
-   - [ ] Performance monitoring
+3.  **Onboarding**
+    - [ ] First-run tutorial
+    - [ ] Subscription setup wizard
+    - [ ] Genre preference quick-pick
 
 ---
 
 ## 📈 Metrics from Testing
 
-User Interactions: 190+ watchlist items Genre Affinities: 22 genres tracked Top Genres: Drama (395), Adventure (372), Action (287) Behavior Mode: Discovery (exploring widely) Session Average: 13.1 items per session Achievements: 7 unlocked Subscriptions: 3 active (Hulu, Disney+, Prime Video) Monthly Spend: $28.97
+User Interactions: 238 watchlist items Genre Affinities: 22 genres tracked Top Genres: Drama (413), Adventure (400), Action (318) Behavior Mode: Discovery (exploring widely) Session Average: 12.1 items per session Achievements: 7 unlocked Subscriptions: 3 active (Hulu, Disney+, Prime Video) Monthly Spend: $28.97
 
 
 ---
@@ -216,7 +172,7 @@ User Interactions: 190+ watchlist items Genre Affinities: 22 genres tracked Top 
 
 ## 📁 Project Structure
 
-src/ ├── components/ # Reusable UI components ├── contexts/ # React contexts (Auth, Theme) ├── hooks/ # Custom hooks ├── screens/ # Screen components │ ├── DashboardScreen │ ├── DiscoverScreen │ ├── WatchlistScreen │ ├── TipsScreen │ └── SettingsScreen ├── services/ # API and business logic │ ├── smartRecommendations.ts │ ├── blindspotRecommendations.ts │ ├── genreAffinity.ts │ ├── valueScore.ts │ ├── contentDNA.ts │ └── collaborativeFiltering.ts ├── types/ # TypeScript interfaces └── utils/ # Helper functions
+src/ ├── components/ # Reusable UI components ├── contexts/ # React contexts (Auth, Theme) ├── hooks/ # Custom hooks ├── screens/ # Screen components │ ├── DashboardScreen │ ├── DiscoverScreen │ ├── WatchlistScreen │ ├── TipsScreen │ └── SettingsScreen ├── services/ # API and business logic │ ├── smartRecommendations.ts │ ├── blindspotRecommendations.ts │ ├── watchlistDataService.ts # [NEW] Decoupled Data Fetcher │ ├── genreAffinity.ts │ ├── valueScore.ts │ └── collaborativeFiltering.ts ├── types/ # TypeScript interfaces └── utils/ # Helper functions
 
 
 ---
@@ -258,28 +214,18 @@ src/ ├── components/ # Reusable UI components ├── contexts/ # React 
 
 ## 📝 Recent Updates
 
-**Session 4 (Current)**
-- Value Score now calculating correctly
-- Blindspot deduplication working
-- Identified 5 critical bugs with fixes ready
-- Designed Tinder-like swipe gestures
-- Planned "Load More" for Worth Discovering
+**Session 2 (Current Fixes)**
+- **Database Architecture:** Dropped Foreign Key constraints to allow composite IDs (e.g., `movie-12345`).
+- **Crash Resolution:** Decoupled `getWatchlist` from database joins, fixing "Missing Relationship" crashes.
+- **Value Score:** Updated logic to use "Low Usage" and "Great Value" labels instead of confusing raw cost-per-hour math.
+- **UI Polish:** Fixed overlapping buttons on Discover screen by implementing proper `contentContainerStyle` padding.
+- **Data Integrity:** Fixed 0-hour logging for subscriptions.
 
-**Session 3**
-- Fixed aggressive recommendation filtering
-- Implemented temporal decay for genre affinity
-- Added user behavior detection (discovery vs. focused mode)
-- Created comprehensive bug fix documentation
-
-**Session 2**
+**Session 1**
 - Implemented Blindspot algorithm (5 discovery types)
 - Fixed type/media_type inconsistencies
 - Added genre affinity tracking on all interactions
-
-**Session 1**
-- Core app structure complete
-- Authentication working
-- Basic subscription and watchlist management
+- Core app structure and Authentication complete
 
 ---
 
