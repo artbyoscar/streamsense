@@ -19,6 +19,15 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  runOnJS,
+  interpolate,
+  Extrapolate,
+} from 'react-native-reanimated';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
@@ -27,6 +36,8 @@ import type { UnifiedContent } from '@/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.9;
+const SWIPE_THRESHOLD = 120; // Pixels to trigger swipe action
+const ROTATION_ANGLE = 20; // Degrees of rotation during swipe
 
 interface SwipeAction {
   type: 'watchlist' | 'hide' | 'watching' | 'watched';
@@ -45,6 +56,11 @@ export const SwipeScreen: React.FC = () => {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [pendingWatchedItem, setPendingWatchedItem] = useState<UnifiedContent | null>(null);
   const [selectedRating, setSelectedRating] = useState(0);
+
+  // Animated values for swipe gestures
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const rotation = useSharedValue(0);
 
   // Load user and content
   useEffect(() => {
@@ -230,6 +246,118 @@ export const SwipeScreen: React.FC = () => {
     setSelectedRating(0);
   };
 
+  // Reset card position (called after successful swipe)
+  const resetCardPosition = () => {
+    translateX.value = 0;
+    translateY.value = 0;
+    rotation.value = 0;
+  };
+
+  // Programmatic swipe (triggered by buttons)
+  const triggerSwipe = (direction: 'left' | 'right' | 'up') => {
+    const targets = {
+      left: { x: -500, y: 0 },
+      right: { x: 500, y: 0 },
+      up: { x: 0, y: -800 },
+    };
+
+    translateX.value = withSpring(targets[direction].x, { damping: 20 });
+    translateY.value = withSpring(targets[direction].y, { damping: 20 });
+
+    // Reset after animation completes
+    setTimeout(() => {
+      resetCardPosition();
+    }, 300);
+  };
+
+  // Gesture handler
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      translateX.value = event.translationX;
+      translateY.value = event.translationY;
+      rotation.value = interpolate(
+        event.translationX,
+        [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
+        [-ROTATION_ANGLE, 0, ROTATION_ANGLE],
+        Extrapolate.CLAMP
+      );
+    })
+    .onEnd((event) => {
+      const absX = Math.abs(event.translationX);
+      const absY = Math.abs(event.translationY);
+
+      // Determine swipe direction
+      if (absX > SWIPE_THRESHOLD || absY > SWIPE_THRESHOLD) {
+        if (absX > absY) {
+          // Horizontal swipe
+          if (event.translationX > SWIPE_THRESHOLD) {
+            // Swipe right → Want to Watch
+            translateX.value = withSpring(500, { damping: 20 }, () => {
+              runOnJS(handleButtonPress)('watchlist');
+              runOnJS(resetCardPosition)();
+            });
+          } else if (event.translationX < -SWIPE_THRESHOLD) {
+            // Swipe left → Not Interested
+            translateX.value = withSpring(-500, { damping: 20 }, () => {
+              runOnJS(handleButtonPress)('hide');
+              runOnJS(resetCardPosition)();
+            });
+          }
+        } else {
+          // Vertical swipe
+          if (event.translationY < -SWIPE_THRESHOLD) {
+            // Swipe up → Already Watched
+            translateY.value = withSpring(-800, { damping: 20 }, () => {
+              runOnJS(handleButtonPress)('watched');
+              runOnJS(resetCardPosition)();
+            });
+          }
+        }
+      } else {
+        // Snap back if not past threshold
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+        rotation.value = withSpring(0);
+      }
+    });
+
+  // Animated styles
+  const cardAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { rotate: `${rotation.value}deg` },
+    ],
+  }));
+
+  // Overlay opacity animations
+  const likeOverlayStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [0, 1],
+      Extrapolate.CLAMP
+    ),
+  }));
+
+  const nopeOverlayStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateX.value,
+      [-SWIPE_THRESHOLD, 0],
+      [1, 0],
+      Extrapolate.CLAMP
+    ),
+  }));
+
+  const watchedOverlayStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(
+      translateY.value,
+      [-SWIPE_THRESHOLD, 0],
+      [1, 0],
+      Extrapolate.CLAMP
+    ),
+  }));
+
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -299,10 +427,24 @@ export const SwipeScreen: React.FC = () => {
 
       {/* Card Stack */}
       <View style={styles.cardStack}>
-        <View
-          style={[styles.card, { backgroundColor: colors.card }]}
-        >
-          {/* Poster - Top 55% */}
+        <GestureDetector gesture={panGesture}>
+          <Animated.View
+            style={[styles.card, cardAnimatedStyle, { backgroundColor: colors.card }]}
+          >
+            {/* Swipe Overlays */}
+            <Animated.View style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
+              <Text style={styles.overlayText}>WANT TO WATCH</Text>
+            </Animated.View>
+
+            <Animated.View style={[styles.overlay, styles.nopeOverlay, nopeOverlayStyle]}>
+              <Text style={styles.overlayText}>NOT INTERESTED</Text>
+            </Animated.View>
+
+            <Animated.View style={[styles.overlay, styles.watchedOverlay, watchedOverlayStyle]}>
+              <Text style={styles.overlayText}>ALREADY WATCHED</Text>
+            </Animated.View>
+
+            {/* Poster - Top 55% */}
           {posterUrl ? (
             <Image
               source={{ uri: posterUrl }}
@@ -352,7 +494,8 @@ export const SwipeScreen: React.FC = () => {
               </Text>
             </ScrollView>
           </View>
-        </View>
+          </Animated.View>
+        </GestureDetector>
       </View>
 
       {/* Action Buttons - 4 buttons in a grid */}
@@ -732,6 +875,36 @@ const styles = StyleSheet.create({
   modalButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Swipe Gesture Overlays
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 20,
+  },
+  likeOverlay: {
+    backgroundColor: 'rgba(34, 197, 94, 0.9)', // Green
+  },
+  nopeOverlay: {
+    backgroundColor: 'rgba(239, 68, 68, 0.9)', // Red
+  },
+  watchedOverlay: {
+    backgroundColor: 'rgba(139, 92, 246, 0.9)', // Purple
+  },
+  overlayText: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    textTransform: 'uppercase',
+    letterSpacing: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 });
 
