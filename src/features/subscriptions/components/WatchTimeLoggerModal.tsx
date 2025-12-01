@@ -40,9 +40,9 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
   const handleSave = async () => {
     const hoursNum = parseFloat(hours);
 
-    // Validation - allow 0, reject NaN and negative numbers
-    if (isNaN(hoursNum) || hoursNum < 0) {
-      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (0 or greater)');
+    // Validation - must be greater than 0 (matches database constraint)
+    if (isNaN(hoursNum) || hoursNum <= 0) {
+      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (minimum 0.1)');
       return;
     }
 
@@ -156,7 +156,7 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
               autoFocus
             />
             <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-              Enter the number of hours you watched today
+              Enter hours watched (minimum 0.1, maximum 24)
             </Text>
           </View>
 
