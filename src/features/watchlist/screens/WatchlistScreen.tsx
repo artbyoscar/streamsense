@@ -605,11 +605,11 @@ export const WatchlistScreen: React.FC = () => {
             <View style={styles.sectionHeaderWithSubtitle}>
               <View>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                  ✨ For You
+                  ✨ Curated for Your Tastes
                 </Text>
                 {userTopGenres.length > 0 && activeGenreFilter === 'All' && (
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                    Based on {userTopGenres.slice(0, 2).map(g => g.name).join(' & ')}
+                    You will probably love these - based on {userTopGenres.slice(0, 2).map(g => g.name).join(' & ')}
                   </Text>
                 )}
                 {activeGenreFilter !== 'All' && (

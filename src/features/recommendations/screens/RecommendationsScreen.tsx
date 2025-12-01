@@ -462,14 +462,14 @@ export const RecommendationsScreen: React.FC = () => {
           </>
         )}
 
-        {/* Pile of Shame Section */}
+        {/* Worth Discovering Section */}
         {pileOfShame.length > 0 && (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              📚 Your Pile of Shame
+              💎 Worth Discovering
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              Content you wouldn't normally discover - unexplored gems, classics, and adjacent interests
+              Expand your horizons - you might be sleeping on these highly-rated titles
             </Text>
 
             <ScrollView
@@ -551,7 +551,7 @@ export const RecommendationsScreen: React.FC = () => {
 
             {pileOfShame.length > 6 && (
               <Text style={[styles.shameFooter, { color: colors.textSecondary }]}>
-                +{pileOfShame.length - 6} more highly-rated titles waiting for you
+                +{pileOfShame.length - 6} more hidden gems worth discovering
               </Text>
             )}
           </>
