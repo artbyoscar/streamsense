@@ -183,7 +183,7 @@ const MOVIE_GENRE_IDS: Record<string, number[]> = {
 
 const TV_GENRE_IDS: Record<string, number[]> = {
   'Drama': [18],
-  'Adventure': [12], // Note: TV doesn't have separate Adventure, using Action & Adventure
+  'Adventure': [10759], // TV uses Action & Adventure (genre ID 10759)
   'Action': [10759], // Action & Adventure
   'Science Fiction': [10765], // Sci-Fi & Fantasy
   'Animation': [16],
@@ -197,11 +197,12 @@ const TV_GENRE_IDS: Record<string, number[]> = {
   'Mystery': [9648],
   'Fantasy': [10765], // Sci-Fi & Fantasy
   'Family': [10751],
-  'War': [10752], // War & Politics
+  'War': [10768], // TV uses War & Politics (genre ID 10768)
   'History': [36], // Note: TV doesn't have History, but we keep for compatibility
   // TV-specific genres
   'Sci-Fi & Fantasy': [10765],
   'Action & Adventure': [10759],
+  'War & Politics': [10768],
 };
 
 interface RecommendationOptions {
