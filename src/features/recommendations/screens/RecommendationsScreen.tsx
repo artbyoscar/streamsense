@@ -18,6 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
+import { useAuth } from '@/hooks/useAuth';
+// DO NOT IMPORT useFocusEffect or useNavigation
+
 import { getUserValueScores } from '@/services/valueScore';
 import { getChurnRecommendations, type ChurnRecommendation } from '@/services/churnCalendar';
 import { getUserTopGenres } from '@/services/genreAffinity';
@@ -102,6 +105,7 @@ interface RecommendationsScreenProps {
 export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ isFocused }) => {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [serviceRecs, setServiceRecs] = useState<any[]>([]);
@@ -233,8 +237,6 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
     try {
       setLoading(true);
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setLoading(false);
         return;
@@ -409,10 +411,10 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
   }, []);
 
   useEffect(() => {
-    if (isFocused) {
+    if (isFocused && user) {
       loadData();
     }
-  }, [isFocused, loadData]);
+  }, [isFocused, user, loadData]);
 
   // Shuffle items when screen comes into focus for variety
   useEffect(() => {
