@@ -220,16 +220,56 @@ export const DashboardScreen: React.FC = () => {
   };
 
   const handleLogTime = (subscription: any) => {
+    // Validate subscription has required fields
+    if (!subscription) {
+      console.error('[Dashboard] Cannot log watch time - subscription is null');
+      Alert.alert('Error', 'Could not load subscription details. Please try again.');
+      return;
+    }
+
+    // Check for subscription ID (could be 'id' or 'subscriptionId')
+    const subscriptionId = subscription.id || subscription.subscriptionId;
+
+    if (!subscriptionId || subscriptionId === 'undefined') {
+      console.error('[Dashboard] Cannot log watch time - missing subscription ID:', {
+        subscription,
+        hasId: !!subscription.id,
+        hasSubscriptionId: !!subscription.subscriptionId,
+      });
+      Alert.alert('Error', 'Could not identify subscription. Please try again.');
+      return;
+    }
+
+    console.log('[Dashboard] Opening watch time logger for:', {
+      id: subscriptionId,
+      service: subscription.service_name,
+    });
+
     setSelectedSubscriptionForLog(subscription);
     setShowWatchTimeSlider(true);
   };
 
   const handleSaveWatchTime = async (hours: number) => {
-    if (!selectedSubscriptionForLog || !user?.id) return;
+    if (!selectedSubscriptionForLog || !user?.id) {
+      console.error('[Dashboard] Cannot save watch time - missing data');
+      return;
+    }
+
+    // Validate subscription ID
+    const subscriptionId = selectedSubscriptionForLog.id || selectedSubscriptionForLog.subscriptionId;
+
+    if (!subscriptionId) {
+      console.error('[Dashboard] Cannot save watch time - missing subscription ID');
+      Alert.alert('Error', 'Missing subscription information. Please try again.');
+      return;
+    }
 
     try {
-      // Update local state immediately for responsiveness
-      // In a real app, we'd want to optimistic update the query cache
+      console.log('[Dashboard] Saving watch time:', {
+        subscriptionId,
+        hours,
+        service: selectedSubscriptionForLog.service_name,
+      });
 
       const { error } = await supabase
         .from('user_subscriptions')
@@ -237,7 +277,7 @@ export const DashboardScreen: React.FC = () => {
           total_watch_hours: (selectedSubscriptionForLog.total_watch_hours || 0) + hours,
           last_watched_at: new Date().toISOString()
         })
-        .eq('id', selectedSubscriptionForLog.id);
+        .eq('id', subscriptionId);
 
       if (error) throw error;
 
