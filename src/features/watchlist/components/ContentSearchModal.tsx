@@ -29,7 +29,7 @@ import {
   getDefaultCategories,
   type ContentCategory,
 } from '@/services/contentBrowse';
-import { getUserProviderIds, filterByUserServices } from '@/services/watchProviders';
+import { getUserProviderIds } from '@/services/watchProviders';
 import { ContentDetailModal } from './ContentDetailModal';
 import type { TMDbMultiSearchResult, UnifiedContent } from '@/types/tmdb';
 import { COLORS } from '@/components';
@@ -59,8 +59,6 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
   // Free to Me filter state
   const [freeToMeOnly, setFreeToMeOnly] = useState(false);
   const [userProviderIds, setUserProviderIds] = useState<number[]>([]);
-  const [availableContentIds, setAvailableContentIds] = useState<Set<number>>(new Set());
-  const [isFilteringContent, setIsFilteringContent] = useState(false);
 
   // Debounce search query
   React.useEffect(() => {
@@ -80,53 +78,12 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
     }
   }, [visible, user?.id]);
 
-  // Filter browse content when Free to Me toggle changes
-  useEffect(() => {
-    if (!freeToMeOnly || userProviderIds.length === 0) {
-      setAvailableContentIds(new Set());
-      return;
-    }
-
-    const filterContent = async () => {
-      setIsFilteringContent(true);
-
-      try {
-        // Collect all unique content items from browse content
-        const allContent: Array<{ id: number; type: 'movie' | 'tv' }> = [];
-        const seenIds = new Set<number>();
-
-        browseContent.forEach(categoryItems => {
-          categoryItems.forEach(item => {
-            if (!seenIds.has(item.id)) {
-              seenIds.add(item.id);
-              allContent.push({ id: item.id, type: item.type });
-            }
-          });
-        });
-
-        console.log('[ContentSearch] Filtering', allContent.length, 'items by user services');
-
-        // Filter by user's services
-        const available = await filterByUserServices(allContent, userProviderIds);
-        setAvailableContentIds(available);
-
-        console.log('[ContentSearch] Found', available.size, 'available items');
-      } catch (error) {
-        console.error('[ContentSearch] Error filtering content:', error);
-      } finally {
-        setIsFilteringContent(false);
-      }
-    };
-
-    filterContent();
-  }, [freeToMeOnly, browseContent, userProviderIds]);
-
-  // Load browse categories when modal opens
+  // Load browse categories when modal opens or when Free to Me filter changes
   useEffect(() => {
     if (visible && !searchQuery) {
       loadBrowseCategories();
     }
-  }, [visible]);
+  }, [visible, freeToMeOnly]);
 
   const loadBrowseCategories = async () => {
     setLoadingBrowse(true);
@@ -140,8 +97,11 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
       console.log('[SearchContent] Loaded', personalizedCats.length, 'categories');
 
       // Fetch content for ALL categories
-      const categoryIds = personalizedCats.map(c => c.id);
-      const content = await fetchMultipleCategories(categoryIds);
+      // If "Free to Me" is enabled, pass provider IDs to filter at API level
+      const providerIdsToUse = freeToMeOnly && userProviderIds.length > 0 ? userProviderIds : undefined;
+      console.log('[SearchContent] Fetching with provider filter:', providerIdsToUse);
+
+      const content = await fetchMultipleCategories(personalizedCats, providerIdsToUse);
       setBrowseContent(content);
       console.log('[SearchContent] Fetched content for', content.size, 'categories');
     } catch (error) {
@@ -347,10 +307,7 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
             </View>
             {freeToMeOnly && (
               <Text style={[styles.filterDescription, { color: colors.textSecondary }]}>
-                {isFilteringContent
-                  ? 'Filtering content...'
-                  : `Showing only content available on your ${userProviderIds.length} subscription${userProviderIds.length > 1 ? 's' : ''}`
-                }
+                Showing only content available on your {userProviderIds.length} subscription{userProviderIds.length > 1 ? 's' : ''}
               </Text>
             )}
           </View>
@@ -369,7 +326,10 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
           ) : (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.browseContainer}>
               {categories
-                .filter(cat => browseContent.has(cat.id))
+                .filter(cat => {
+                  const items = browseContent.get(cat.id);
+                  return items && items.length > 0;
+                })
                 .map(category => (
                   <View key={category.id} style={styles.categorySection}>
                     <Text style={[styles.categoryTitle, { color: colors.text }]}>
@@ -380,9 +340,7 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
                       showsHorizontalScrollIndicator={false}
                       contentContainerStyle={styles.categoryScroll}
                     >
-                      {browseContent.get(category.id)
-                        ?.filter(item => !freeToMeOnly || availableContentIds.has(item.id))
-                        .map(item => (
+                      {browseContent.get(category.id)?.map(item => (
                         <TouchableOpacity
                           key={`${category.id}-${item.id}`}
                           onPress={() => handleSelectContent(item)}
@@ -431,13 +389,9 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
         ) : data && data.results.length > 0 ? (
-          // Search Results
+          // Search Results (Note: Free to Me filter only applies to browse mode, not search)
           <FlatList
-            data={data.results.filter((item: TMDbMultiSearchResult) =>
-              !freeToMeOnly ||
-              availableContentIds.has(item.id) ||
-              (item.media_type !== 'movie' && item.media_type !== 'tv')
-            )}
+            data={data.results}
             renderItem={renderSearchResult}
             keyExtractor={(item) => `${item.media_type}-${item.id}`}
             contentContainerStyle={styles.listContainer}

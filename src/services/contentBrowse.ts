@@ -373,14 +373,28 @@ export const getDefaultCategories = (): ContentCategory[] => {
   ];
 };
 
-export const fetchCategoryContent = async (category: ContentCategory): Promise<UnifiedContent[]> => {
+export const fetchCategoryContent = async (
+  category: ContentCategory,
+  providerIds?: number[]
+): Promise<UnifiedContent[]> => {
   console.log('[ContentBrowse] Fetching category:', category.title);
   console.log('[ContentBrowse] tmdbApi exists:', !!tmdbApi);
+  console.log('[ContentBrowse] Provider IDs:', providerIds);
 
   try {
+    // Build params - start with category params
+    const params: Record<string, any> = { ...(category.params || {}) };
+
+    // Add provider filtering for discover endpoints (TMDb only supports this for /discover)
+    if (providerIds && providerIds.length > 0 && category.endpoint.includes('/discover/')) {
+      params['watch_region'] = 'US';
+      params['with_watch_providers'] = providerIds.join('|');
+      console.log('[ContentBrowse] Adding provider filter:', params['with_watch_providers']);
+    }
+
     // Include params if provided
     const response = await tmdbApi.get(category.endpoint, {
-      params: category.params || {},
+      params,
     });
     let results = response.data.results || [];
     console.log('[ContentBrowse] Got response:', results.length, 'items for', category.title);
@@ -430,13 +444,15 @@ export const fetchCategoryContent = async (category: ContentCategory): Promise<U
   }
 };
 
-export const fetchMultipleCategories = async (categoryIds: string[]): Promise<Map<string, UnifiedContent[]>> => {
+export const fetchMultipleCategories = async (
+  categories: ContentCategory[],
+  providerIds?: number[]
+): Promise<Map<string, UnifiedContent[]>> => {
   const results = new Map<string, UnifiedContent[]>();
-  const categories = BROWSE_CATEGORIES.filter(c => categoryIds.includes(c.id));
 
   await Promise.all(
     categories.map(async (category) => {
-      const content = await fetchCategoryContent(category);
+      const content = await fetchCategoryContent(category, providerIds);
       results.set(category.id, content);
     })
   );
