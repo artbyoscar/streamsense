@@ -1,4 +1,4 @@
-# StreamSense
+# StreamSense 🎬💸
 
 **Rocket Money for streaming, with Netflix-level recommendations.**
 
@@ -96,7 +96,7 @@ StreamSense helps users optimize their streaming spending while discovering pers
 | Bug | Impact | Status |
 |-----|--------|--------|
 | Cannot log 0 watch hours | Database constraint blocks valid input | Fix ready, needs DB migration |
-| Discover swipe fails | UUID undefined error | Fix ready, needs implementation |
+| Discover swipe fails | UUID undefined error | Fix ready, needs DB schema change (`UUID` -> `TEXT`) |
 | TV "Adventure" filter returns empty | Wrong genre ID for TV API | Fix ready, needs implementation |
 | Fragment/key React errors | Console spam, potential performance | Needs file search to locate |
 
@@ -125,7 +125,7 @@ StreamSense helps users optimize their streaming spending while discovering pers
 1. **Database Migrations**
    - [ ] Allow 0 hours in `watch_logs` constraint
    - [ ] Add `updated_at` column to `watchlist_items`
-   - [ ] Verify column names match code (`content_id` vs `tmdb_id`)
+   - [ ] **Hotfix:** Change `watchlist_items.content_id` from UUID to TEXT
 
 2. **Code Fixes**
    - [ ] Fix Discover swipe UUID error (pass user.id from useAuth)
@@ -195,16 +195,8 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ## 📈 Metrics from Testing
 
-```
-User Interactions:     190+ watchlist items
-Genre Affinities:      22 genres tracked
-Top Genres:            Drama (395), Adventure (372), Action (287)
-Behavior Mode:         Discovery (exploring widely)
-Session Average:       13.1 items per session
-Achievements:          7 unlocked
-Subscriptions:         3 active (Hulu, Disney+, Prime Video)
-Monthly Spend:         $28.97
-```
+User Interactions: 190+ watchlist items Genre Affinities: 22 genres tracked Top Genres: Drama (395), Adventure (372), Action (287) Behavior Mode: Discovery (exploring widely) Session Average: 13.1 items per session Achievements: 7 unlocked Subscriptions: 3 active (Hulu, Disney+, Prime Video) Monthly Spend: $28.97
+
 
 ---
 
@@ -224,27 +216,8 @@ Monthly Spend:         $28.97
 
 ## 📁 Project Structure
 
-```
-src/
-├── components/          # Reusable UI components
-├── contexts/            # React contexts (Auth, Theme)
-├── hooks/               # Custom hooks
-├── screens/             # Screen components
-│   ├── DashboardScreen
-│   ├── DiscoverScreen
-│   ├── WatchlistScreen
-│   ├── TipsScreen
-│   └── SettingsScreen
-├── services/            # API and business logic
-│   ├── smartRecommendations.ts
-│   ├── blindspotRecommendations.ts
-│   ├── genreAffinity.ts
-│   ├── valueScore.ts
-│   ├── contentDNA.ts
-│   └── collaborativeFiltering.ts
-├── types/               # TypeScript interfaces
-└── utils/               # Helper functions
-```
+src/ ├── components/ # Reusable UI components ├── contexts/ # React contexts (Auth, Theme) ├── hooks/ # Custom hooks ├── screens/ # Screen components │ ├── DashboardScreen │ ├── DiscoverScreen │ ├── WatchlistScreen │ ├── TipsScreen │ └── SettingsScreen ├── services/ # API and business logic │ ├── smartRecommendations.ts │ ├── blindspotRecommendations.ts │ ├── genreAffinity.ts │ ├── valueScore.ts │ ├── contentDNA.ts │ └── collaborativeFiltering.ts ├── types/ # TypeScript interfaces └── utils/ # Helper functions
+
 
 ---
 
