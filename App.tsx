@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, ActivityIndicator, LogBox } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Text } from 'react-native-paper';
 import { NavigationContainer } from '@react-navigation/native';
@@ -78,14 +79,16 @@ function AppContent() {
 
 export default function App() {
   return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          <ToastProvider>
-            <AppContent />
-          </ToastProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <ErrorBoundary>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider>
+            <ToastProvider>
+              <AppContent />
+            </ToastProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </ErrorBoundary>
+    </SafeAreaProvider>
   );
 }

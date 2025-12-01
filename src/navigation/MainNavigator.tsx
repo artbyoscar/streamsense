@@ -4,7 +4,8 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { DashboardScreen } from '@/features/dashboard';
 import { WatchlistScreen } from '@/features/watchlist';
@@ -55,7 +56,7 @@ const Navigator: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.content}>
         {renderScreen()}
       </View>
@@ -89,7 +90,7 @@ const Navigator: React.FC = () => {
 
       {/* Subscription Form Modal */}
       <Modal visible={showSubscriptionForm} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]}>
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top']}>
           <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
             <Text style={[styles.modalTitle, { color: colors.text }]}>
               {selectedSubscriptionId ? 'Edit Subscription' : 'Add Subscription'}

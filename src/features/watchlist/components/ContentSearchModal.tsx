@@ -8,7 +8,6 @@ import {
   StyleSheet,
   View,
   Modal,
-  SafeAreaView,
   TextInput,
   FlatList,
   ScrollView,
@@ -17,6 +16,7 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -296,7 +296,7 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>Search Content</Text>

@@ -8,13 +8,13 @@ import {
   StyleSheet,
   View,
   Modal,
-  SafeAreaView,
   ScrollView,
   TouchableOpacity,
   Image,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -292,7 +292,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
       presentationStyle="fullScreen"
       onRequestClose={onClose}
     >
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
         {/* Close Button */}
         <TouchableOpacity
           style={[styles.closeButton, { backgroundColor: colors.card }]}
