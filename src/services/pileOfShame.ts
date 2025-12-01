@@ -98,13 +98,21 @@ const getGenreName = (genreId: number, isTV: boolean): string => {
  * - Classic gaps (acclaimed older content)
  * - Adjacent interests (genres that fans of user's genres love)
  * - Service exclusives (content on user's services)
+ *
+ * @param userId - User ID
+ * @param limit - Maximum number of items to return (default: 12)
+ * @param excludeIds - TMDb IDs to exclude (e.g., already shown items)
  */
-export const getPileOfShame = async (userId: string): Promise<ShameItem[]> => {
+export const getPileOfShame = async (
+  userId: string,
+  limit: number = 12,
+  excludeIds: number[] = []
+): Promise<ShameItem[]> => {
   try {
-    console.log('[PileOfShame] Generating blindspot recommendations for user:', userId);
+    console.log('[PileOfShame] Generating blindspot recommendations for user:', userId, 'limit:', limit, 'exclusions:', excludeIds.length);
 
     // Get blindspot recommendations
-    const blindspots = await generateBlindspotRecommendations(userId, 12);
+    const blindspots = await generateBlindspotRecommendations(userId, limit, excludeIds);
 
     if (blindspots.length === 0) {
       console.log('[PileOfShame] No blindspot recommendations found');

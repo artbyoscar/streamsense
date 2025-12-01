@@ -112,6 +112,7 @@ export const RecommendationsScreen: React.FC = () => {
   }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
   const [pileOfShameData, setPileOfShameData] = useState<ShameItem[]>([]);
   const { items: pileOfShame, removeItem: removePileItem } = useAnimatedCarousel(pileOfShameData);
+  const [isLoadingMoreBlindspots, setIsLoadingMoreBlindspots] = useState(false);
   const [rewatchSuggestions, setRewatchSuggestions] = useState<RewatchSuggestion[]>([]);
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [showContentModal, setShowContentModal] = useState(false);
@@ -156,6 +157,41 @@ export const RecommendationsScreen: React.FC = () => {
     setSelectedContent(contentItem);
     setShowContentModal(true);
   }, []);
+
+  // Load more blindspot recommendations
+  const loadMoreBlindspots = useCallback(async () => {
+    if (isLoadingMoreBlindspots) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    setIsLoadingMoreBlindspots(true);
+    try {
+      // Get TMDb IDs of currently shown items to exclude
+      const currentIds = pileOfShameData.map(item => item.id);
+
+      console.log('[Tips] Loading more blindspots, excluding', currentIds.length, 'items');
+
+      // Fetch next batch with exclusions
+      const moreBlindspots = await getPileOfShame(user.id, 6, currentIds);
+
+      if (moreBlindspots.length > 0) {
+        console.log('[Tips] Loaded', moreBlindspots.length, 'more blindspots');
+        setPileOfShameData(prev => [...prev, ...moreBlindspots]);
+
+        // Haptic feedback for successful load
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      } else {
+        console.log('[Tips] No more blindspots available');
+        Alert.alert('All Caught Up!', 'Check back later for more personalized discoveries');
+      }
+    } catch (error) {
+      console.error('[Tips] Error loading more blindspots:', error);
+      Alert.alert('Error', 'Failed to load more recommendations');
+    } finally {
+      setIsLoadingMoreBlindspots(false);
+    }
+  }, [isLoadingMoreBlindspots, pileOfShameData]);
 
   // Handle log watch time button press
   const handleLogWatchTime = useCallback((subscription: any) => {
@@ -519,7 +555,7 @@ export const RecommendationsScreen: React.FC = () => {
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.shameScrollContainer}
             >
-              {pileOfShame.slice(0, 6).map((item, index) => (
+              {pileOfShame.map((item, index) => (
                 <AnimatedCarouselItem
                   key={`${item.type}-${item.id}-${item.blindspotReason}-${index}`}
                   animationType="combined"
@@ -589,13 +625,26 @@ export const RecommendationsScreen: React.FC = () => {
                   </TouchableOpacity>
                 </AnimatedCarouselItem>
               ))}
-            </ScrollView>
 
-            {pileOfShame.length > 6 && (
-              <Text style={[styles.shameFooter, { color: colors.textSecondary }]}>
-                +{pileOfShame.length - 6} more hidden gems worth discovering
-              </Text>
-            )}
+              {/* Load More Card */}
+              <TouchableOpacity
+                style={[styles.loadMoreCard, { borderColor: colors.primary }]}
+                onPress={loadMoreBlindspots}
+                disabled={isLoadingMoreBlindspots}
+                activeOpacity={0.7}
+              >
+                {isLoadingMoreBlindspots ? (
+                  <ActivityIndicator size="large" color={colors.primary} />
+                ) : (
+                  <>
+                    <Ionicons name="refresh" size={40} color={colors.primary} />
+                    <Text style={[styles.loadMoreText, { color: colors.primary }]}>
+                      Discover More
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
           </>
         )}
 
@@ -1187,6 +1236,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  // Load More Card
+  loadMoreCard: {
+    width: 160,
+    height: 280,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+  },
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Rewatch Availability Badge Styles
   availabilityBadge: {

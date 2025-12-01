@@ -413,13 +413,18 @@ const getServiceExclusiveBlindspots = async (
  */
 export const generateBlindspotRecommendations = async (
   userId: string,
-  limit: number = 12
+  limit: number = 12,
+  additionalExcludeIds: number[] = []
 ): Promise<BlindspotItem[]> => {
   try {
     console.log('[Blindspot] Generating blindspot recommendations for user:', userId);
 
     // Get user exclusions (watchlist items to avoid recommending)
-    const excludeIds = await getUserExclusions(userId);
+    const userExclusions = await getUserExclusions(userId);
+
+    // Combine with additional exclusions (e.g., already shown items)
+    const excludeIds = new Set([...userExclusions, ...additionalExcludeIds]);
+    console.log('[Blindspot] Total exclusions:', excludeIds.size, '(user:', userExclusions.size, 'additional:', additionalExcludeIds.length, ')');
 
     // Gather all blindspot types
     const [
