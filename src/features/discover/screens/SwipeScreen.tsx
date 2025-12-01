@@ -128,82 +128,86 @@ export const SwipeScreen: React.FC = () => {
         return;
       }
 
-      if (type === 'watchlist' || type === 'watching' || type === 'watched') {
-        // Determine status based on action type
-        const status = type === 'watching' ? 'watching' : type === 'watched' ? 'watched' : 'want_to_watch';
-
-        // Determine media type with fallback
-        // Cast to any to access properties that might exist at runtime but not in UnifiedContent type
-        const itemAny = item as any;
-        const mediaType = item.type || itemAny.media_type || (itemAny.first_air_date ? 'tv' : 'movie');
-
-        if (!mediaType) {
-          console.error('[Swipe] Missing mediaType for item:', item.id, item.title);
-          return;
-        }
-
-        // Add to watchlist using the content table
-        const insertData: any = {
-          user_id: user.id,
-          content_id: `${mediaType}-${item.id}`,
-          status,
-          priority: 'medium',
-        };
-
-        // Add rating if provided (for 'watched' items)
-        if (type === 'watched' && rating) {
-          insertData.rating = rating;
-        }
-
-        console.log('[Swipe] Inserting into watchlist:', {
-          userId: user.id,
-          contentId: insertData.content_id,
-          status,
-        });
-
-        const { error } = await supabase
-          .from('watchlist_items')
-          .insert(insertData);
-
-        if (error) {
-          console.error('[Swipe] Error adding to watchlist:', error);
-        } else {
-          console.log(`[Swipe] Added "${item.title}" to ${type === 'watched' ? 'watched' : type === 'watching' ? 'watching now' : 'watchlist'}`);
-
-          // Track genre affinity based on rating for watched items
-          if (type === 'watched' && rating) {
-            // Extract genre IDs (handle both UnifiedContent objects and raw TMDb data)
-            const rawGenres = item.genres || (item as any).genre_ids || [];
-            const genreIds = rawGenres.map((g: any) => typeof g === 'number' ? g : g.id);
-
-            if (genreIds.length > 0) {
-              // Use resolved mediaType (defaulting to 'movie' if somehow still missing, though check above prevents this)
-              const typeForTracking = (mediaType === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv';
-
-              if (rating >= 4) {
-                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_HIGH');
-                console.log('[Swipe] Tracked high rating for genres:', genreIds);
-              } else if (rating <= 2) {
-                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_LOW');
-                console.log('[Swipe] Tracked low rating for genres:', genreIds);
-              } else {
-                await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_MEDIUM');
-                console.log('[Swipe] Tracked medium rating for genres:', genreIds);
-              }
-            }
-          }
-        }
-      } else if (type === 'hide') {
-        console.log(`[Swipe] Hidden "${item.title}"`);
-      }
-
-      // Move to next card
+      // OPTIMISTIC UPDATE: Move to next card immediately
+      // This prevents the "snap back" delay while waiting for DB
       setCurrentIndex(prev => prev + 1);
 
-      // Load more if running low
-      if (currentIndex >= cards.length - 3) {
+      // Load more if running low (check against current index before update)
+      if (currentIndex >= cards.length - 5) {
         loadMoreContent();
       }
+
+      // Perform DB operations in background
+      // We don't await this to keep the UI responsive
+      (async () => {
+        try {
+          if (type === 'watchlist' || type === 'watching' || type === 'watched') {
+            // Determine status based on action type
+            const status = type === 'watching' ? 'watching' : type === 'watched' ? 'watched' : 'want_to_watch';
+
+            // Determine media type with fallback
+            const itemAny = item as any;
+            const mediaType = item.type || itemAny.media_type || (itemAny.first_air_date ? 'tv' : 'movie');
+
+            if (!mediaType) {
+              console.error('[Swipe] Missing mediaType for item:', item.id, item.title);
+              return;
+            }
+
+            // Add to watchlist using the content table
+            const insertData: any = {
+              user_id: user.id,
+              content_id: `${mediaType}-${item.id}`,
+              status,
+              priority: 'medium',
+            };
+
+            // Add rating if provided (for 'watched' items)
+            if (type === 'watched' && rating) {
+              insertData.rating = rating;
+            }
+
+            console.log('[Swipe] Inserting into watchlist:', {
+              userId: user.id,
+              contentId: insertData.content_id,
+              status,
+            });
+
+            const { error } = await supabase
+              .from('watchlist_items')
+              .insert(insertData);
+
+            if (error) {
+              console.error('[Swipe] Error adding to watchlist:', error);
+            } else {
+              console.log(`[Swipe] Added "${item.title}" to ${type === 'watched' ? 'watched' : type === 'watching' ? 'watching now' : 'watchlist'}`);
+
+              // Track genre affinity based on rating for watched items
+              if (type === 'watched' && rating) {
+                const rawGenres = item.genres || (item as any).genre_ids || [];
+                const genreIds = rawGenres.map((g: any) => typeof g === 'number' ? g : g.id);
+
+                if (genreIds.length > 0) {
+                  const typeForTracking = (mediaType === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv';
+
+                  if (rating >= 4) {
+                    await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_HIGH');
+                  } else if (rating <= 2) {
+                    await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_LOW');
+                  } else {
+                    await trackGenreInteraction(user.id, genreIds, typeForTracking, 'RATE_MEDIUM');
+                  }
+                }
+              }
+            }
+          } else if (type === 'hide') {
+            console.log(`[Swipe] Hidden "${item.title}"`);
+          }
+        } catch (bgError) {
+          console.error('[Swipe] Background operation failed:', bgError);
+        }
+      })();
+
     } catch (error) {
       console.error('[Swipe] Error handling swipe:', error);
     }
