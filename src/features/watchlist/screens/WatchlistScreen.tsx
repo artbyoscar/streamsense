@@ -682,9 +682,16 @@ export const WatchlistScreen: React.FC = () => {
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
                   ✨ Curated for Your Tastes
                 </Text>
-                {userTopGenres.length > 0 && activeGenreFilter === 'All' && (
+                {activeGenreFilter === 'All' && (
                   <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-                    You will probably love these - based on {userTopGenres.slice(0, 2).map(g => g.name).join(' & ')}
+                    {totalItems > 20
+                      ? `Based on ${totalItems}+ titles you have loved`
+                      : userTopGenres.length > 3
+                        ? 'Matched to your unique taste profile'
+                        : userTopGenres.length > 0
+                          ? `Based on ${userTopGenres.slice(0, 3).map(g => g.name).join(', ')}`
+                          : 'Personalized picks based on your viewing history'
+                    }
                   </Text>
                 )}
                 {activeGenreFilter !== 'All' && (
