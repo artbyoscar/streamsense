@@ -17,7 +17,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
@@ -164,6 +164,18 @@ export const SwipeScreen: React.FC = () => {
 
   const currentCard = cards[currentIndex];
 
+  // Normalize card data to handle all possible field variations
+  const title = currentCard.title || currentCard.name || 'Unknown Title';
+  const posterPath = currentCard.poster_path || currentCard.posterPath;
+  const rating = currentCard.vote_average || currentCard.rating || 0;
+  const year = (currentCard.release_date || currentCard.first_air_date || currentCard.releaseDate || '').substring(0, 4);
+  const mediaType = (currentCard.media_type || currentCard.type || 'movie').toLowerCase();
+  const overview = currentCard.overview || 'No description available.';
+
+  const posterUrl = posterPath
+    ? `https://image.tmdb.org/t/p/w500${posterPath}`
+    : null;
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Header */}
@@ -192,46 +204,55 @@ export const SwipeScreen: React.FC = () => {
         <View
           style={[styles.card, { backgroundColor: colors.card }]}
         >
-          {/* Poster - Top 60% */}
-          <Image
-            source={{ uri: `https://image.tmdb.org/t/p/w500${currentCard.posterPath}` }}
-            style={styles.cardPoster}
-            resizeMode="cover"
-          />
+          {/* Poster - Top 55% */}
+          {posterUrl ? (
+            <Image
+              source={{ uri: posterUrl }}
+              style={styles.cardPoster}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
+              <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
+              <Text style={[styles.noImageText, { color: colors.textSecondary }]}>
+                No Image Available
+              </Text>
+            </View>
+          )}
 
-          {/* Content Info - Bottom 40% */}
+          {/* Content Info - Bottom 45% */}
           <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
             <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
-              {currentCard.title}
+              {title}
             </Text>
 
             <View style={styles.cardMetaRow}>
-              <View style={styles.ratingContainer}>
-                <Ionicons name="star" size={16} color="#FFD700" />
-                <Text style={[styles.ratingText, { color: colors.text }]}>
-                  {currentCard.rating?.toFixed(1) || 'N/A'}
+              {rating > 0 && (
+                <View style={styles.ratingContainer}>
+                  <Ionicons name="star" size={16} color="#FFD700" />
+                  <Text style={[styles.ratingText, { color: colors.text }]}>
+                    {rating.toFixed(1)}
+                  </Text>
+                </View>
+              )}
+              {year && (
+                <Text style={[styles.yearText, { color: colors.textSecondary }]}>
+                  {year}
                 </Text>
-              </View>
-              <Text style={[styles.yearText, { color: colors.textSecondary }]}>
-                {currentCard.releaseDate?.split('-')[0] || 'N/A'}
-              </Text>
+              )}
               <Text style={[styles.typeText, { color: colors.textSecondary }]}>
-                {currentCard.type === 'movie' ? '🎬 Movie' : '📺 TV Show'}
+                {mediaType === 'tv' ? '📺 TV Show' : '🎬 Movie'}
               </Text>
             </View>
 
-            {currentCard.overview && (
-              <>
-                <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
-                  About
-                </Text>
-                <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
-                  <Text style={[styles.cardOverview, { color: colors.text }]}>
-                    {currentCard.overview}
-                  </Text>
-                </ScrollView>
-              </>
-            )}
+            <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
+              About
+            </Text>
+            <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
+              <Text style={[styles.cardOverview, { color: colors.text }]}>
+                {overview}
+              </Text>
+            </ScrollView>
           </View>
         </View>
       </View>
@@ -329,12 +350,22 @@ const styles = StyleSheet.create({
   },
   cardPoster: {
     width: '100%',
-    height: '60%', // Poster takes 60% of card height
+    height: '55%', // Poster takes 55% of card height
+  },
+  cardPosterPlaceholder: {
+    width: '100%',
+    height: '55%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noImageText: {
+    fontSize: 14,
+    marginTop: 12,
   },
   cardContent: {
-    flex: 1, // Takes remaining 40%
+    flex: 1, // Takes remaining 45%
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 12,
   },
   cardTitle: {
     fontSize: 22,
