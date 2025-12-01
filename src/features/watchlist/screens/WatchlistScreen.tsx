@@ -117,6 +117,7 @@ export const WatchlistScreen: React.FC = () => {
       console.log('[Watchlist] Sample item structure:', {
         id: sample.id,
         title: sample.title,
+        type: sample.type,
         media_type: sample.media_type,
         genre_ids: sample.genre_ids,
         genres: sample.genres,
@@ -126,10 +127,13 @@ export const WatchlistScreen: React.FC = () => {
     // Filter by media type
     if (mediaTypeFilter !== 'all') {
       filtered = filtered.filter((item: any) => {
-        // Check media_type field
-        if (item.media_type) {
-          return item.media_type === mediaTypeFilter;
+        // UnifiedContent uses 'type' field (not 'media_type')
+        const itemType = item.type || item.media_type;
+
+        if (itemType) {
+          return itemType === mediaTypeFilter;
         }
+
         // Fallback: Check if it has 'title' (movie) or 'name' (TV)
         if (mediaTypeFilter === 'movie') {
           return item.title && !item.first_air_date;

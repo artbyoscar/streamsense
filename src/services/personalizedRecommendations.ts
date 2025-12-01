@@ -476,21 +476,26 @@ const fetchTrending = async (excludeIds: Set<string>, limit: number): Promise<Un
  * Map TMDb API results to UnifiedContent format
  */
 const mapToUnifiedContent = (results: any[], defaultType: 'movie' | 'tv'): UnifiedContent[] => {
-  return results.map((item: any) => ({
-    id: item.id,
-    title: item.title || item.name,
-    originalTitle: item.original_title || item.original_name || item.title || item.name,
-    type: (item.media_type || defaultType) as 'movie' | 'tv',
-    posterPath: item.poster_path,
-    backdropPath: item.backdrop_path,
-    overview: item.overview || '',
-    releaseDate: item.release_date || item.first_air_date || null,
-    rating: item.vote_average || 0,
-    voteCount: item.vote_count || 0,
-    popularity: item.popularity || 0,
-    language: item.original_language || '',
-    genres: item.genre_ids || [],
-  }));
+  return results.map((item: any) => {
+    const mediaType = (item.media_type || defaultType) as 'movie' | 'tv';
+    return {
+      id: item.id,
+      title: item.title || item.name,
+      originalTitle: item.original_title || item.original_name || item.title || item.name,
+      type: mediaType,
+      media_type: mediaType, // Add alias for compatibility
+      posterPath: item.poster_path,
+      backdropPath: item.backdrop_path,
+      overview: item.overview || '',
+      releaseDate: item.release_date || item.first_air_date || null,
+      rating: item.vote_average || 0,
+      voteCount: item.vote_count || 0,
+      popularity: item.popularity || 0,
+      language: item.original_language || '',
+      genres: item.genre_ids || [],
+      genre_ids: item.genre_ids || [], // Add alias for compatibility
+    } as any; // Use 'as any' to allow extra fields beyond UnifiedContent interface
+  });
 };
 
 /**
