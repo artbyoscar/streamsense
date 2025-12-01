@@ -238,12 +238,34 @@ export const getSmartRecommendations = async (
 
     const recommendations: any[] = [];
 
-    // Random page for variety
-    const getRandomPage = () => Math.floor(Math.random() * 10) + 1;
+    // Random page for variety - use lower range for single media type to avoid empty pages
+    const getRandomPage = () => {
+      // For single media type filters, use pages 1-3 for better results
+      if (mediaType === 'movie' || mediaType === 'tv') {
+        return Math.floor(Math.random() * 3) + 1;
+      }
+      // For mixed, use pages 1-5
+      return Math.floor(Math.random() * 5) + 1;
+    };
+
+    // Helper to filter items - only use session cache for 'mixed' mode
+    const filterItems = (items: any[]) => {
+      if (mediaType === 'mixed') {
+        // Use full exclusion including session cache for mixed mode
+        return items.filter((item: any) => !shouldExclude(item.id));
+      } else {
+        // For single media type, only exclude watchlist items (not session cache)
+        return items.filter((item: any) => {
+          const isGloballyExcluded = globalExcludeIds.has(item.id);
+          const inWatchlist = watchlistTmdbIds.has(item.id);
+          return !isGloballyExcluded && !inWatchlist;
+        });
+      }
+    };
 
     // Fetch movies
     if (mediaType === 'movie' || mediaType === 'mixed') {
-      const page = getRandomPage();
+      let page = getRandomPage();
       console.log('[SmartRecs] Fetching movies, page:', page);
 
       const movieResponse = await tmdbApi.get('/discover/movie', {
@@ -256,8 +278,7 @@ export const getSmartRecommendations = async (
         },
       });
 
-      const movies = (movieResponse.data?.results || [])
-        .filter((item: any) => !shouldExclude(item.id))
+      let movies = (movieResponse.data?.results || [])
         .map((item: any) => ({
           ...item,
           media_type: 'movie',  // FORCE set media_type
@@ -267,10 +288,41 @@ export const getSmartRecommendations = async (
           )) || [],
         }));
 
+      movies = filterItems(movies);
+
       console.log('[SmartRecs] Movies after filtering:', movies.length, 'of', movieResponse.data?.results?.length);
 
-      // Add to session cache
-      movies.forEach((m: any) => addToSessionCache(m.id));
+      // If we got very few results and this is movie-only mode, try another page
+      if (mediaType === 'movie' && movies.length < 5) {
+        page = page + 3; // Try a few pages ahead
+        console.log('[SmartRecs] Fetching more movies, page:', page);
+
+        const secondResponse = await tmdbApi.get('/discover/movie', {
+          params: {
+            with_genres: genreIds.join(','),
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 100,
+            'vote_average.gte': 6.0,
+          },
+        });
+
+        const moreMovies = (secondResponse.data?.results || [])
+          .map((item: any) => ({
+            ...item,
+            media_type: 'movie',
+            genre_ids: item.genre_ids || [],
+          }));
+
+        const filteredMoreMovies = filterItems(moreMovies);
+        console.log('[SmartRecs] More movies after filtering:', filteredMoreMovies.length);
+        movies = [...movies, ...filteredMoreMovies];
+      }
+
+      // Add to session cache only for mixed mode
+      if (mediaType === 'mixed') {
+        movies.forEach((m: any) => addToSessionCache(m.id));
+      }
       recommendations.push(...movies);
     }
 
@@ -283,7 +335,7 @@ export const getSmartRecommendations = async (
         return id;
       });
 
-      const page = getRandomPage();
+      let page = getRandomPage();
       console.log('[SmartRecs] Fetching TV, page:', page);
 
       const tvResponse = await tmdbApi.get('/discover/tv', {
@@ -296,8 +348,7 @@ export const getSmartRecommendations = async (
         },
       });
 
-      const tvShows = (tvResponse.data?.results || [])
-        .filter((item: any) => !shouldExclude(item.id))
+      let tvShows = (tvResponse.data?.results || [])
         .map((item: any) => ({
           ...item,
           media_type: 'tv',  // FORCE set media_type
@@ -307,10 +358,41 @@ export const getSmartRecommendations = async (
           )) || [],
         }));
 
+      tvShows = filterItems(tvShows);
+
       console.log('[SmartRecs] TV after filtering:', tvShows.length, 'of', tvResponse.data?.results?.length);
 
-      // Add to session cache
-      tvShows.forEach((t: any) => addToSessionCache(t.id));
+      // If we got very few results and this is TV-only mode, try another page
+      if (mediaType === 'tv' && tvShows.length < 5) {
+        page = page + 3; // Try a few pages ahead
+        console.log('[SmartRecs] Fetching more TV, page:', page);
+
+        const secondResponse = await tmdbApi.get('/discover/tv', {
+          params: {
+            with_genres: tvGenreIds.join(','),
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 50,
+            'vote_average.gte': 6.0,
+          },
+        });
+
+        const moreTVShows = (secondResponse.data?.results || [])
+          .map((item: any) => ({
+            ...item,
+            media_type: 'tv',
+            genre_ids: item.genre_ids || [],
+          }));
+
+        const filteredMoreTV = filterItems(moreTVShows);
+        console.log('[SmartRecs] More TV after filtering:', filteredMoreTV.length);
+        tvShows = [...tvShows, ...filteredMoreTV];
+      }
+
+      // Add to session cache only for mixed mode
+      if (mediaType === 'mixed') {
+        tvShows.forEach((t: any) => addToSessionCache(t.id));
+      }
       recommendations.push(...tvShows);
     }
 
