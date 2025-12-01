@@ -29,6 +29,8 @@ import {
 import { getPileOfShame, type ShameItem } from '@/services/pileOfShame';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 import { WatchTimeLoggerModal } from '@/features/subscriptions/components/WatchTimeLoggerModal';
+import { AnimatedCarouselItem, useAnimatedCarousel } from '@/components';
+import * as Haptics from 'expo-haptics';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -104,7 +106,8 @@ export const RecommendationsScreen: React.FC = () => {
     totalPoints: number;
     progress: number;
   }>({ unlocked: [], locked: [], totalPoints: 0, progress: 0 });
-  const [pileOfShame, setPileOfShame] = useState<ShameItem[]>([]);
+  const [pileOfShameData, setPileOfShameData] = useState<ShameItem[]>([]);
+  const { items: pileOfShame, removeItem: removePileItem } = useAnimatedCarousel(pileOfShameData);
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [showContentModal, setShowContentModal] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
@@ -267,7 +270,7 @@ export const RecommendationsScreen: React.FC = () => {
       // Load pile of shame
       const shame = await getPileOfShame(user.id);
       console.log('[Tips] Pile of shame:', shame);
-      setPileOfShame(shame);
+      setPileOfShameData(shame);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -469,12 +472,16 @@ export const RecommendationsScreen: React.FC = () => {
               contentContainerStyle={styles.shameScrollContainer}
             >
               {pileOfShame.slice(0, 6).map((item) => (
-                <TouchableOpacity
+                <AnimatedCarouselItem
                   key={`${item.type}-${item.id}`}
-                  style={[styles.shameCard, { backgroundColor: colors.card }]}
-                  onPress={() => handlePileItemPress(item)}
-                  activeOpacity={0.7}
+                  animationType="combined"
+                  duration={300}
                 >
+                  <TouchableOpacity
+                    style={[styles.shameCard, { backgroundColor: colors.card }]}
+                    onPress={() => handlePileItemPress(item)}
+                    activeOpacity={0.7}
+                  >
                   {/* Poster */}
                   {item.posterPath ? (
                     <Image
@@ -525,7 +532,8 @@ export const RecommendationsScreen: React.FC = () => {
                       </Text>
                     </View>
                   </View>
-                </TouchableOpacity>
+                  </TouchableOpacity>
+                </AnimatedCarouselItem>
               ))}
             </ScrollView>
 
@@ -882,10 +890,15 @@ export const RecommendationsScreen: React.FC = () => {
           setShowContentModal(false);
           setSelectedContent(null);
         }}
-        onAddToWatchlist={() => {
-          // Refresh pile of shame after adding to watchlist
-          console.log('[Tips] Content added to watchlist, refreshing pile of shame');
-          loadData();
+        onAddedToWatchlist={() => {
+          // Remove item with animation and haptic feedback
+          console.log('[Tips] Content added to watchlist, removing from pile with animation');
+          if (selectedContent) {
+            // Use 'success' haptic for adding to watchlist
+            removePileItem(selectedContent.id, 'success');
+          }
+          // Refresh pile data in background
+          setTimeout(() => loadData(), 400);
         }}
       />
 

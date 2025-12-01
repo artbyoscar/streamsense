@@ -52,3 +52,5 @@ export { BingeSlider } from './BingeSlider';
 export { NowWatchingTimer } from './NowWatchingTimer';
 
 export { QuickLogStack } from './QuickLogStack';
+
+export { AnimatedCarouselItem, useAnimatedCarousel } from './AnimatedCarouselItem';
