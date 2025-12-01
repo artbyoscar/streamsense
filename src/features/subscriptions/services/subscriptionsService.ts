@@ -356,3 +356,90 @@ export async function rejectSuggestedSubscription(suggestionId: string): Promise
     })
     .eq('id', suggestionId);
 }
+
+// ============================================================================
+// WATCH TIME LOGGING
+// ============================================================================
+
+/**
+ * Log watch time for a subscription
+ */
+export async function logWatchTime({
+  subscriptionId,
+  hours,
+  date,
+  contentDescription,
+}: {
+  subscriptionId: string;
+  hours: number;
+  date: string;
+  contentDescription?: string;
+}): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Get current total watch hours
+  const { data: subscription, error: fetchError } = await supabase
+    .from('user_subscriptions')
+    .select('total_watch_hours')
+    .eq('id', subscriptionId)
+    .single();
+
+  if (fetchError) {
+    throw new Error(fetchError.message);
+  }
+
+  const newTotal = (subscription?.total_watch_hours || 0) + hours;
+
+  // Update subscription's total watch hours
+  const { error: updateError } = await supabase
+    .from('user_subscriptions')
+    .update({
+      total_watch_hours: newTotal,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', subscriptionId);
+
+  if (updateError) {
+    throw new Error(updateError.message);
+  }
+
+  // Log to watch_logs table for history
+  const { error: insertError } = await supabase
+    .from('watch_logs')
+    .insert({
+      subscription_id: subscriptionId,
+      user_id: user.id,
+      hours_watched: hours,
+      watched_date: date,
+      content_description: contentDescription,
+    });
+
+  if (insertError) {
+    throw new Error(insertError.message);
+  }
+
+  console.log(`[WatchTime] Logged ${hours}h for subscription ${subscriptionId}. New total: ${newTotal}h`);
+}
+
+/**
+ * Get watch logs for a subscription
+ */
+export async function fetchWatchLogs(subscriptionId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('watch_logs')
+    .select('*')
+    .eq('subscription_id', subscriptionId)
+    .order('watched_date', { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data || [];
+}

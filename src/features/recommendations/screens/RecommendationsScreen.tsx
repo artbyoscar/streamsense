@@ -28,6 +28,7 @@ import {
 } from '@/services/achievements';
 import { getPileOfShame, type ShameItem } from '@/services/pileOfShame';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
+import { WatchTimeLoggerModal } from '@/features/subscriptions/components/WatchTimeLoggerModal';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -106,6 +107,8 @@ export const RecommendationsScreen: React.FC = () => {
   const [pileOfShame, setPileOfShame] = useState<ShameItem[]>([]);
   const [selectedContent, setSelectedContent] = useState<any>(null);
   const [showContentModal, setShowContentModal] = useState(false);
+  const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
+  const [showWatchTimeModal, setShowWatchTimeModal] = useState(false);
 
   // Handle pile item press - transform to content format and show modal
   const handlePileItemPress = useCallback((item: ShameItem) => {
@@ -127,6 +130,13 @@ export const RecommendationsScreen: React.FC = () => {
 
     setSelectedContent(contentItem);
     setShowContentModal(true);
+  }, []);
+
+  // Handle log watch time button press
+  const handleLogWatchTime = useCallback((subscription: any) => {
+    console.log('[Tips] Log watch time for:', subscription.service_name);
+    setSelectedSubscription(subscription);
+    setShowWatchTimeModal(true);
   }, []);
 
   const loadData = useCallback(async () => {
@@ -607,6 +617,17 @@ export const RecommendationsScreen: React.FC = () => {
                       {score.recommendation}
                     </Text>
                   </View>
+
+                  {/* Log Watch Time Button */}
+                  <TouchableOpacity
+                    style={[styles.logWatchTimeButton, { backgroundColor: colors.background }]}
+                    onPress={() => handleLogWatchTime(score)}
+                  >
+                    <Ionicons name="time" size={20} color={colors.primary} />
+                    <Text style={[styles.logWatchTimeText, { color: colors.primary }]}>
+                      Log Watch Time
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -808,6 +829,21 @@ export const RecommendationsScreen: React.FC = () => {
           loadData();
         }}
       />
+
+      {/* Watch Time Logger Modal */}
+      <WatchTimeLoggerModal
+        visible={showWatchTimeModal}
+        subscription={selectedSubscription}
+        onClose={() => {
+          setShowWatchTimeModal(false);
+          setSelectedSubscription(null);
+        }}
+        onSave={() => {
+          // Refresh value scores after logging watch time
+          console.log('[Tips] Watch time logged, refreshing data');
+          loadData();
+        }}
+      />
     </View>
   );
 };
@@ -854,6 +890,8 @@ const styles = StyleSheet.create({
   valueMetricDivider: { width: 1, height: 32, opacity: 0.2 },
   recommendationBox: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, gap: 8 },
   recommendationText: { fontSize: 13, flex: 1, lineHeight: 18 },
+  logWatchTimeButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 14, borderRadius: 12, gap: 8, marginTop: 12 },
+  logWatchTimeText: { fontSize: 15, fontWeight: '600' },
   // Churn Recommendation Styles
   churnCard: { borderRadius: 16, padding: 16, marginBottom: 16 },
   churnHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
