@@ -783,7 +783,11 @@ export const RecommendationsScreen: React.FC = () => {
                   {/* Poster */}
                   {item.posterPath ? (
                     <Image
-                      source={{ uri: `https://image.tmdb.org/t/p/w342${item.posterPath}` }}
+                      source={{
+                        uri: item.posterPath.startsWith('http')
+                          ? item.posterPath
+                          : `https://image.tmdb.org/t/p/w342${item.posterPath.startsWith('/') ? '' : '/'}${item.posterPath}`
+                      }}
                       style={styles.shamePoster}
                       resizeMode="cover"
                     />
