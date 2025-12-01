@@ -53,7 +53,7 @@ export const getUserValueScores = async (
   userId: string
 ): Promise<ValueScoreResult[]> => {
   try {
-    // Get user subscriptions
+    // Get user subscriptions with watch hours
     const { data: subs } = await supabase
       .from('user_subscriptions')
       .select('*')
@@ -64,39 +64,10 @@ export const getUserValueScores = async (
       return [];
     }
 
-    // Get watchlist items with watch status
-    const { data: watchlist } = await supabase
-      .from('watchlist_items')
-      .select('*')
-      .eq('user_id', userId)
-      .in('status', ['watching', 'watched']);
-
-    // Calculate watch hours per service
-    const serviceHours: Record<string, number> = {};
-
-    (watchlist || []).forEach((item) => {
-      // Determine which service this content is on
-      const serviceName = (item.streaming_service || '').toLowerCase();
-
-      // Estimate watch time
-      const isMovie = (item as any).media_type === 'movie';
-      const estimatedMinutes = isMovie
-        ? AVG_MOVIE_DURATION
-        : AVG_TV_EPISODE_DURATION * ((item as any).episodes_watched || 1);
-
-      // Add to service total
-      if (serviceName) {
-        serviceHours[serviceName] = (serviceHours[serviceName] || 0) +
-          (estimatedMinutes / 60);
-      }
-    });
-
-    console.log('[ValueScore] Service hours:', serviceHours);
-
-    // Calculate value scores
+    // Calculate value scores using total_watch_hours from subscription records
     const results: ValueScoreResult[] = subs.map((sub) => {
-      const serviceName = (sub.service_name || (sub as any).name || '').toLowerCase();
-      const watchHours = serviceHours[serviceName] || 0;
+      // Read watch hours directly from subscription record (logged via watch time feature)
+      const watchHours = sub.total_watch_hours || 0;
       const monthlyCost = sub.monthly_cost || (sub as any).cost || (sub as any).price || 0;
       const { costPerHour, rating } = calculateValueScore(monthlyCost, watchHours);
 
