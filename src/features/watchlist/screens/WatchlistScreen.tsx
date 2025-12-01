@@ -17,6 +17,8 @@ import { Text, FAB } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/features/auth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
+import { useFocusEffect } from '@react-navigation/native';
+import Animated, { FadeOut, SlideOutRight, Layout } from 'react-native-reanimated';
 import { supabase } from '@/config/supabase';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -240,6 +242,13 @@ export const WatchlistScreen: React.FC = () => {
   useEffect(() => {
     fetchWatchlist();
   }, [fetchWatchlist]);
+
+  // Refresh watchlist when screen gains focus (e.g. returning from detail view)
+  useFocusEffect(
+    useCallback(() => {
+      fetchWatchlist();
+    }, [fetchWatchlist])
+  );
 
   // Load user top genres for subtitle
   useEffect(() => {
@@ -593,31 +602,36 @@ export const WatchlistScreen: React.FC = () => {
                 contentContainerStyle={styles.horizontalScroll}
               >
                 {filteredRecommendations.map(item => (
-                  <TouchableOpacity
+                  <Animated.View
                     key={`foryou-${item.id}-${item.type}`}
-                    onPress={() => handleContentPress(item)}
-                    style={styles.posterCard}
+                    layout={Layout.springify()}
+                    exiting={SlideOutRight}
                   >
-                    <Image
-                      source={{
-                        uri: item.posterPath
-                          ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
-                          : 'https://via.placeholder.com/120x180'
-                      }}
-                      style={[styles.poster, { backgroundColor: colors.card }]}
-                    />
-                    <Text
-                      numberOfLines={2}
-                      style={[styles.posterTitle, { color: colors.text }]}
+                    <TouchableOpacity
+                      onPress={() => handleContentPress(item)}
+                      style={styles.posterCard}
                     >
-                      {item.title}
-                    </Text>
-                    <View style={styles.contentMeta}>
-                      <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
-                        {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                      <Image
+                        source={{
+                          uri: item.posterPath
+                            ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
+                            : 'https://via.placeholder.com/120x180'
+                        }}
+                        style={[styles.poster, { backgroundColor: colors.card }]}
+                      />
+                      <Text
+                        numberOfLines={2}
+                        style={[styles.posterTitle, { color: colors.text }]}
+                      >
+                        {item.title}
                       </Text>
-                    </View>
-                  </TouchableOpacity>
+                      <View style={styles.contentMeta}>
+                        <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
+                          {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  </Animated.View>
                 ))}
 
 
