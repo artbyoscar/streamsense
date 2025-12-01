@@ -84,6 +84,13 @@ export const SwipeScreen: React.FC = () => {
     try {
       const { type, item, rating } = action;
 
+      // Validate user authentication before any action
+      if (!user?.id) {
+        console.error('[Swipe] No authenticated user');
+        Alert.alert('Error', 'Please sign in to save content');
+        return;
+      }
+
       if (type === 'watchlist' || type === 'watching' || type === 'watched') {
         // Determine status based on action type
         const status = type === 'watching' ? 'watching' : type === 'watched' ? 'watched' : 'want_to_watch';
@@ -100,6 +107,12 @@ export const SwipeScreen: React.FC = () => {
         if (type === 'watched' && rating) {
           insertData.rating = rating;
         }
+
+        console.log('[Swipe] Inserting into watchlist:', {
+          userId: user.id,
+          contentId: insertData.content_id,
+          status,
+        });
 
         const { error } = await supabase
           .from('watchlist_items')
@@ -163,6 +176,12 @@ export const SwipeScreen: React.FC = () => {
 
   const handleButtonPress = (type: 'watchlist' | 'hide' | 'watching' | 'watched') => {
     if (currentIndex >= cards.length) return;
+
+    // Validate user is authenticated for actions that require it
+    if (!user?.id && type !== 'hide') {
+      Alert.alert('Error', 'Please sign in to save content');
+      return;
+    }
 
     const currentCard = cards[currentIndex];
 
