@@ -509,9 +509,9 @@ export const DashboardScreen: React.FC = () => {
               Watch time needed to break even at $1.50/hour
             </Text>
 
-            {breakEvenData.map((data) => (
+            {breakEvenData.map((data, index) => (
               <BreakEvenBar
-                key={data.subscriptionId}
+                key={data.subscriptionId || `breakeven-${index}`}
                 serviceName={data.subscriptionName}
                 monthlyCost={data.monthlyCost}
                 hoursWatched={data.hoursWatched}
@@ -546,9 +546,9 @@ export const DashboardScreen: React.FC = () => {
               <Text style={styles.sectionTitle}>Upcoming Renewals</Text>
               <Text style={styles.sectionCount}>{upcomingRenewals14.length}</Text>
             </View>
-            {upcomingRenewals14.slice(0, 5).map((renewal) => (
+            {upcomingRenewals14.slice(0, 5).map((renewal, index) => (
               <TouchableOpacity
-                key={renewal.subscriptionId}
+                key={`${renewal.subscriptionId}-${index}`}
                 style={styles.renewalItem}
                 onPress={() => handleSubscriptionPress(renewal.subscriptionId)}
               >
@@ -574,9 +574,9 @@ export const DashboardScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.watchlistScroll}>
-              {watchlist.slice(0, 5).map((item) => (
+              {watchlist.slice(0, 5).map((item, index) => (
                 <TouchableOpacity
-                  key={item.id}
+                  key={item.id || `watchlist-${index}`}
                   style={styles.watchlistItem}
                   onPress={() => setActiveTab('Watchlist')}
                 >
@@ -606,9 +606,9 @@ export const DashboardScreen: React.FC = () => {
             <Text style={styles.sectionCount}>{activeSubscriptions.length}</Text>
           </View>
 
-          {activeSubscriptions.map((subscription) => (
+          {activeSubscriptions.map((subscription, index) => (
             <SubscriptionListItem
-              key={subscription.id}
+              key={subscription.id || `sub-${index}`}
               subscription={subscription}
               valueMetrics={valueMetrics.get(subscription.id)}
               onPress={() => handleSubscriptionPress(subscription.id)}
@@ -623,9 +623,9 @@ export const DashboardScreen: React.FC = () => {
             <Text style={styles.sectionTitle}>Cancelled</Text>
             {subscriptions
               .filter((s) => s.status === 'cancelled')
-              .map((subscription) => (
+              .map((subscription, index) => (
                 <SubscriptionListItem
-                  key={subscription.id}
+                  key={subscription.id || `cancelled-${index}`}
                   subscription={subscription}
                   valueMetrics={valueMetrics.get(subscription.id)}
                   onPress={() => handleSubscriptionPress(subscription.id)}
