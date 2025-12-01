@@ -772,7 +772,7 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1, // Takes remaining 45%
     padding: 16,
-    paddingBottom: 12,
+    paddingBottom: 100, // Heavy padding to ensure text doesn't go behind buttons
   },
   cardTitle: {
     fontSize: 22,
