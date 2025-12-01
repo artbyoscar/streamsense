@@ -67,12 +67,25 @@ const ALL_GENRE_NAMES = [
  */
 const getUserExclusions = async (userId: string): Promise<Set<number>> => {
   try {
-    const { data: watchlistItems } = await supabase
+    const { data: watchlistItems, error } = await supabase
       .from('watchlist_items')
       .select('tmdb_id')
       .eq('user_id', userId);
 
-    return new Set(watchlistItems?.map(item => item.tmdb_id) || []);
+    if (error) {
+      console.error('[Blindspot] Supabase error fetching watchlist:', error);
+      return new Set();
+    }
+
+    if (!watchlistItems || watchlistItems.length === 0) {
+      console.log('[Blindspot] No watchlist items found for user');
+      return new Set();
+    }
+
+    const ids = watchlistItems.map(item => item.tmdb_id).filter(id => id != null);
+    console.log('[Blindspot] Loaded', ids.length, 'watchlist IDs to exclude');
+
+    return new Set(ids);
   } catch (error) {
     console.error('[Blindspot] Error fetching exclusions:', error);
     return new Set();
@@ -402,9 +415,8 @@ export const generateBlindspotRecommendations = async (
   try {
     console.log('[Blindspot] Generating blindspot recommendations for user:', userId);
 
-    // Get user exclusions
+    // Get user exclusions (watchlist items to avoid recommending)
     const excludeIds = await getUserExclusions(userId);
-    console.log('[Blindspot] Excluding', excludeIds.size, 'watchlist items');
 
     // Gather all blindspot types
     const [
