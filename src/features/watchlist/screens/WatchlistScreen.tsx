@@ -108,16 +108,46 @@ export const WatchlistScreen: React.FC = () => {
   // ============================================================================
 
   // Select recommendations based on media type filter (client-side, instant!)
+  // Select recommendations based on media type filter (client-side, instant!)
   const selectedRecommendations = useMemo(() => {
-    switch (mediaTypeFilter) {
-      case 'movie':
-        return movieRecommendations;
-      case 'tv':
-        return tvRecommendations;
-      default:
-        return allRecommendations;
+    // Helper for robust filtering
+    const filterByMediaType = (items: any[], filter: 'all' | 'movie' | 'tv') => {
+      if (filter === 'all') return items;
+
+      return items.filter(item => {
+        // Check both media_type and type fields
+        const itemType = (item.media_type || item.type || '').toLowerCase();
+
+        // Normalize the comparison
+        if (filter === 'movie') {
+          return itemType === 'movie';
+        }
+        if (filter === 'tv') {
+          return itemType === 'tv' || itemType === 'series';
+        }
+        return true;
+      });
+    };
+
+    console.log('[Watchlist] Filtering by media type:', mediaTypeFilter);
+    console.log('[Watchlist] Total items available:', allRecommendations.length);
+
+    // Debug sample items
+    if (allRecommendations.length > 0) {
+      console.log('[Watchlist] Sample item types:',
+        allRecommendations.slice(0, 3).map(i => ({
+          id: (i as any).id,
+          media_type: (i as any).media_type,
+          type: (i as any).type
+        }))
+      );
     }
-  }, [mediaTypeFilter, allRecommendations, movieRecommendations, tvRecommendations]);
+
+    // Always filter from allRecommendations to ensure we catch everything using robust logic
+    const results = filterByMediaType(allRecommendations, mediaTypeFilter);
+    console.log(`[Watchlist] After media type filter (${mediaTypeFilter}): ${results.length} items`);
+    return results;
+  }, [mediaTypeFilter, allRecommendations]);
 
   // ROBUST filtering that handles different data structures
   const filteredRecommendations = useMemo(() => {
