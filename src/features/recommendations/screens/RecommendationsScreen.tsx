@@ -101,6 +101,7 @@ export const RecommendationsScreen: React.FC = () => {
   const [serviceRecs, setServiceRecs] = useState<any[]>([]);
   const [spending, setSpending] = useState({ monthly: 0, yearly: 0, count: 0 });
   const [userGenres, setUserGenres] = useState<string[]>([]);
+  const [serviceInsights, setServiceInsights] = useState<Record<string, number>>({});
   const [valueScores, setValueScores] = useState<any[]>([]);
   const [churnRecs, setChurnRecs] = useState<ChurnRecommendation[]>([]);
   const [achievements, setAchievements] = useState<{
@@ -301,6 +302,23 @@ export const RecommendationsScreen: React.FC = () => {
       const rewatch = await getRewatchSuggestions(user.id, 10);
       console.log('[Tips] Rewatch suggestions:', rewatch);
       setRewatchSuggestions(rewatch);
+
+      // Calculate service insights - how many favorites are on each service
+      const insights: Record<string, number> = {};
+      STREAMING_SERVICES.forEach(service => {
+        const favoritesOnService = rewatch.filter(item =>
+          item.availableOn.some(serviceName =>
+            service.keywords.some(kw =>
+              serviceName.toLowerCase().includes(kw)
+            )
+          )
+        );
+        if (favoritesOnService.length > 0) {
+          insights[service.id] = favoritesOnService.length;
+        }
+      });
+      console.log('[Tips] Service insights:', insights);
+      setServiceInsights(insights);
     } catch (error) {
       console.error('[Tips] Error:', error);
     } finally {
@@ -974,6 +992,16 @@ export const RecommendationsScreen: React.FC = () => {
                     <Text style={styles.matchText}>{service.matchScore}% match</Text>
                   </View>
                 ) : null}
+
+                {/* Insight Badge - Show favorites available on this service */}
+                {serviceInsights[service.id] && serviceInsights[service.id] > 0 && (
+                  <View style={[styles.insightBadge, { backgroundColor: colors.background }]}>
+                    <Ionicons name="heart" size={12} color={colors.primary} />
+                    <Text style={[styles.insightText, { color: colors.textSecondary }]}>
+                      {serviceInsights[service.id]} {serviceInsights[service.id] === 1 ? 'favorite' : 'favorites'}
+                    </Text>
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -1174,6 +1202,20 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     flex: 1,
+  },
+  // Service Insight Badge Styles
+  insightBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  insightText: {
+    fontSize: 11,
+    fontWeight: '600',
   },
 });
 
