@@ -383,7 +383,7 @@ export const SwipeScreen: React.FC = () => {
             style={[styles.actionButton, styles.watchingButton, { backgroundColor: colors.primary }]}
             onPress={() => handleButtonPress('watching')}
           >
-            <Ionicons name="play" size={28} color="#FFFFFF" />
+            <Ionicons name="play" size={24} color="#FFFFFF" />
             <Text style={styles.watchingButtonText}>Watch Now</Text>
           </TouchableOpacity>
 
@@ -391,7 +391,7 @@ export const SwipeScreen: React.FC = () => {
             style={[styles.actionButton, styles.watchedButton, { backgroundColor: '#8B5CF6' }]}
             onPress={() => handleButtonPress('watched')}
           >
-            <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+            <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
             <Text style={styles.watchedButtonText}>Watched</Text>
           </TouchableOpacity>
         </View>
@@ -584,12 +584,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   buttonsContainer: {
-    flexDirection: 'row',
+    flexDirection: 'column', // Stack rows vertically
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 20,
-    paddingHorizontal: 20,
-    paddingTop: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
   actionButton: {
     width: 60,
@@ -604,13 +603,16 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   watchingButton: {
-    width: 140,
+    minWidth: 120, // Responsive width with minimum
+    maxWidth: 160,
+    flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 12,
   },
   watchingButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
   },
   instructions: {
@@ -662,19 +664,25 @@ const styles = StyleSheet.create({
   },
   buttonsRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
     justifyContent: 'center',
-    marginBottom: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+    width: '100%',
+    maxWidth: 340, // Prevent buttons from getting too wide on tablets
   },
   watchedButton: {
+    minWidth: 120, // Match watchingButton
+    maxWidth: 160,
     flex: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     justifyContent: 'center',
+    paddingHorizontal: 12,
   },
   watchedButtonText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   modalOverlay: {
