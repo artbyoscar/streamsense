@@ -741,6 +741,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 80,
+    zIndex: 1,
   },
   card: {
     width: CARD_WIDTH,
@@ -814,6 +816,11 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   buttonsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
+    zIndex: 10,
+    elevation: 10,
     flexDirection: 'column', // Stack rows vertically
     justifyContent: 'center',
     alignItems: 'center',
