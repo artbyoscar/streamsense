@@ -40,9 +40,9 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
   const handleSave = async () => {
     const hoursNum = parseFloat(hours);
 
-    // Validation
-    if (isNaN(hoursNum) || hoursNum <= 0) {
-      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (e.g., 2.5)');
+    // Validation - allow 0, reject NaN and negative numbers
+    if (isNaN(hoursNum) || hoursNum < 0) {
+      Alert.alert('Invalid Hours', 'Please enter a valid number of hours (0 or greater)');
       return;
     }
 
