@@ -55,10 +55,12 @@ export const SwipeScreen: React.FC = () => {
       setUser(currentUser);
 
       // Get smart recommendations with larger pool for variety
+      // IMPORTANT: excludeSessionItems: false for infinite feed (Discover never shows "all caught up")
       const recommendations = await getSmartRecommendations({
         userId: currentUser.id,
         limit: 50,
         forceRefresh: false,
+        excludeSessionItems: false, // Infinite feed - use pagination instead of exclusion
       });
 
       console.log('[Swipe] Loaded', recommendations.length, 'recommendations');
@@ -115,7 +117,8 @@ export const SwipeScreen: React.FC = () => {
       const recommendations = await getSmartRecommendations({
         userId: user.id,
         limit: 50,
-        forceRefresh: true,
+        forceRefresh: false, // Don't force refresh - use pagination for variety
+        excludeSessionItems: false, // Infinite feed - never exclude
       });
 
       setCards(prev => [...prev, ...recommendations]);

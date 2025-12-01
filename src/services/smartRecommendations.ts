@@ -137,11 +137,13 @@ const addToSessionCache = (id: number) => {
 };
 
 // Check if item should be excluded
-const shouldExclude = (tmdbId: number): boolean => {
-  // Exclude if in global exclusions, watchlist, OR already shown this session
+const shouldExclude = (tmdbId: number, excludeSessionItems: boolean = true): boolean => {
+  // Exclude if in global exclusions or watchlist
   const isGloballyExcluded = globalExcludeIds.has(tmdbId);
   const inWatchlist = watchlistTmdbIds.has(tmdbId);
-  const alreadyShown = sessionShownIds.has(tmdbId);
+
+  // For infinite feeds (Discover), don't exclude session items - use pagination instead
+  const alreadyShown = excludeSessionItems ? sessionShownIds.has(tmdbId) : false;
 
   if (isGloballyExcluded || inWatchlist || alreadyShown) {
     return true;
@@ -199,6 +201,7 @@ interface RecommendationOptions {
   limit?: number;
   mediaType?: 'movie' | 'tv' | 'mixed';
   forceRefresh?: boolean;
+  excludeSessionItems?: boolean;  // For infinite feeds (Discover), set to false
 }
 
 /**
@@ -332,7 +335,7 @@ const diversifyRecommendations = (
 export const getSmartRecommendations = async (
   options: RecommendationOptions
 ): Promise<any[]> => {
-  const { userId, limit = 20, mediaType = 'mixed', forceRefresh = false } = options;
+  const { userId, limit = 20, mediaType = 'mixed', forceRefresh = false, excludeSessionItems = true } = options;
 
   // Force refresh watchlist cache if requested
   if (forceRefresh) {
@@ -420,9 +423,13 @@ export const getSmartRecommendations = async (
 
     const recommendations: any[] = [];
 
-    // Random page for variety - use lower range for single media type to avoid empty pages
+    // Random page for variety
     const getRandomPage = () => {
-      // For single media type filters, use pages 1-3 for better results
+      // For infinite feeds (Discover), use wide page range for infinite variety
+      if (!excludeSessionItems) {
+        return Math.floor(Math.random() * 50) + 1; // Pages 1-50
+      }
+      // For carousels, use lower range for better quality
       if (mediaType === 'movie' || mediaType === 'tv') {
         return Math.floor(Math.random() * 3) + 1;
       }
@@ -430,19 +437,11 @@ export const getSmartRecommendations = async (
       return Math.floor(Math.random() * 5) + 1;
     };
 
-    // Helper to filter items - only use session cache for 'mixed' mode
+    // Helper to filter items
+    // For infinite feeds (Discover), excludeSessionItems should be false
+    // For carousels (For You, Tips), excludeSessionItems should be true
     const filterItems = (items: any[]) => {
-      if (mediaType === 'mixed') {
-        // Use full exclusion including session cache for mixed mode
-        return items.filter((item: any) => !shouldExclude(item.id));
-      } else {
-        // For single media type, only exclude watchlist items (not session cache)
-        return items.filter((item: any) => {
-          const isGloballyExcluded = globalExcludeIds.has(item.id);
-          const inWatchlist = watchlistTmdbIds.has(item.id);
-          return !isGloballyExcluded && !inWatchlist;
-        });
-      }
+      return items.filter((item: any) => !shouldExclude(item.id, excludeSessionItems));
     };
 
     // Fetch movies
@@ -624,24 +623,68 @@ export const getSmartRecommendations = async (
     await saveSessionCache();
 
     // Return limited results
-    const results = withCollaborative.slice(0, limit);
+    let results = withCollaborative.slice(0, limit);
+
+    // FALLBACK MECHANISM: For infinite feeds (Discover), NEVER return empty
+    if (!excludeSessionItems && results.length === 0) {
+      console.log('[SmartRecs] Primary recommendations empty, loading trending fallback');
+
+      try {
+        // Fetch trending content as fallback
+        const trendingResponse = await tmdbApi.get('/trending/all/week', {
+          params: { page: Math.floor(Math.random() * 5) + 1 },
+        });
+
+        const trending = (trendingResponse.data?.results || [])
+          .map((item: any) => normalizeContentItem(
+            item,
+            item.media_type === 'tv' ? 'tv' : 'movie'
+          ))
+          .filter((item: any) => !shouldExclude(item.id, false)); // Don't exclude session items
+
+        results = trending.slice(0, limit);
+        console.log('[SmartRecs] Loaded', results.length, 'trending items as fallback');
+      } catch (fallbackError) {
+        console.error('[SmartRecs] Trending fallback error:', fallbackError);
+
+        // Last resort: fetch popular content
+        try {
+          const popularResponse = await tmdbApi.get('/movie/popular', {
+            params: { page: Math.floor(Math.random() * 10) + 1 },
+          });
+
+          const popular = (popularResponse.data?.results || [])
+            .map((item: any) => normalizeContentItem(item, 'movie'))
+            .filter((item: any) => !shouldExclude(item.id, false));
+
+          results = popular.slice(0, limit);
+          console.log('[SmartRecs] Loaded', results.length, 'popular movies as last resort');
+        } catch (lastResortError) {
+          console.error('[SmartRecs] Popular fallback error:', lastResortError);
+        }
+      }
+    }
 
     // Track impressions for implicit signal learning
     // This allows us to learn what users DON'T like based on repeated exposure without engagement
-    await trackContentImpression(
-      userId,
-      results.map(r => ({
-        id: r.id,
-        title: r.title || r.name,
-        genreIds: r.genre_ids || r.genres,
-        rating: r.vote_average || r.rating,
-        mediaType: r.media_type,
-      })),
-      'for_you'
-    );
+    if (results.length > 0) {
+      await trackContentImpression(
+        userId,
+        results.map(r => ({
+          id: r.id,
+          title: r.title || r.name,
+          genreIds: r.genre_ids || r.genres,
+          rating: r.vote_average || r.rating,
+          mediaType: r.media_type,
+        })),
+        excludeSessionItems ? 'for_you' : 'discover'
+      );
+    }
 
     console.log('[SmartRecs] Returning', results.length, 'recommendations');
-    console.log('[SmartRecs] First 5 IDs:', results.slice(0, 5).map(r => r.id));
+    if (results.length > 0) {
+      console.log('[SmartRecs] First 5 IDs:', results.slice(0, 5).map(r => r.id));
+    }
 
     return results;
   } catch (error) {
