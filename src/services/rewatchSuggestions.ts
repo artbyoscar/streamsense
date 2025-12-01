@@ -23,7 +23,7 @@ export interface RewatchSuggestion {
 interface WatchlistItem {
   id: string;
   rating: number;
-  updated_at: string;
+  added_at: string;
   content: {
     id: string;
     tmdb_id: number;
@@ -49,7 +49,7 @@ export const getRewatchSuggestions = async (
       .select(`
         id,
         rating,
-        updated_at,
+        added_at,
         content (
           id,
           tmdb_id,
@@ -62,7 +62,7 @@ export const getRewatchSuggestions = async (
       .eq('status', 'watched')
       .gte('rating', 4) // Only 4+ star ratings
       .order('rating', { ascending: false })
-      .order('updated_at', { ascending: true }) // Oldest first
+      .order('added_at', { ascending: true }) // Oldest first
       .limit(50); // Get more than we need to filter by availability
 
     if (watchedError) {
@@ -139,7 +139,7 @@ export const getRewatchSuggestions = async (
         );
 
         if (availableServices.length > 0) {
-          const lastWatched = new Date(item.updated_at);
+          const lastWatched = new Date(item.added_at);
           const now = new Date();
           const daysSinceWatched = Math.floor(
             (now.getTime() - lastWatched.getTime()) / (1000 * 60 * 60 * 24)
@@ -232,7 +232,7 @@ export const getRewatchStats = async (userId: string): Promise<{
     // Get all highly-rated watched items
     const { data: highlyRated } = await supabase
       .from('watchlist_items')
-      .select('id, updated_at')
+      .select('id, added_at')
       .eq('user_id', userId)
       .eq('status', 'watched')
       .gte('rating', 4);
