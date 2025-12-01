@@ -88,6 +88,14 @@ export const SwipeScreen: React.FC = () => {
       console.log('[Swipe] Loaded', recommendations.length, 'recommendations');
       setCards(recommendations);
       setCurrentIndex(0);
+
+      // Prefetch first few images
+      recommendations.slice(0, 5).forEach(item => {
+        const path = item.posterPath || (item as any).poster_path;
+        if (path) {
+          Image.prefetch(`https://image.tmdb.org/t/p/w500${path}`);
+        }
+      });
     } catch (error) {
       console.error('[Swipe] Error loading content:', error);
       Alert.alert('Error', 'Failed to load content. Please try again.');
@@ -95,6 +103,19 @@ export const SwipeScreen: React.FC = () => {
       setLoading(false);
     }
   };
+
+  // Prefetch upcoming images when index changes
+  useEffect(() => {
+    if (cards.length > currentIndex + 1) {
+      const upcoming = cards.slice(currentIndex + 1, currentIndex + 4);
+      upcoming.forEach(item => {
+        const path = item.posterPath || (item as any).poster_path;
+        if (path) {
+          Image.prefetch(`https://image.tmdb.org/t/p/w500${path}`);
+        }
+      });
+    }
+  }, [currentIndex, cards]);
 
   const handleSwipe = async (action: SwipeAction) => {
     try {
@@ -444,9 +465,58 @@ export const SwipeScreen: React.FC = () => {
 
       {/* Card Stack */}
       <View style={styles.cardStack}>
+        {/* Next Card (Background) */}
+        {currentIndex + 1 < cards.length && (
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: colors.card,
+                position: 'absolute',
+                zIndex: 0,
+                transform: [{ scale: 0.95 }, { translateY: 10 }],
+                opacity: 0.8,
+              }
+            ]}
+          >
+            {/* Poster - Top 55% */}
+            {cards[currentIndex + 1].posterPath || (cards[currentIndex + 1] as any).poster_path ? (
+              <Image
+                source={{ uri: `https://image.tmdb.org/t/p/w500${cards[currentIndex + 1].posterPath || (cards[currentIndex + 1] as any).poster_path}` }}
+                style={styles.cardPoster}
+                resizeMode="contain"
+              />
+            ) : (
+              <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
+                <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
+              </View>
+            )}
+
+            {/* Content Info - Bottom 45% */}
+            <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+                {cards[currentIndex + 1].title || (cards[currentIndex + 1] as any).name || 'Unknown Title'}
+              </Text>
+
+              <View style={styles.cardMetaRow}>
+                <View style={styles.ratingContainer}>
+                  <Ionicons name="star" size={16} color="#FFD700" />
+                  <Text style={[styles.ratingText, { color: colors.text }]}>
+                    {(cards[currentIndex + 1].rating || (cards[currentIndex + 1] as any).vote_average || 0).toFixed(1)}
+                  </Text>
+                </View>
+                <Text style={[styles.typeText, { color: colors.textSecondary }]}>
+                  {(cards[currentIndex + 1].type || (cards[currentIndex + 1] as any).media_type || 'movie') === 'tv' ? '📺 TV Show' : '🎬 Movie'}
+                </Text>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Current Card (Foreground) */}
         <GestureDetector gesture={panGesture}>
           <Animated.View
-            style={[styles.card, cardAnimatedStyle, { backgroundColor: colors.card }]}
+            style={[styles.card, cardAnimatedStyle, { backgroundColor: colors.card, zIndex: 1 }]}
           >
             {/* Swipe Overlays */}
             <Animated.View style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
