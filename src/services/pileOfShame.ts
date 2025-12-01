@@ -1,12 +1,25 @@
 /**
- * Pile of Shame Service
- * Show high-rated content on user's subscribed services that they haven't watched
- * Helps maximize value from existing subscriptions
+ * Pile of Shame Service (Blindspot Algorithm)
+ * "Oh by the way, you might like this that we have not recommended to you yet."
+ *
+ * Shows content the user WOULDN'T normally see:
+ * - Unexplored genres
+ * - Hidden gems
+ * - Classic gaps
+ * - Adjacent interests
+ * - Service exclusives
+ *
+ * This is INTENTIONALLY different from main "For You" recommendations.
  */
 
 import { supabase } from '@/config/supabase';
-import { tmdbApi } from './tmdb';
-import { getUserProviderIds } from './watchProviders';
+import {
+  generateBlindspotRecommendations,
+  getBlindspotIcon,
+  getBlindspotLabel,
+  type BlindspotItem,
+  type BlindspotReason,
+} from './blindspotRecommendations';
 
 export interface ShameItem {
   id: number;
@@ -17,38 +30,15 @@ export interface ShameItem {
   voteCount: number;
   posterPath: string | null;
   overview: string;
-  message: string;
+  message: string; // This is now the blindspot pitch
   releaseYear: string;
   genres: string[];
+
+  // Blindspot metadata
+  blindspotReason: BlindspotReason;
+  blindspotIcon: string;
+  blindspotLabel: string;
 }
-
-/**
- * Get top-rated content available on a specific provider
- */
-const getTopContentByProvider = async (
-  providerIds: number[],
-  contentType: 'movie' | 'tv'
-): Promise<any[]> => {
-  try {
-    const endpoint = contentType === 'movie' ? '/discover/movie' : '/discover/tv';
-
-    const response = await tmdbApi.get(endpoint, {
-      params: {
-        with_watch_providers: providerIds.join('|'),
-        watch_region: 'US',
-        sort_by: 'vote_average.desc',
-        'vote_count.gte': contentType === 'movie' ? 500 : 200,
-        'vote_average.gte': 7.0,
-        page: 1,
-      },
-    });
-
-    return response.data?.results || [];
-  } catch (error) {
-    console.error(`[PileOfShame] Error fetching top ${contentType} content:`, error);
-    return [];
-  }
-};
 
 /**
  * Get TMDb genre name from ID
@@ -100,106 +90,68 @@ const getGenreName = (genreId: number, isTV: boolean): string => {
 };
 
 /**
- * Get user's "Pile of Shame" - high-rated unwatched content on their services
+ * Get user's "Pile of Shame" - content they wouldn't normally discover
+ *
+ * Uses the Blindspot Algorithm to surface:
+ * - Unexplored genres
+ * - Hidden gems (high rating, low popularity)
+ * - Classic gaps (acclaimed older content)
+ * - Adjacent interests (genres that fans of user's genres love)
+ * - Service exclusives (content on user's services)
  */
 export const getPileOfShame = async (userId: string): Promise<ShameItem[]> => {
   try {
-    console.log('[PileOfShame] Generating pile of shame for user:', userId);
+    console.log('[PileOfShame] Generating blindspot recommendations for user:', userId);
 
-    // Get user's active subscriptions
+    // Get blindspot recommendations
+    const blindspots = await generateBlindspotRecommendations(userId, 12);
+
+    if (blindspots.length === 0) {
+      console.log('[PileOfShame] No blindspot recommendations found');
+      return [];
+    }
+
+    // Get user's subscriptions for service attribution
     const { data: subscriptions } = await supabase
       .from('user_subscriptions')
-      .select('*')
+      .select('service_name')
       .eq('user_id', userId)
       .eq('status', 'active');
 
-    if (!subscriptions || subscriptions.length === 0) {
-      console.log('[PileOfShame] No active subscriptions');
-      return [];
-    }
+    const defaultService = subscriptions?.[0]?.service_name || 'Streaming Services';
 
-    // Get user's provider IDs
-    const userProviderIds = await getUserProviderIds(userId);
+    // Transform blindspot items to ShameItem format
+    const shameItems: ShameItem[] = blindspots.map(blindspot => ({
+      id: blindspot.id,
+      title: blindspot.title,
+      type: blindspot.mediaType,
+      service: blindspot.service || defaultService,
+      rating: blindspot.rating,
+      voteCount: blindspot.voteCount,
+      posterPath: blindspot.posterPath,
+      overview: blindspot.rawData?.overview || '',
+      message: blindspot.pitch, // Use personalized pitch as message
+      releaseYear: blindspot.releaseYear.toString(),
+      genres: blindspot.genres
+        .slice(0, 3)
+        .map(genreId => getGenreName(genreId, blindspot.mediaType === 'tv')),
 
-    if (userProviderIds.length === 0) {
-      console.log('[PileOfShame] No provider IDs found');
-      return [];
-    }
+      // Blindspot metadata
+      blindspotReason: blindspot.blindspotReason,
+      blindspotIcon: getBlindspotIcon(blindspot.blindspotReason),
+      blindspotLabel: getBlindspotLabel(blindspot.blindspotReason),
+    }));
 
-    console.log('[PileOfShame] User provider IDs:', userProviderIds);
+    console.log('[PileOfShame] Returning', shameItems.length, 'blindspot items');
+    console.log('[PileOfShame] Breakdown by type:', {
+      unexplored_genre: shameItems.filter(i => i.blindspotReason === 'unexplored_genre').length,
+      hidden_gem: shameItems.filter(i => i.blindspotReason === 'hidden_gem').length,
+      classic_gap: shameItems.filter(i => i.blindspotReason === 'classic_gap').length,
+      adjacent_interest: shameItems.filter(i => i.blindspotReason === 'adjacent_interest').length,
+      service_exclusive: shameItems.filter(i => i.blindspotReason === 'service_exclusive').length,
+    });
 
-    // Get user's watchlist IDs to exclude (only watched or currently watching)
-    const { data: watchlist } = await supabase
-      .from('watchlist_items')
-      .select('tmdb_id, content_type, status')
-      .eq('user_id', userId)
-      .in('status', ['watched', 'watching']); // Only exclude engaged content
-
-    const watchedIds = new Set(
-      (watchlist || []).map(w => `${w.content_type}-${w.tmdb_id}`)
-    );
-
-    console.log('[PileOfShame] User has', watchedIds.size, 'watched/watching items to exclude');
-    console.log('[PileOfShame] Excluded IDs sample:', Array.from(watchedIds).slice(0, 10));
-    if (watchlist && watchlist.length > 0) {
-      const statusBreakdown = watchlist.reduce((acc, item) => {
-        acc[item.status] = (acc[item.status] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      console.log('[PileOfShame] Status breakdown:', statusBreakdown);
-    }
-
-    // Get top movies and TV shows
-    const [topMovies, topTVShows] = await Promise.all([
-      getTopContentByProvider(userProviderIds, 'movie'),
-      getTopContentByProvider(userProviderIds, 'tv'),
-    ]);
-
-    console.log('[PileOfShame] Found', topMovies.length, 'top movies and', topTVShows.length, 'top TV shows');
-
-    // Format and filter unwatched content
-    const unwatchedMovies = topMovies
-      .filter(movie => !watchedIds.has(`movie-${movie.id}`))
-      .slice(0, 8)
-      .map(movie => ({
-        id: movie.id,
-        title: movie.title,
-        type: 'movie' as const,
-        service: subscriptions[0]?.service_name || 'Your services',
-        rating: movie.vote_average,
-        voteCount: movie.vote_count,
-        posterPath: movie.poster_path,
-        overview: movie.overview,
-        message: `Rated ${movie.vote_average.toFixed(1)}/10 by ${(movie.vote_count / 1000).toFixed(1)}k viewers`,
-        releaseYear: movie.release_date ? new Date(movie.release_date).getFullYear().toString() : 'N/A',
-        genres: (movie.genre_ids || []).slice(0, 3).map((id: number) => getGenreName(id, false)),
-      }));
-
-    const unwatchedTVShows = topTVShows
-      .filter(show => !watchedIds.has(`tv-${show.id}`))
-      .slice(0, 8)
-      .map(show => ({
-        id: show.id,
-        title: show.name,
-        type: 'tv' as const,
-        service: subscriptions[0]?.service_name || 'Your services',
-        rating: show.vote_average,
-        voteCount: show.vote_count,
-        posterPath: show.poster_path,
-        overview: show.overview,
-        message: `Rated ${show.vote_average.toFixed(1)}/10 by ${(show.vote_count / 1000).toFixed(1)}k viewers`,
-        releaseYear: show.first_air_date ? new Date(show.first_air_date).getFullYear().toString() : 'N/A',
-        genres: (show.genre_ids || []).slice(0, 3).map((id: number) => getGenreName(id, true)),
-      }));
-
-    // Combine and sort by rating
-    const allUnwatched = [...unwatchedMovies, ...unwatchedTVShows]
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 12); // Top 12 items
-
-    console.log('[PileOfShame] Returning', allUnwatched.length, 'unwatched items');
-
-    return allUnwatched;
+    return shameItems;
   } catch (error) {
     console.error('[PileOfShame] Error generating pile of shame:', error);
     return [];
@@ -213,6 +165,7 @@ export const getPileOfShameStats = async (userId: string): Promise<{
   totalItems: number;
   averageRating: number;
   topGenres: string[];
+  blindspotBreakdown: Record<BlindspotReason, number>;
 }> => {
   const items = await getPileOfShame(userId);
 
@@ -221,6 +174,13 @@ export const getPileOfShameStats = async (userId: string): Promise<{
       totalItems: 0,
       averageRating: 0,
       topGenres: [],
+      blindspotBreakdown: {
+        unexplored_genre: 0,
+        hidden_gem: 0,
+        classic_gap: 0,
+        adjacent_interest: 0,
+        service_exclusive: 0,
+      },
     };
   }
 
@@ -239,9 +199,19 @@ export const getPileOfShameStats = async (userId: string): Promise<{
     .slice(0, 3)
     .map(([genre]) => genre);
 
+  // Count blindspot types
+  const blindspotBreakdown: Record<BlindspotReason, number> = {
+    unexplored_genre: items.filter(i => i.blindspotReason === 'unexplored_genre').length,
+    hidden_gem: items.filter(i => i.blindspotReason === 'hidden_gem').length,
+    classic_gap: items.filter(i => i.blindspotReason === 'classic_gap').length,
+    adjacent_interest: items.filter(i => i.blindspotReason === 'adjacent_interest').length,
+    service_exclusive: items.filter(i => i.blindspotReason === 'service_exclusive').length,
+  };
+
   return {
     totalItems: items.length,
     averageRating,
     topGenres,
+    blindspotBreakdown,
   };
 };

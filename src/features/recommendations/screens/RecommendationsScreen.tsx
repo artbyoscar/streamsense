@@ -469,7 +469,7 @@ export const RecommendationsScreen: React.FC = () => {
               📚 Your Pile of Shame
             </Text>
             <Text style={[styles.sectionSubtitle, { color: colors.textSecondary }]}>
-              High-rated content you're paying for but haven't watched yet
+              Content you wouldn't normally discover - unexplored gems, classics, and adjacent interests
             </Text>
 
             <ScrollView
@@ -488,6 +488,12 @@ export const RecommendationsScreen: React.FC = () => {
                     onPress={() => handlePileItemPress(item)}
                     activeOpacity={0.7}
                   >
+                  {/* Blindspot Badge */}
+                  <View style={[styles.blindspotBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={styles.blindspotIcon}>{item.blindspotIcon}</Text>
+                    <Text style={styles.blindspotLabel}>{item.blindspotLabel}</Text>
+                  </View>
+
                   {/* Poster */}
                   {item.posterPath ? (
                     <Image
@@ -1018,6 +1024,30 @@ const styles = StyleSheet.create({
   shameMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, padding: 8, borderRadius: 8, marginTop: 4 },
   shameMessageText: { fontSize: 11, flex: 1, lineHeight: 14 },
   shameFooter: { fontSize: 13, textAlign: 'center', marginTop: 8, marginBottom: 8 },
+  // Blindspot Badge Styles
+  blindspotBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    gap: 6,
+    zIndex: 10,
+  },
+  blindspotIcon: {
+    fontSize: 14,
+  },
+  blindspotLabel: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
 });
 
 export default RecommendationsScreen;
