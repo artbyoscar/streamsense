@@ -177,12 +177,14 @@ export const getSmartRecommendations = async (
       const page = getRandomPage();
       console.log('[SmartRecs] Fetching movies, page:', page);
 
-      const movieResponse = await tmdbApi.discover('movie', {
-        with_genres: genreIds.join(','),
-        page,
-        sort_by: 'popularity.desc',
-        'vote_count.gte': 100,
-        'vote_average.gte': 6.0,
+      const movieResponse = await tmdbApi.get('/discover/movie', {
+        params: {
+          with_genres: genreIds.join(','),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 100,
+          'vote_average.gte': 6.0,
+        },
       });
 
       const movies = (movieResponse.data?.results || [])
@@ -215,12 +217,14 @@ export const getSmartRecommendations = async (
       const page = getRandomPage();
       console.log('[SmartRecs] Fetching TV, page:', page);
 
-      const tvResponse = await tmdbApi.discover('tv', {
-        with_genres: tvGenreIds.join(','),
-        page,
-        sort_by: 'popularity.desc',
-        'vote_count.gte': 50,
-        'vote_average.gte': 6.0,
+      const tvResponse = await tmdbApi.get('/discover/tv', {
+        params: {
+          with_genres: tvGenreIds.join(','),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 50,
+          'vote_average.gte': 6.0,
+        },
       });
 
       const tvShows = (tvResponse.data?.results || [])
