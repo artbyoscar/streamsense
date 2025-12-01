@@ -36,6 +36,7 @@ import { WatchTimeLoggerModal } from '@/features/subscriptions/components/WatchT
 import { AnimatedCarouselItem, useAnimatedCarousel } from '@/components';
 import * as Haptics from 'expo-haptics';
 import { generateCoachingSuggestions, type CoachingSuggestion } from '@/services/subscriptionCoachService';
+import { tipsExclusionService } from '@/services/tipsExclusionService';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -223,6 +224,8 @@ export const RecommendationsScreen: React.FC = () => {
     setShowWatchTimeModal(true);
   }, []);
 
+
+
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -233,6 +236,20 @@ export const RecommendationsScreen: React.FC = () => {
         setLoading(false);
         return;
       }
+
+      // Load watchlist first for exclusions
+      const { data: watchlistItems } = await supabase
+        .from('watchlist_items')
+        .select('content(tmdb_id)')
+        .eq('user_id', user.id);
+
+      const watchlistIds = watchlistItems
+        ?.filter(item => item.content)
+        .map(item => (item.content as any).tmdb_id) || [];
+
+      // Initialize exclusion service
+      tipsExclusionService.initialize(watchlistIds);
+      console.log('[Tips] Initialized exclusions with', watchlistIds.length, 'watchlist items');
 
       // Load subscriptions for spending
       const { data: subs, error: subsError } = await supabase
@@ -256,7 +273,7 @@ export const RecommendationsScreen: React.FC = () => {
 
       console.log('[Tips] Total monthly:', monthly);
 
-      // Load watchlist for coaching
+      // Load watchlist for coaching (we already fetched IDs, but need full objects for coaching)
       const { data: watchlist } = await supabase
         .from('watchlist_items')
         .select('*, content(*)')
@@ -344,15 +361,26 @@ export const RecommendationsScreen: React.FC = () => {
       console.log('[Tips] Achievement progress:', achievementData);
       setAchievements(achievementData);
 
-      // Load pile of shame
-      const shame = await getPileOfShame(user.id, 20);
-      console.log('[Tips] Pile of shame:', shame);
-      setPileOfShameData(shame);
-
-      // Load rewatch suggestions
+      // 1. Load Rewatch Suggestions (Worth Watching / Rewatching)
+      // These are things user has already seen, so we load them first
       const rewatch = await getRewatchSuggestions(user.id, 10);
       console.log('[Tips] Rewatch suggestions:', rewatch);
       setRewatchSuggestions(rewatch);
+
+      // Mark rewatch items as shown
+      tipsExclusionService.markShown('rewatch', rewatch.map(r => r.tmdbId));
+
+      // 2. Load Pile of Shame (Worth Discovering / Hidden Gems)
+      // Exclude everything in watchlist AND everything in rewatch list
+      const excludedIds = tipsExclusionService.getAllExcludedIds();
+      console.log('[Tips] Loading blindspots with', excludedIds.length, 'exclusions');
+
+      const shame = await getPileOfShame(user.id, 20, excludedIds);
+      console.log('[Tips] Pile of shame:', shame);
+      setPileOfShameData(shame);
+
+      // Mark hidden gems as shown
+      tipsExclusionService.markShown('hiddenGems', shame.map(s => s.id));
 
       // Calculate service insights - how many favorites are on each service
       const insights: Record<string, number> = {};
