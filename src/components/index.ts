@@ -48,3 +48,5 @@ export type { ModalHeaderProps } from './ModalHeader';
 export { BreakEvenBar } from './BreakEvenBar';
 
 export { BingeSlider } from './BingeSlider';
+
+export { NowWatchingTimer } from './NowWatchingTimer';
