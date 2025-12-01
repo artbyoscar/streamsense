@@ -34,6 +34,7 @@ import { ContentDetailModal } from '@/features/watchlist/components/ContentDetai
 import { WatchTimeLoggerModal } from '@/features/subscriptions/components/WatchTimeLoggerModal';
 import { AnimatedCarouselItem, useAnimatedCarousel } from '@/components';
 import * as Haptics from 'expo-haptics';
+import { generateCoachingSuggestions, type CoachingSuggestion } from '@/services/subscriptionCoachService';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -118,6 +119,7 @@ export const RecommendationsScreen: React.FC = () => {
   const [showContentModal, setShowContentModal] = useState(false);
   const [selectedSubscription, setSelectedSubscription] = useState<any>(null);
   const [showWatchTimeModal, setShowWatchTimeModal] = useState(false);
+  const [coachingSuggestions, setCoachingSuggestions] = useState<CoachingSuggestion[]>([]);
 
   // Handle pile item press - transform to content format and show modal
   const handlePileItemPress = useCallback((item: ShameItem) => {
@@ -252,6 +254,18 @@ export const RecommendationsScreen: React.FC = () => {
       }, 0);
 
       console.log('[Tips] Total monthly:', monthly);
+
+      // Load watchlist for coaching
+      const { data: watchlist } = await supabase
+        .from('watchlist_items')
+        .select('*, content(*)')
+        .eq('user_id', user.id);
+
+      if (subs && watchlist) {
+        const suggestions = await generateCoachingSuggestions(user.id, subs, watchlist);
+        console.log('[Tips] Coaching suggestions:', suggestions);
+        setCoachingSuggestions(suggestions);
+      }
 
       setSpending({
         monthly,
@@ -403,6 +417,64 @@ export const RecommendationsScreen: React.FC = () => {
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Personalized recommendations based on your viewing preferences
         </Text>
+
+        {/* Subscription Coach */}
+        {coachingSuggestions.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              🧠 Subscription Coach
+            </Text>
+            {coachingSuggestions.map((suggestion, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.coachCard,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: suggestion.priority === 'high' ? colors.primary : colors.border
+                  }
+                ]}
+              >
+                <View style={styles.coachHeader}>
+                  <View style={[
+                    styles.priorityBadge,
+                    { backgroundColor: suggestion.priority === 'high' ? '#FEF2F2' : '#F0F9FF' }
+                  ]}>
+                    <Text style={[
+                      styles.priorityText,
+                      { color: suggestion.priority === 'high' ? '#EF4444' : '#0EA5E9' }
+                    ]}>
+                      {suggestion.priority === 'high' ? '🔥 High Priority' : '💡 Suggestion'}
+                    </Text>
+                  </View>
+                  <Text style={[styles.coachService, { color: colors.text }]}>
+                    {suggestion.service}
+                  </Text>
+                </View>
+
+                <Text style={[styles.coachReason, { color: colors.text }]}>
+                  {suggestion.reason}
+                </Text>
+
+                {suggestion.contentTitles && suggestion.contentTitles.length > 0 && (
+                  <Text style={[styles.coachContent, { color: colors.textSecondary }]}>
+                    Includes: {suggestion.contentTitles.join(', ')}
+                  </Text>
+                )}
+
+                <TouchableOpacity
+                  style={[styles.coachAction, { backgroundColor: colors.primary + '15' }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.coachActionText, { color: colors.primary }]}>
+                    {suggestion.action}
+                  </Text>
+                  <Ionicons name="arrow-forward" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Spending Card */}
         <View style={[styles.card, { backgroundColor: colors.card }]}>
@@ -566,62 +638,62 @@ export const RecommendationsScreen: React.FC = () => {
                     onPress={() => handlePileItemPress(item)}
                     activeOpacity={0.7}
                   >
-                  {/* Blindspot Badge */}
-                  <View style={[styles.blindspotBadge, { backgroundColor: colors.primary }]}>
-                    <Text style={styles.blindspotIcon}>{item.blindspotIcon}</Text>
-                    <Text style={styles.blindspotLabel}>{item.blindspotLabel}</Text>
-                  </View>
-
-                  {/* Poster */}
-                  {item.posterPath ? (
-                    <Image
-                      source={{ uri: `https://image.tmdb.org/t/p/w342${item.posterPath}` }}
-                      style={styles.shamePoster}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={[styles.shamePoster, { backgroundColor: colors.background }]}>
-                      <Ionicons name="film-outline" size={40} color={colors.textSecondary} />
+                    {/* Blindspot Badge */}
+                    <View style={[styles.blindspotBadge, { backgroundColor: colors.primary }]}>
+                      <Text style={styles.blindspotIcon}>{item.blindspotIcon}</Text>
+                      <Text style={styles.blindspotLabel}>{item.blindspotLabel}</Text>
                     </View>
-                  )}
 
-                  {/* Rating Badge */}
-                  <View style={[styles.shameRatingBadge, { backgroundColor: 'rgba(0, 0, 0, 0.8)' }]}>
-                    <Ionicons name="star" size={12} color="#FFD700" />
-                    <Text style={styles.shameRatingText}>
-                      {item.rating.toFixed(1)}
-                    </Text>
-                  </View>
-
-                  {/* Info */}
-                  <View style={styles.shameInfo}>
-                    <Text
-                      style={[styles.shameTitle, { color: colors.text }]}
-                      numberOfLines={2}
-                    >
-                      {item.title}
-                    </Text>
-                    <Text style={[styles.shameYear, { color: colors.textSecondary }]}>
-                      {item.releaseYear} • {item.type === 'movie' ? '🎬' : '📺'}
-                    </Text>
-                    {item.genres.length > 0 && (
-                      <Text
-                        style={[styles.shameGenres, { color: colors.textSecondary }]}
-                        numberOfLines={1}
-                      >
-                        {item.genres.join(', ')}
-                      </Text>
+                    {/* Poster */}
+                    {item.posterPath ? (
+                      <Image
+                        source={{ uri: `https://image.tmdb.org/t/p/w342${item.posterPath}` }}
+                        style={styles.shamePoster}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.shamePoster, { backgroundColor: colors.background }]}>
+                        <Ionicons name="film-outline" size={40} color={colors.textSecondary} />
+                      </View>
                     )}
-                    <View style={[styles.shameMessage, { backgroundColor: colors.background }]}>
-                      <Ionicons name="information-circle" size={14} color={colors.primary} />
+
+                    {/* Rating Badge */}
+                    <View style={[styles.shameRatingBadge, { backgroundColor: 'rgba(0, 0, 0, 0.8)' }]}>
+                      <Ionicons name="star" size={12} color="#FFD700" />
+                      <Text style={styles.shameRatingText}>
+                        {item.rating.toFixed(1)}
+                      </Text>
+                    </View>
+
+                    {/* Info */}
+                    <View style={styles.shameInfo}>
                       <Text
-                        style={[styles.shameMessageText, { color: colors.textSecondary }]}
+                        style={[styles.shameTitle, { color: colors.text }]}
                         numberOfLines={2}
                       >
-                        {item.message}
+                        {item.title}
                       </Text>
+                      <Text style={[styles.shameYear, { color: colors.textSecondary }]}>
+                        {item.releaseYear} • {item.type === 'movie' ? '🎬' : '📺'}
+                      </Text>
+                      {item.genres.length > 0 && (
+                        <Text
+                          style={[styles.shameGenres, { color: colors.textSecondary }]}
+                          numberOfLines={1}
+                        >
+                          {item.genres.join(', ')}
+                        </Text>
+                      )}
+                      <View style={[styles.shameMessage, { backgroundColor: colors.background }]}>
+                        <Ionicons name="information-circle" size={14} color={colors.primary} />
+                        <Text
+                          style={[styles.shameMessageText, { color: colors.textSecondary }]}
+                          numberOfLines={2}
+                        >
+                          {item.message}
+                        </Text>
+                      </View>
                     </View>
-                  </View>
                   </TouchableOpacity>
                 </AnimatedCarouselItem>
               ))}
@@ -1207,7 +1279,64 @@ const styles = StyleSheet.create({
   shameRatingBadge: { position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12, gap: 4 },
   shameRatingText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   shameInfo: { padding: 12 },
-  shameTitle: { fontSize: 14, fontWeight: '600', marginBottom: 4, lineHeight: 18 },
+  shameTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+    lineHeight: 18
+  },
+  sectionContainer: {
+    marginBottom: 24,
+  },
+  coachCard: {
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  coachHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  priorityText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  coachService: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  coachReason: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  coachContent: {
+    fontSize: 14,
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  coachAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+  },
+  coachActionText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
   shameYear: { fontSize: 12, marginBottom: 4 },
   shameGenres: { fontSize: 11, marginBottom: 8 },
   shameMessage: { flexDirection: 'row', alignItems: 'flex-start', gap: 6, padding: 8, borderRadius: 8, marginTop: 4 },
