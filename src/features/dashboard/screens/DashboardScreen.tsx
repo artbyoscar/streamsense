@@ -227,14 +227,15 @@ export const DashboardScreen: React.FC = () => {
       return;
     }
 
-    // Check for subscription ID (could be 'id' or 'subscriptionId')
-    const subscriptionId = subscription.id || subscription.subscriptionId;
+    // Check for subscription ID (could be 'id', 'subscriptionId', or 'serviceId')
+    const subscriptionId = subscription.id || subscription.subscriptionId || subscription.serviceId;
 
     if (!subscriptionId || subscriptionId === 'undefined') {
       console.error('[Dashboard] Cannot log watch time - missing subscription ID:', {
         subscription,
         hasId: !!subscription.id,
         hasSubscriptionId: !!subscription.subscriptionId,
+        hasServiceId: !!subscription.serviceId,
       });
       Alert.alert('Error', 'Could not identify subscription. Please try again.');
       return;
@@ -242,7 +243,7 @@ export const DashboardScreen: React.FC = () => {
 
     console.log('[Dashboard] Opening watch time logger for:', {
       id: subscriptionId,
-      service: subscription.service_name,
+      service: subscription.service_name || subscription.serviceName || subscription.service,
     });
 
     setSelectedSubscriptionForLog(subscription);

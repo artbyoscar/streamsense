@@ -12,6 +12,7 @@ import {
   ActivityIndicator,
   Image,
   TouchableOpacity,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -137,16 +138,23 @@ export const RecommendationsScreen: React.FC = () => {
 
   // Handle log watch time button press
   const handleLogWatchTime = useCallback((subscription: any) => {
-    // Normalize the subscription object - ChurnRecommendations have serviceId, regular subs have id
+    // Normalize the subscription object - handle multiple possible ID property names
     const normalizedSubscription = {
       ...subscription,
-      id: subscription.id || subscription.serviceId, // ChurnRecommendation has serviceId
-      service_name: subscription.service_name || subscription.service,
+      id: subscription.id || subscription.subscriptionId || subscription.serviceId, // Try all possible ID properties
+      service_name: subscription.service_name || subscription.serviceName || subscription.service,
       price: subscription.price || subscription.monthlyCost || 0,
     };
 
+    console.log('[Tips] handleLogWatchTime called with:', {
+      subscriptionId: normalizedSubscription.id,
+      serviceName: normalizedSubscription.service_name,
+      hasId: !!normalizedSubscription.id,
+    });
+
     if (!normalizedSubscription.id || normalizedSubscription.id === 'undefined') {
       console.error('[Tips] Cannot log watch time - missing subscription ID:', subscription);
+      Alert.alert('Error', 'Could not identify subscription');
       return;
     }
 
