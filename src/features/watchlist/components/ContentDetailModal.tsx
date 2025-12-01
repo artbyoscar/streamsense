@@ -39,6 +39,35 @@ interface WatchProvider {
   provider_name: string;
 }
 
+// Helper to safely get content type from multiple possible sources
+const getContentType = (content: UnifiedContent | null): 'movie' | 'tv' => {
+  if (!content) return 'movie';
+
+  // Try type field first (should be set)
+  if (content.type === 'movie' || content.type === 'tv') {
+    return content.type;
+  }
+
+  // Fallback to media_type (from TMDb API)
+  const mediaType = (content as any).media_type;
+  if (mediaType === 'movie' || mediaType === 'tv') {
+    return mediaType;
+  }
+
+  // Final fallback: use date fields to infer type
+  // TV shows have first_air_date, movies have release_date
+  if (content.releaseDate || (content as any).release_date) {
+    return 'movie';
+  }
+  if ((content as any).first_air_date) {
+    return 'tv';
+  }
+
+  // Default to movie if we can't determine
+  console.warn('[ContentDetail] Could not determine content type, defaulting to movie:', content);
+  return 'movie';
+};
+
 export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
   content,
   visible,
@@ -72,7 +101,8 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
     try {
       setIsLoading(true);
-      const providers = await getUSWatchProviders(content.id, content.type);
+      const contentType = getContentType(content);
+      const providers = await getUSWatchProviders(content.id, contentType);
 
       if (providers?.flatrate) {
         setWatchProviders(providers.flatrate);
@@ -91,12 +121,14 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
     if (!content || !user) return;
 
     try {
+      const contentType = getContentType(content);
+
       // First check if content exists in content table
       const { data: contentData } = await supabase
         .from('content')
         .select('id')
         .eq('tmdb_id', content.id)
-        .eq('type', content.type)
+        .eq('type', contentType)
         .single();
 
       if (contentData) {
@@ -144,12 +176,21 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
     setIsSaving(true);
 
     try {
+      const contentType = getContentType(content);
+
+      console.log('[ContentDetail] Saving content:', {
+        id: content.id,
+        title: content.title,
+        type: contentType,
+        rawContent: content,
+      });
+
       // Step 1: Insert or get content record
       const { data: existingContent } = await supabase
         .from('content')
         .select('id')
         .eq('tmdb_id', content.id)
-        .eq('type', content.type)
+        .eq('type', contentType)
         .single();
 
       let contentId: string;
@@ -163,7 +204,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
           .insert({
             tmdb_id: content.id,
             title: content.title,
-            type: content.type,
+            type: contentType,
             overview: content.overview || null,
             poster_url: content.posterPath || null,
             backdrop_url: content.backdropPath || null,
@@ -202,9 +243,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
           // Track status change
           if (previousStatus !== selectedStatus) {
             if (selectedStatus === 'watching') {
-              await trackGenreInteraction(user.id, genreIds, content.type, 'START_WATCHING');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'START_WATCHING');
             } else if (selectedStatus === 'watched') {
-              await trackGenreInteraction(user.id, genreIds, content.type, 'COMPLETE_WATCHING');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'COMPLETE_WATCHING');
             }
           }
 
@@ -212,10 +253,10 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
           if ((selectedStatus === 'watching' || selectedStatus === 'watched') && rating !== previousRating) {
             if (rating >= 4) {
               // 4, 4.5, or 5 = high rating
-              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_HIGH');
             } else if (rating > 0 && rating <= 2) {
               // 0.5, 1, 1.5, or 2 = low rating
-              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_LOW');
             }
             // 2.5, 3, 3.5 = neutral, no tracking
           }
@@ -242,21 +283,21 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
         if (genreIds.length > 0) {
           // Track based on initial status
           if (selectedStatus === 'want_to_watch') {
-            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
+            await trackGenreInteraction(user.id, genreIds, contentType, 'ADD_TO_WATCHLIST');
           } else if (selectedStatus === 'watching') {
-            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
-            await trackGenreInteraction(user.id, genreIds, content.type, 'START_WATCHING');
+            await trackGenreInteraction(user.id, genreIds, contentType, 'ADD_TO_WATCHLIST');
+            await trackGenreInteraction(user.id, genreIds, contentType, 'START_WATCHING');
           } else if (selectedStatus === 'watched') {
-            await trackGenreInteraction(user.id, genreIds, content.type, 'ADD_TO_WATCHLIST');
-            await trackGenreInteraction(user.id, genreIds, content.type, 'COMPLETE_WATCHING');
+            await trackGenreInteraction(user.id, genreIds, contentType, 'ADD_TO_WATCHLIST');
+            await trackGenreInteraction(user.id, genreIds, contentType, 'COMPLETE_WATCHING');
 
             // Track rating if provided
             if (rating >= 4) {
               // 4, 4.5, or 5 = high rating
-              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_HIGH');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_HIGH');
             } else if (rating > 0 && rating <= 2) {
               // 0.5, 1, 1.5, or 2 = low rating
-              await trackGenreInteraction(user.id, genreIds, content.type, 'RATE_LOW');
+              await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_LOW');
             }
             // 2.5, 3, 3.5 = neutral, no tracking
           }
@@ -285,6 +326,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
   if (!content) return null;
 
+  const contentType = getContentType(content);
   const backdropUrl = getBackdropUrl(content.backdropPath, 'large');
   const posterUrl = getPosterUrl(content.posterPath, 'large');
   const year = content.releaseDate?.split('-')[0] || 'Unknown';
@@ -326,7 +368,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               <Text style={[styles.year, { color: colors.textSecondary }]}>{year}</Text>
               <View style={[styles.typeBadge, { backgroundColor: colors.primary }]}>
                 <Text style={styles.typeBadgeText}>
-                  {content.type === 'movie' ? 'Movie' : 'TV Show'}
+                  {contentType === 'movie' ? 'Movie' : 'TV Show'}
                 </Text>
               </View>
               {content.rating > 0 && (
