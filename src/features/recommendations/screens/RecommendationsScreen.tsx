@@ -467,9 +467,9 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               🧠 Subscription Coach
             </Text>
-            {coachingSuggestions.map((suggestion, index) => (
+            {coachingSuggestions.map((suggestion) => (
               <View
-                key={index}
+                key={`${suggestion.service}-${suggestion.type}`}
                 style={[
                   styles.coachCard,
                   {
@@ -1104,8 +1104,8 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
                         >
                           Upcoming on {rec.service}:
                         </Text>
-                        {rec.upcomingContent.slice(0, 2).map((content, idx) => (
-                          <View key={idx} style={styles.upcomingItem}>
+                        {rec.upcomingContent.slice(0, 2).map((content) => (
+                          <View key={content.title} style={styles.upcomingItem}>
                             <Ionicons
                               name="calendar-outline"
                               size={14}
@@ -1201,8 +1201,8 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
           💡 Money-Saving Tips
         </Text>
 
-        {savingTips.map((tip, index) => (
-          <View key={index} style={[styles.tipCard, { backgroundColor: colors.card }]}>
+        {savingTips.map((tip) => (
+          <View key={tip.title} style={[styles.tipCard, { backgroundColor: colors.card }]}>
             <View style={[styles.tipIcon, { backgroundColor: `${colors.primary}20` }]}>
               <Ionicons name={tip.icon as any} size={24} color={colors.primary} />
             </View>

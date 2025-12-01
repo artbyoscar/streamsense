@@ -55,7 +55,7 @@ const LoadingSkeleton: React.FC = () => {
   return (
     <View style={styles.gridContainer}>
       {Array.from({ length: 12 }).map((_, index) => (
-        <View key={index} style={styles.gridItem}>
+        <View key={`skeleton-${index}`} style={styles.gridItem}>
           <View style={[styles.poster, styles.skeletonPoster]} />
           <View style={[styles.skeletonText, { width: '80%', marginTop: 8 }]} />
           <View style={[styles.skeletonText, { width: '50%', marginTop: 4 }]} />
@@ -281,8 +281,8 @@ export const ContentSearchScreen: React.FC = () => {
     activeFilter === 'all'
       ? allResults.isLoading
       : activeFilter === 'movies'
-      ? movieResults.isLoading
-      : tvResults.isLoading;
+        ? movieResults.isLoading
+        : tvResults.isLoading;
 
   const results = getActiveResults();
 
