@@ -575,7 +575,11 @@ export const SwipeScreen: React.FC = () => {
               <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
                 About
               </Text>
-              <ScrollView style={styles.overviewScroll} showsVerticalScrollIndicator={false}>
+              <ScrollView
+                style={styles.overviewScroll}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+              >
                 <Text style={[styles.cardOverview, { color: colors.text }]}>
                   {overview}
                 </Text>
@@ -775,7 +779,10 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1, // Takes remaining 45%
     padding: 16,
-    paddingBottom: 140, // Heavy padding to ensure text doesn't go behind buttons
+    paddingBottom: 0, // Remove padding from container, move to scrollContent
+  },
+  scrollContent: {
+    paddingBottom: 150, // Heavy padding to ensure text doesn't go behind buttons
   },
   cardTitle: {
     fontSize: 22,
