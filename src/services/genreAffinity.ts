@@ -16,6 +16,7 @@ export const AFFINITY_WEIGHTS = {
   START_WATCHING: 2,
   COMPLETE_WATCHING: 3,
   RATE_HIGH: 2,      // 4-5 stars
+  RATE_MEDIUM: 1,    // 3 stars
   RATE_LOW: -1,      // 1-2 stars
   REMOVE_FROM_WATCHLIST: -0.5,
 } as const;

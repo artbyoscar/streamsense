@@ -15,20 +15,23 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Modal,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { supabase } from '@/config/supabase';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
+import { trackGenreAffinity } from '@/services/genreAffinity';
 import type { UnifiedContent } from '@/types';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.9;
 
 interface SwipeAction {
-  type: 'watchlist' | 'hide' | 'watching';
+  type: 'watchlist' | 'hide' | 'watching' | 'watched';
   item: UnifiedContent;
+  rating?: number;
 }
 
 export const SwipeScreen: React.FC = () => {
@@ -39,6 +42,9 @@ export const SwipeScreen: React.FC = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [pendingWatchedItem, setPendingWatchedItem] = useState<UnifiedContent | null>(null);
+  const [selectedRating, setSelectedRating] = useState(0);
 
   // Load user and content
   useEffect(() => {
@@ -76,23 +82,50 @@ export const SwipeScreen: React.FC = () => {
 
   const handleSwipe = async (action: SwipeAction) => {
     try {
-      const { type, item } = action;
+      const { type, item, rating } = action;
 
-      if (type === 'watchlist' || type === 'watching') {
+      if (type === 'watchlist' || type === 'watching' || type === 'watched') {
+        // Determine status based on action type
+        const status = type === 'watching' ? 'watching' : type === 'watched' ? 'watched' : 'want_to_watch';
+
         // Add to watchlist using the content table
+        const insertData: any = {
+          user_id: user.id,
+          content_id: `${item.type}-${item.id}`,
+          status,
+          priority: 'medium',
+        };
+
+        // Add rating if provided (for 'watched' items)
+        if (type === 'watched' && rating) {
+          insertData.rating = rating;
+        }
+
         const { error } = await supabase
           .from('watchlist_items')
-          .insert({
-            user_id: user.id,
-            content_id: `${item.type}-${item.id}`,
-            status: type === 'watching' ? 'watching' : 'want_to_watch',
-            priority: 'medium',
-          });
+          .insert(insertData);
 
         if (error) {
           console.error('[Swipe] Error adding to watchlist:', error);
         } else {
-          console.log(`[Swipe] Added "${item.title}" to ${type === 'watching' ? 'watching now' : 'watchlist'}`);
+          console.log(`[Swipe] Added "${item.title}" to ${type === 'watched' ? 'watched' : type === 'watching' ? 'watching now' : 'watchlist'}`);
+
+          // Track genre affinity based on rating for watched items
+          if (type === 'watched' && rating) {
+            const itemGenres = item.genres || item.genre_ids || [];
+            if (itemGenres.length > 0) {
+              if (rating >= 4) {
+                await trackGenreAffinity(user.id, itemGenres, 'RATE_HIGH');
+                console.log('[Swipe] Tracked high rating for genres:', itemGenres);
+              } else if (rating <= 2) {
+                await trackGenreAffinity(user.id, itemGenres, 'RATE_LOW');
+                console.log('[Swipe] Tracked low rating for genres:', itemGenres);
+              } else {
+                await trackGenreAffinity(user.id, itemGenres, 'RATE_MEDIUM');
+                console.log('[Swipe] Tracked medium rating for genres:', itemGenres);
+              }
+            }
+          }
         }
       } else if (type === 'hide') {
         console.log(`[Swipe] Hidden "${item.title}"`);
@@ -128,11 +161,54 @@ export const SwipeScreen: React.FC = () => {
     }
   };
 
-  const handleButtonPress = (type: 'watchlist' | 'hide' | 'watching') => {
+  const handleButtonPress = (type: 'watchlist' | 'hide' | 'watching' | 'watched') => {
     if (currentIndex >= cards.length) return;
 
     const currentCard = cards[currentIndex];
-    handleSwipe({ type, item: currentCard });
+
+    // For 'watched', show rating modal first
+    if (type === 'watched') {
+      setPendingWatchedItem(currentCard);
+      setSelectedRating(0);
+      setShowRatingModal(true);
+    } else {
+      handleSwipe({ type, item: currentCard });
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (!pendingWatchedItem) return;
+
+    // Close modal
+    setShowRatingModal(false);
+
+    // Add to watched with rating
+    await handleSwipe({
+      type: 'watched',
+      item: pendingWatchedItem,
+      rating: selectedRating || undefined, // Only include rating if > 0
+    });
+
+    // Clear pending item
+    setPendingWatchedItem(null);
+    setSelectedRating(0);
+  };
+
+  const handleSkipRating = async () => {
+    if (!pendingWatchedItem) return;
+
+    // Close modal
+    setShowRatingModal(false);
+
+    // Add to watched without rating
+    await handleSwipe({
+      type: 'watched',
+      item: pendingWatchedItem,
+    });
+
+    // Clear pending item
+    setPendingWatchedItem(null);
+    setSelectedRating(0);
   };
 
   if (loading) {
@@ -260,34 +336,46 @@ export const SwipeScreen: React.FC = () => {
         </View>
       </View>
 
-      {/* Action Buttons */}
+      {/* Action Buttons - 4 buttons in a grid */}
       <View
         style={[
           styles.buttonsContainer,
           { paddingBottom: Math.max(insets.bottom, 20) + 20 },
         ]}
       >
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
-          onPress={() => handleButtonPress('hide')}
-        >
-          <Ionicons name="close" size={32} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.buttonsRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+            onPress={() => handleButtonPress('hide')}
+          >
+            <Ionicons name="close" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.watchingButton, { backgroundColor: colors.primary }]}
-          onPress={() => handleButtonPress('watching')}
-        >
-          <Ionicons name="play" size={28} color="#FFFFFF" />
-          <Text style={styles.watchingButtonText}>Watch Now</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
+            onPress={() => handleButtonPress('watchlist')}
+          >
+            <Ionicons name="heart" size={32} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
 
-        <TouchableOpacity
-          style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
-          onPress={() => handleButtonPress('watchlist')}
-        >
-          <Ionicons name="heart" size={32} color="#FFFFFF" />
-        </TouchableOpacity>
+        <View style={styles.buttonsRow}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.watchingButton, { backgroundColor: colors.primary }]}
+            onPress={() => handleButtonPress('watching')}
+          >
+            <Ionicons name="play" size={28} color="#FFFFFF" />
+            <Text style={styles.watchingButtonText}>Watch Now</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.watchedButton, { backgroundColor: '#8B5CF6' }]}
+            onPress={() => handleButtonPress('watched')}
+          >
+            <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
+            <Text style={styles.watchedButtonText}>Watched</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Instructions */}
@@ -299,18 +387,83 @@ export const SwipeScreen: React.FC = () => {
           </Text>
         </View>
         <View style={styles.instructionItem}>
-          <Ionicons name="play" size={16} color={colors.primary} />
+          <Ionicons name="heart" size={16} color="#22C55E" />
           <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Watch now
+            Want to watch
           </Text>
         </View>
         <View style={styles.instructionItem}>
-          <Ionicons name="heart" size={16} color="#22C55E" />
+          <Ionicons name="play" size={16} color={colors.primary} />
           <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Add to list
+            Watching now
+          </Text>
+        </View>
+        <View style={styles.instructionItem}>
+          <Ionicons name="checkmark-circle" size={16} color="#8B5CF6" />
+          <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
+            Already watched
           </Text>
         </View>
       </View>
+
+      {/* Rating Modal */}
+      <Modal
+        visible={showRatingModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowRatingModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>
+              How would you rate this?
+            </Text>
+            {pendingWatchedItem && (
+              <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+                {pendingWatchedItem.title || pendingWatchedItem.name}
+              </Text>
+            )}
+
+            {/* Star Rating */}
+            <View style={styles.starsContainer}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setSelectedRating(star)}
+                  style={styles.starButton}
+                >
+                  <Ionicons
+                    name={selectedRating >= star ? 'star' : 'star-outline'}
+                    size={48}
+                    color={selectedRating >= star ? '#FFD700' : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Action Buttons */}
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.background }]}
+                onPress={handleSkipRating}
+              >
+                <Text style={[styles.modalButtonText, { color: colors.text }]}>
+                  Skip Rating
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalButton, { backgroundColor: colors.primary }]}
+                onPress={handleRatingSubmit}
+              >
+                <Text style={[styles.modalButtonText, { color: '#FFFFFF' }]}>
+                  {selectedRating > 0 ? 'Save Rating' : 'No Rating'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -485,6 +638,71 @@ const styles = StyleSheet.create({
   },
   reloadButtonText: {
     color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  buttonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  watchedButton: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  watchedButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 16,
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  starsContainer: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 24,
+  },
+  starButton: {
+    padding: 4,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  modalButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },
