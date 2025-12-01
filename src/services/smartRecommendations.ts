@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { getWatchlistIds } from './watchlistDataService';
 import { tmdbApi } from './tmdb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
@@ -28,19 +29,16 @@ let globalExcludeIds: Set<number> = new Set();
  */
 export const initializeExclusions = async (userId: string) => {
   try {
-    const { data: watchlistItems } = await supabase
-      .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+    const ids = await getWatchlistIds(userId);
 
-    if (watchlistItems) {
-      globalExcludeIds = new Set(
-        watchlistItems
-          .filter(item => item.content)
-          .map(item => (item.content as any).tmdb_id)
-      );
-      console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items`);
-    }
+    // Convert to numbers for exclusion checking (TMDB IDs are numbers)
+    globalExcludeIds = new Set();
+    ids.forEach(id => {
+      const num = Number(id);
+      if (!isNaN(num)) globalExcludeIds.add(num);
+    });
+
+    console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items`);
   } catch (error) {
     console.error('[SmartRecs] Error initializing exclusions:', error);
   }
@@ -101,26 +99,21 @@ const initializeCaches = async (userId: string) => {
       }
     }
 
-    // Load FRESH watchlist IDs from database
-    const { data: watchlistItems } = await supabase
-      .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+    // Load FRESH watchlist IDs safely
+    const ids = await getWatchlistIds(userId);
+    watchlistTmdbIds = new Set();
+    ids.forEach(id => {
+      const num = Number(id);
+      if (!isNaN(num)) watchlistTmdbIds.add(num);
+    });
 
-    if (watchlistItems) {
-      watchlistTmdbIds = new Set(
-        watchlistItems
-          .filter(item => item.content)
-          .map(item => (item.content as any).tmdb_id)
-      );
-      console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
+    console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
 
-      // Cache to storage
-      await AsyncStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify({
-        ids: Array.from(watchlistTmdbIds),
-        timestamp: Date.now(),
-      }));
-    }
+    // Cache to storage
+    await AsyncStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify({
+      ids: Array.from(watchlistTmdbIds),
+      timestamp: Date.now(),
+    }));
 
     cacheInitialized = true;
   } catch (error) {
@@ -358,18 +351,12 @@ export const getSmartRecommendations = async (
   await initializeCaches(userId);
 
   // ALWAYS refresh watchlist IDs to catch new additions
-  const { data: freshWatchlist } = await supabase
-    .from('watchlist_items')
-    .select('content(tmdb_id)')
-    .eq('user_id', userId);
-
-  if (freshWatchlist) {
-    watchlistTmdbIds = new Set(
-      freshWatchlist
-        .filter(item => item.content)
-        .map(item => (item.content as any).tmdb_id)
-    );
-  }
+  const ids = await getWatchlistIds(userId);
+  watchlistTmdbIds = new Set();
+  ids.forEach(id => {
+    const num = Number(id);
+    if (!isNaN(num)) watchlistTmdbIds.add(num);
+  });
 
   const totalExcluded = watchlistTmdbIds.size + sessionShownIds.size;
 
@@ -725,15 +712,13 @@ export const getSmartRecommendations = async (
 
 // Force refresh - call when user adds to watchlist
 export const refreshWatchlistCache = async (userId: string) => {
-  const { data: freshWatchlist } = await supabase
-    .from('watchlist_items')
-    .select('tmdb_id')
-    .eq('user_id', userId);
-
-  if (freshWatchlist) {
-    watchlistTmdbIds = new Set(freshWatchlist.map(item => item.tmdb_id));
-    console.log('[SmartRecs] Refreshed watchlist cache:', watchlistTmdbIds.size, 'items');
-  }
+  const ids = await getWatchlistIds(userId);
+  watchlistTmdbIds = new Set();
+  ids.forEach(id => {
+    const num = Number(id);
+    if (!isNaN(num)) watchlistTmdbIds.add(num);
+  });
+  console.log('[SmartRecs] Refreshed watchlist cache:', watchlistTmdbIds.size, 'items');
 };
 
 // Clear all caches

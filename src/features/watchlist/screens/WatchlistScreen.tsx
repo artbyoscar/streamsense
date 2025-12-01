@@ -19,6 +19,7 @@ import { useAuth } from '@/features/auth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import Animated, { FadeOut, SlideOutRight, Layout } from 'react-native-reanimated';
 import { supabase } from '@/config/supabase';
+import { getWatchlist } from '../services/watchlistService';
 import { useTrending, getPosterUrl } from '@/hooks/useTMDb';
 import { useTheme } from '@/providers/ThemeProvider';
 // Removed getMixedRecommendations - now using getSmartRecommendations with parallel fetching
@@ -194,41 +195,12 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
-        .from('watchlist_items')
-        .select(`
-          id,
-          user_id,
-          content_id,
-          status,
-          priority,
-          rating,
-          streaming_services,
-          added_at,
-          content!inner (
-            id,
-            tmdb_id,
-            title,
-            type,
-            poster_url,
-            overview
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('added_at', { ascending: false });
-
-      if (error) throw error;
-
-      // Transform data: Supabase joins return content as array, convert to object
-      const transformedData = data?.map((item: any) => ({
-        ...item,
-        content: Array.isArray(item.content) ? item.content[0] : item.content,
-      })) as WatchlistItemWithContent[];
+      const data = await getWatchlist(user.id);
 
       // Group by status
-      const watchingItems = transformedData?.filter((item) => item.status === 'watching') || [];
-      const wantToWatchItems = transformedData?.filter((item) => item.status === 'want_to_watch') || [];
-      const watchedItems = transformedData?.filter((item) => item.status === 'watched') || [];
+      const watchingItems = data?.filter((item: any) => item.status === 'watching') || [];
+      const wantToWatchItems = data?.filter((item: any) => item.status === 'want_to_watch') || [];
+      const watchedItems = data?.filter((item: any) => item.status === 'watched') || [];
 
       setWatching(watchingItems);
       setWantToWatch(wantToWatchItems);

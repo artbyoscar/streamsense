@@ -19,72 +19,64 @@ import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/
 /**
  * Fetch all watchlist items for the current user
  */
-export async function fetchWatchlist(): Promise<any[]> {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+import { getRawWatchlist } from '@/services/watchlistDataService';
 
-  if (!user) {
-    throw new Error('User not authenticated');
-  }
-
+export const getWatchlist = async (userId: string) => {
   try {
-    // 1. Fetch the watchlist items (WITHOUT the join)
-    const { data: items, error } = await supabase
-      .from('watchlist_items')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    // 1. Get raw items safely
+    const rawItems = await getRawWatchlist(userId);
 
-    if (error) throw error;
-    if (!items || items.length === 0) return [];
-
-    // 2. Hydrate the data manually (Fetch details for each item)
+    // 2. Hydrate with API data (Manual Join)
     const enrichedItems = await Promise.all(
-      items.map(async (item) => {
+      rawItems.map(async (item) => {
+        if (!item.tmdb_id || !item.media_type) return item;
         try {
-          // Use tmdb_id and media_type/type from the item
-          // Fallback to 'movie' if type is missing, or skip if no ID
-          const tmdbId = item.tmdb_id;
-          const mediaType = item.media_type || item.type || 'movie';
-
-          if (tmdbId) {
-            // Fetch fresh details from TMDb
-            const details = await getContentDetails(tmdbId, mediaType as 'movie' | 'tv');
-            return {
-              ...item,
-              // Merge API data into the shape your UI expects
+          const details = await getContentDetails(item.tmdb_id, item.media_type);
+          // Merge API details with DB data
+          // We also construct a 'content' object to maintain compatibility with some UI components
+          // that might expect nested content (though we should move to flat structure eventually)
+          return {
+            ...item,
+            ...details,
+            ...item,
+            // Ensure we have fields expected by UI
+            poster_url: details.posterPath,
+            poster_path: details.posterPath,
+            backdrop_path: details.backdropPath,
+            vote_average: details.rating,
+            // Backwards compatibility for UI that expects nested content
+            content: {
+              id: item.content_id,
+              tmdb_id: item.tmdb_id,
               title: details.title,
-              poster_path: details.posterPath,
+              type: item.media_type,
+              poster_url: details.posterPath,
+              overview: details.overview,
               vote_average: details.rating,
-              genres: details.genres,
-              // Add content object to satisfy some UI expectations if needed
-              content: {
-                id: item.content_id, // Keep original content_id if available
-                tmdb_id: tmdbId,
-                title: details.title,
-                type: mediaType,
-                poster_url: details.posterPath, // Map posterPath to poster_url
-                overview: details.overview,
-                vote_average: details.rating,
-                genres: details.genres
-              }
-            };
-          }
-          return item; // Return as-is if missing ID
-        } catch (err) {
-          console.warn(`[Watchlist] Failed to hydrate item ${item.id}`, err);
+              genres: details.genres
+            }
+          };
+        } catch (e) {
+          console.warn(`[Watchlist] Failed to hydrate item ${item.id}`, e);
           return item;
         }
       })
     );
-
     return enrichedItems;
-  } catch (error: any) {
-    console.error('[Watchlist] Error fetching watchlist:', error);
-    throw new Error(error.message || 'Failed to fetch watchlist');
+  } catch (error) {
+    console.error('[Watchlist] Sync failed:', error);
+    return [];
   }
-}
+};
+
+/**
+ * @deprecated Use getWatchlist instead
+ */
+export const fetchWatchlist = async () => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+  return getWatchlist(user.id);
+};
 
 /**
  * Fetch watchlist item by content ID
