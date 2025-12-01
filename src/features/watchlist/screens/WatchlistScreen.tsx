@@ -95,6 +95,7 @@ export const WatchlistScreen: React.FC = () => {
   const [activeGenreFilter, setActiveGenreFilter] = useState<string>('All');
   const [mediaTypeFilter, setMediaTypeFilter] = useState<'all' | 'movie' | 'tv'>('all');
   const [loadingForYou, setLoadingForYou] = useState(false);
+  const [addedToWatchlistIds, setAddedToWatchlistIds] = useState<Set<number>>(new Set());
 
   // Fetch trending for suggestions
   const { data: trending } = useTrending('week', 1);
@@ -111,6 +112,21 @@ export const WatchlistScreen: React.FC = () => {
     }
 
     let filtered = [...allRecommendations];
+
+    // Filter out items already in watchlist or recently added
+    const watchlistTmdbIds = new Set<number>();
+    [...watching, ...wantToWatch, ...watched].forEach(item => {
+      if (item.content?.tmdb_id) {
+        watchlistTmdbIds.add(item.content.tmdb_id);
+      }
+    });
+
+    // Also filter out items marked as added locally
+    filtered = filtered.filter((item: any) => {
+      const itemId = item.id || item.tmdb_id;
+      return !watchlistTmdbIds.has(itemId) && !addedToWatchlistIds.has(itemId);
+    });
+    console.log(`[Watchlist] After watchlist exclusion: ${filtered.length} items`);
 
     // Debug: Log first item structure
     if (filtered.length > 0) {
@@ -189,7 +205,7 @@ export const WatchlistScreen: React.FC = () => {
 
     console.log(`[Watchlist] Final filtered: ${filtered.length} items`);
     return filtered;
-  }, [allRecommendations, activeGenreFilter, mediaTypeFilter]);
+  }, [allRecommendations, activeGenreFilter, mediaTypeFilter, watching, wantToWatch, watched, addedToWatchlistIds]);
 
   // ============================================================================
   // DEBUG - Log item structure when recommendations load
@@ -214,6 +230,14 @@ export const WatchlistScreen: React.FC = () => {
       });
     }
   }, [allRecommendations]);
+
+  // Clear temporarily tracked IDs when watchlist updates (items are now in actual watchlist)
+  useEffect(() => {
+    if (addedToWatchlistIds.size > 0) {
+      console.log('[Watchlist] Watchlist updated, clearing temporary tracking');
+      setAddedToWatchlistIds(new Set());
+    }
+  }, [watching.length, wantToWatch.length, watched.length]);
 
   // ============================================================================
   // HELPER FUNCTIONS
