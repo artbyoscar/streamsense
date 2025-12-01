@@ -14,6 +14,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
@@ -175,7 +176,7 @@ export const RecommendationsScreen: React.FC = () => {
       console.log('[Tips] Loading more blindspots, excluding', currentIds.length, 'items');
 
       // Fetch next batch with exclusions
-      const moreBlindspots = await getPileOfShame(user.id, 6, currentIds);
+      const moreBlindspots = await getPileOfShame(user.id, 12, currentIds);
 
       if (moreBlindspots.length > 0) {
         console.log('[Tips] Loaded', moreBlindspots.length, 'more blindspots');
@@ -344,7 +345,7 @@ export const RecommendationsScreen: React.FC = () => {
       setAchievements(achievementData);
 
       // Load pile of shame
-      const shame = await getPileOfShame(user.id);
+      const shame = await getPileOfShame(user.id, 20);
       console.log('[Tips] Pile of shame:', shame);
       setPileOfShameData(shame);
 
@@ -379,6 +380,15 @@ export const RecommendationsScreen: React.FC = () => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Shuffle items when screen comes into focus for variety
+  useFocusEffect(
+    useCallback(() => {
+      if (pileOfShameData.length > 0) {
+        setPileOfShameData(prev => [...prev].sort(() => Math.random() - 0.5));
+      }
+    }, [])
+  );
 
   const savingTips = [
     {
