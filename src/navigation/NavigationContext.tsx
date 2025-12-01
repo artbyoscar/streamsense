@@ -6,7 +6,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import type { UnifiedContent } from '@/types';
 
-type TabName = 'Home' | 'Watchlist' | 'Tips' | 'Settings';
+type TabName = 'Home' | 'Watchlist' | 'Discover' | 'Tips' | 'Settings';
 
 interface NavigationContextType {
   activeTab: TabName;

@@ -10,6 +10,7 @@ import { DashboardScreen } from '@/features/dashboard';
 import { WatchlistScreen } from '@/features/watchlist';
 import { SettingsScreen } from '@/features/settings';
 import { RecommendationsScreen } from '@/features/recommendations';
+import { SwipeScreen } from '@/features/discover/screens/SwipeScreen';
 import { SubscriptionForm } from '@/features/subscriptions/components/SubscriptionForm';
 import { ContentSearchModal } from '@/features/watchlist/components/ContentSearchModal';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
@@ -42,6 +43,7 @@ const Navigator: React.FC = () => {
     switch (activeTab) {
       case 'Home': return <DashboardScreen />;
       case 'Watchlist': return <WatchlistScreen />;
+      case 'Discover': return <SwipeScreen />;
       case 'Tips': return <RecommendationsScreen />;
       case 'Settings': return <SettingsScreen />;
       default: return <DashboardScreen />;
@@ -57,6 +59,7 @@ const Navigator: React.FC = () => {
         {[
           { name: 'Home' as const, icon: 'home' as const, iconOutline: 'home-outline' as const },
           { name: 'Watchlist' as const, icon: 'bookmark' as const, iconOutline: 'bookmark-outline' as const },
+          { name: 'Discover' as const, icon: 'cards' as const, iconOutline: 'cards-outline' as const },
           { name: 'Tips' as const, icon: 'lightbulb' as const, iconOutline: 'lightbulb-outline' as const },
           { name: 'Settings' as const, icon: 'cog' as const, iconOutline: 'cog-outline' as const },
         ].map((tab) => (
