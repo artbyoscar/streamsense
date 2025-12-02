@@ -19,6 +19,7 @@ import { contextualRecommendationService, ContextualRecommendationService } from
 import { llmRecommendationService } from './llmRecommendations';
 import { getSmartRecommendations } from './smartRecommendations'; // Fallback
 import { GLOBAL_EDGES } from '@/data/globalInterestEdges';
+import { PerformanceTimer } from '@/utils/performance';
 
 export interface OrchestratorStats {
   dnaComputations: number;
@@ -74,14 +75,15 @@ export class RecommendationOrchestrator {
    * @returns ContentDNA object (from cache or freshly computed)
    */
   async computeContentDNA(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<ContentDNA | null> {
-    try {
-      console.log(`[Orchestrator] Computing DNA for ${mediaType} ${tmdbId}...`);
+    const timer = new PerformanceTimer('Orchestrator: Compute DNA', { tmdbId, mediaType });
 
+    try {
       // Check Supabase cache first
       const cached = await this.getDNAFromCache(tmdbId, mediaType);
       if (cached) {
         console.log(`[Orchestrator] ✅ DNA cache hit for ${mediaType} ${tmdbId}`);
         this.stats.cacheHits++;
+        timer.end();
         return cached;
       }
 
@@ -96,8 +98,10 @@ export class RecommendationOrchestrator {
       await this.saveDNAToCache(tmdbId, mediaType, dna);
 
       console.log(`[Orchestrator] ✅ DNA computed and cached for ${mediaType} ${tmdbId}`);
+      timer.end();
       return dna;
     } catch (error) {
+      timer.end();
       console.error(`[Orchestrator] ❌ Error computing DNA for ${mediaType} ${tmdbId}:`, error);
       this.stats.errors++;
       return null;
@@ -112,13 +116,16 @@ export class RecommendationOrchestrator {
    * @returns Updated UserTasteProfile
    */
   async updateUserProfile(userId: string): Promise<UserTasteProfile | null> {
+    const timer = new PerformanceTimer('Orchestrator: Update profile', { userId });
+
     try {
       console.log(`[Orchestrator] Updating taste profile for user ${userId}...`);
 
-      // Build fresh taste profile
+      // Build fresh taste profile (this now includes batch fetching)
       const profile = await contentDNAService.buildUserTasteProfile(userId);
       if (!profile) {
         console.log(`[Orchestrator] ⚠️ No profile data for user ${userId}`);
+        timer.end();
         return null;
       }
 
@@ -141,8 +148,10 @@ export class RecommendationOrchestrator {
       console.log(`[Orchestrator]    Confidence: ${Math.round(profile.confidence * 100)}%`);
       console.log(`[Orchestrator]    Sample Size: ${profile.sampleSize} items`);
 
+      timer.end();
       return profile;
     } catch (error) {
+      timer.end();
       console.error(`[Orchestrator] ❌ Error updating profile for user ${userId}:`, error);
       this.stats.errors++;
       return null;
@@ -158,9 +167,10 @@ export class RecommendationOrchestrator {
    * @returns Array of recommendation lanes
    */
   async generateLanes(userId: string, context?: any): Promise<RecommendationLane[]> {
+    const timer = new PerformanceTimer('Orchestrator: Generate lanes', { userId });
+
     try {
       console.log(`[Orchestrator] Generating lanes for user ${userId}...`);
-      console.time('[Orchestrator] Lane generation');
 
       this.stats.laneGenerations++;
 
@@ -174,15 +184,16 @@ export class RecommendationOrchestrator {
       // - Layer 6: Contextual adjustments (automatic)
       const lanes = await recommendationLanesService.generateLanes(userId, context);
 
-      console.timeEnd('[Orchestrator] Lane generation');
       console.log(`[Orchestrator] ✅ Generated ${lanes.length} lanes for user ${userId}`);
 
       if (lanes.length > 0) {
         console.log(`[Orchestrator]    Top lane: "${lanes[0].title}" (${lanes[0].items.length} items)`);
       }
 
+      timer.end();
       return lanes;
     } catch (error) {
+      timer.end();
       console.error(`[Orchestrator] ❌ Error generating lanes for user ${userId}:`, error);
       this.stats.errors++;
 

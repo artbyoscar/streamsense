@@ -13,6 +13,7 @@ import {
   ContextualRecommendationService,
   type ViewingContext,
 } from './contextualRecommendations';
+import { PerformanceTimer } from '@/utils/performance';
 
 export interface ContentItem {
   id: number;
@@ -67,13 +68,16 @@ export class RecommendationLanesService {
    * @param context - Optional viewing context for Layer 6 adjustments. If not provided, auto-detects current context.
    */
   async generateLanes(userId: string, context?: ViewingContext): Promise<RecommendationLane[]> {
-    console.log(`[Lanes] Generating recommendation lanes for user ${userId}...`);
+    const timer = new PerformanceTimer('Lane generation', { userId });
 
     try {
-      // Build user's taste profile
+      console.log(`[Lanes] Generating recommendation lanes for user ${userId}...`);
+
+      // Build user's taste profile (now optimized with batch fetching)
       const profile = await contentDNAService.buildUserTasteProfile(userId);
       if (!profile) {
         console.log('[Lanes] No taste profile available, returning empty lanes');
+        timer.end();
         return [];
       }
 
@@ -189,8 +193,29 @@ export class RecommendationLanesService {
         }
       }
 
+      // PERFORMANCE OPTIMIZATION: Generate independent lanes in parallel
+      console.log('[Lanes] Fetching 6 independent lanes in parallel...');
+      const parallelTimer = new PerformanceTimer('Parallel lane fetch', { count: 6 });
+
+      const [
+        hiddenGems,
+        trendingForYou,
+        explorationRecs,
+        classics,
+        newReleases,
+        adjacentRecs,
+      ] = await Promise.all([
+        this.getHiddenGems(profile, 12),
+        this.getTrendingFiltered(profile, 15),
+        profile.explorationScore > 0.4 ? this.getExplorationRecommendations(profile, 12) : Promise.resolve([]),
+        this.getClassicEssentials(profile, 10),
+        this.getNewReleasesFiltered(profile, 15),
+        profile.discoveryOpportunities.length > 0 ? this.getAdjacentInterestRecommendations(profile, 10) : Promise.resolve([]),
+      ]);
+
+      parallelTimer.end();
+
       // Lane 6: Hidden Gems
-      const hiddenGems = await this.getHiddenGems(profile, 12);
       if (hiddenGems.length >= 5) {
         lanes.push({
           id: 'hidden_gems',
@@ -204,7 +229,6 @@ export class RecommendationLanesService {
       }
 
       // Lane 7: Trending That Matches Your Taste
-      const trendingForYou = await this.getTrendingFiltered(profile, 15);
       if (trendingForYou.length >= 5) {
         lanes.push({
           id: 'trending_for_you',
@@ -218,23 +242,19 @@ export class RecommendationLanesService {
       }
 
       // Lane 8: Exploration Lane (intentional variety)
-      if (profile.explorationScore > 0.4) {
-        const explorationRecs = await this.getExplorationRecommendations(profile, 12);
-        if (explorationRecs.length >= 5) {
-          lanes.push({
-            id: 'exploration',
-            title: 'Expand Your Horizons',
-            subtitle: 'Something different',
-            strategy: 'exploration',
-            items: explorationRecs,
-            explanation: 'Carefully selected content outside your usual genres',
-            priority: 55,
-          });
-        }
+      if (explorationRecs.length >= 5) {
+        lanes.push({
+          id: 'exploration',
+          title: 'Expand Your Horizons',
+          subtitle: 'Something different',
+          strategy: 'exploration',
+          items: explorationRecs,
+          explanation: 'Carefully selected content outside your usual genres',
+          priority: 55,
+        });
       }
 
       // Lane 9: Classic Essentials
-      const classics = await this.getClassicEssentials(profile, 10);
       if (classics.length >= 5) {
         lanes.push({
           id: 'classics',
@@ -248,7 +268,6 @@ export class RecommendationLanesService {
       }
 
       // Lane 10: New Releases For You
-      const newReleases = await this.getNewReleasesFiltered(profile, 15);
       if (newReleases.length >= 5) {
         lanes.push({
           id: 'new_releases',
@@ -262,19 +281,16 @@ export class RecommendationLanesService {
       }
 
       // Lane 11: Adjacent Interest Bridge
-      if (profile.discoveryOpportunities.length > 0) {
-        const adjacentRecs = await this.getAdjacentInterestRecommendations(profile, 10);
-        if (adjacentRecs.length >= 5) {
-          lanes.push({
-            id: 'adjacent_interests',
-            title: 'You Might Also Like',
-            subtitle: 'Based on your interests',
-            strategy: 'adjacent_interest',
-            items: adjacentRecs,
-            explanation: 'Content that bridges your existing interests to new territory',
-            priority: 40,
-          });
-        }
+      if (adjacentRecs.length >= 5) {
+        lanes.push({
+          id: 'adjacent_interests',
+          title: 'You Might Also Like',
+          subtitle: 'Based on your interests',
+          strategy: 'adjacent_interest',
+          items: adjacentRecs,
+          explanation: 'Content that bridges your existing interests to new territory',
+          priority: 40,
+        });
       }
 
       console.log(`[Lanes] Generated ${lanes.length} recommendation lanes`);
@@ -298,8 +314,10 @@ export class RecommendationLanesService {
 
       console.log('[Lanes] Context adjustments applied to all lanes');
 
+      timer.end();
       return lanes.sort((a, b) => b.priority - a.priority);
     } catch (error) {
+      timer.end();
       console.error('[Lanes] Error generating lanes:', error);
       return [];
     }

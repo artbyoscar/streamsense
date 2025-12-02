@@ -11,6 +11,8 @@
 
 import { supabase } from '@/config/supabase';
 import { tmdbApi } from '@/services/tmdb';
+import { batchFetchDetails } from '@/services/tmdbBatch';
+import { PerformanceTimer } from '@/utils/performance';
 
 export interface ContentDNA {
   // Core identifiers
@@ -198,34 +200,77 @@ export class ContentDNAService {
 
   /**
    * Fetch and compute DNA for a title
+   * @param tmdbId - TMDb ID
+   * @param mediaType - 'movie' or 'tv'
+   * @param prefetchedData - Optional pre-fetched data from batch operations (for performance)
    */
-  async computeDNA(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<ContentDNA> {
-    console.log(`[ContentDNA] Computing DNA for ${mediaType} ${tmdbId}...`);
+  async computeDNA(
+    tmdbId: number,
+    mediaType: 'movie' | 'tv',
+    prefetchedData?: {
+      keywords: { id: number; name: string }[];
+      credits: {
+        cast: { id: number; name: string; character: string; order: number }[];
+        crew: { id: number; name: string; job: string; department: string }[];
+      };
+      genres: { id: number; name: string }[];
+      vote_average: number;
+      vote_count: number;
+      popularity: number;
+      runtime?: number;
+      episode_run_time?: number[];
+    }
+  ): Promise<ContentDNA> {
+    const timer = new PerformanceTimer('DNA computation', { tmdbId, mediaType });
 
     try {
-      // Fetch all available metadata
-      const endpoint = mediaType === 'movie' ? '/movie' : '/tv';
-      const { data: details } = await tmdbApi.get(`${endpoint}/${tmdbId}`, {
-        params: {
-          append_to_response: 'keywords,credits,similar',
-        },
-      });
+      let details: any;
+      let keywordData: any[];
+      let credits: any;
+
+      if (prefetchedData) {
+        // Use pre-fetched data (from batch operations)
+        console.log(`[ContentDNA] Using pre-fetched data for ${mediaType} ${tmdbId}`);
+        details = {
+          genres: prefetchedData.genres,
+          vote_average: prefetchedData.vote_average,
+          vote_count: prefetchedData.vote_count,
+          popularity: prefetchedData.popularity,
+          runtime: prefetchedData.runtime,
+          episode_run_time: prefetchedData.episode_run_time,
+          keywords: { keywords: prefetchedData.keywords, results: prefetchedData.keywords },
+          overview: '', // Not critical for DNA computation
+        };
+        keywordData = prefetchedData.keywords;
+        credits = prefetchedData.credits;
+      } else {
+        // Fetch all available metadata
+        console.log(`[ContentDNA] Fetching metadata for ${mediaType} ${tmdbId}...`);
+        const endpoint = mediaType === 'movie' ? '/movie' : '/tv';
+        const { data } = await tmdbApi.get(`${endpoint}/${tmdbId}`, {
+          params: {
+            append_to_response: 'keywords,credits,similar',
+          },
+        });
+        details = data;
+        keywordData = details.keywords?.keywords || details.keywords?.results || [];
+        credits = details.credits || {};
+      }
 
       // Extract keyword strings
-      const keywordData = details.keywords?.keywords || details.keywords?.results || [];
-      const keywordStrings = keywordData.map((k: any) => k.name.toLowerCase());
+      const keywordStrings = keywordData.map((k: any) => k.name?.toLowerCase() || '');
 
       // Compute all DNA dimensions
       const tone = this.computeTone(details, keywordStrings);
       const themes = this.computeThemes(keywordStrings, details.overview || '');
       const pacing = this.computePacing(details, keywordStrings, mediaType);
-      const talent = this.extractTalent(details.credits || {});
+      const talent = this.extractTalent(credits);
       const aesthetic = this.computeAesthetic(details, keywordStrings, talent);
       const narrative = this.computeNarrative(keywordStrings);
       const content = this.computeContentSignals(details, keywordStrings);
       const production = this.computeProductionSignals(details);
 
-      console.log(`[ContentDNA] DNA computed for ${details.title || details.name}`);
+      timer.end();
 
       return {
         tmdbId,
@@ -243,6 +288,7 @@ export class ContentDNAService {
         similarTitles: details.similar?.results?.slice(0, 10).map((s: any) => s.id) || [],
       };
     } catch (error) {
+      timer.end();
       console.error(`[ContentDNA] Error computing DNA for ${mediaType} ${tmdbId}:`, error);
       throw error;
     }
@@ -555,6 +601,18 @@ export class ContentDNAService {
 
       console.log(`[TasteProfile] Analyzing ${watchlistItems.length} watchlist items...`);
 
+      // PERFORMANCE OPTIMIZATION: Batch fetch all TMDb data in parallel
+      const timer = new PerformanceTimer('Taste profile build', { itemCount: watchlistItems.length });
+
+      console.log(`[TasteProfile] Batch fetching TMDb data for ${watchlistItems.length} items...`);
+      const batchItems = watchlistItems.map(item => ({
+        tmdbId: item.tmdb_id,
+        mediaType: (item.media_type === 'tv' ? 'tv' : 'movie') as 'movie' | 'tv',
+      }));
+
+      const batchResults = await batchFetchDetails(batchItems, 10); // Fetch 10 items in parallel
+      console.log(`[TasteProfile] Batch fetch complete, computing DNA for ${batchResults.length} items...`);
+
       // Compute DNA for all watchlist items with weights
       const weightedProfiles: Array<{ dna: ContentDNA; weight: number }> = [];
       const dnaMap = new Map<number, ContentDNA>();
@@ -562,7 +620,16 @@ export class ContentDNAService {
       for (const item of watchlistItems) {
         try {
           const mediaType = item.media_type === 'tv' ? 'tv' : 'movie';
-          const dna = await this.computeDNA(item.tmdb_id, mediaType);
+
+          // Find pre-fetched data for this item
+          const batchResult = batchResults.find(r => r.tmdbId === item.tmdb_id && r.mediaType === mediaType);
+
+          // Compute DNA using pre-fetched data (if available)
+          const dna = await this.computeDNA(
+            item.tmdb_id,
+            mediaType,
+            batchResult?.details || undefined
+          );
 
           // Calculate weight based on recency, rating, and completion
           const weight = this.calculateItemWeight(item);
@@ -573,6 +640,8 @@ export class ContentDNAService {
           console.warn(`[TasteProfile] Failed to compute DNA for ${item.tmdb_id}:`, error);
         }
       }
+
+      timer.end();
 
       if (weightedProfiles.length === 0) {
         console.log('[TasteProfile] No DNA profiles computed');
