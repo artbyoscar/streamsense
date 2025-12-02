@@ -358,6 +358,18 @@ export const getSmartRecommendations = async (
     if (!isNaN(num)) watchlistTmdbIds.add(num);
   });
 
+  // SMART CACHE MANAGEMENT: Prevent session cache from growing too large
+  // When cache exceeds 500 items, keep only the most recent 200
+  if (sessionShownIds.size > 500) {
+    console.warn('[SmartRecs] Session cache too large (', sessionShownIds.size, '), pruning to 200 most recent items');
+    const idsArray = Array.from(sessionShownIds);
+    // Keep last 200 items (most recently added)
+    const recentIds = idsArray.slice(-200);
+    sessionShownIds = new Set(recentIds);
+    await saveSessionCache();
+    console.log('[SmartRecs] Session cache pruned to', sessionShownIds.size, 'items');
+  }
+
   const totalExcluded = watchlistTmdbIds.size + sessionShownIds.size;
 
   console.log('[SmartRecs] Getting recommendations:', {
@@ -430,6 +442,14 @@ export const getSmartRecommendations = async (
       if (!excludeSessionItems) {
         return Math.floor(Math.random() * 50) + 1; // Pages 1-50
       }
+
+      // SMART PAGE SELECTION: When session cache is large, use wider page range
+      // This prevents always filtering out page 1 content when user has seen lots of items
+      if (sessionShownIds.size > 300) {
+        console.log('[SmartRecs] Large session cache detected, using pages 1-20 for variety');
+        return Math.floor(Math.random() * 20) + 1; // Pages 1-20
+      }
+
       // For carousels, use lower range for better quality
       if (mediaType === 'movie' || mediaType === 'tv') {
         return Math.floor(Math.random() * 3) + 1;
@@ -464,45 +484,43 @@ export const getSmartRecommendations = async (
       console.log('[SmartRecs] Fetching movies with genre IDs:', movieGenreIds, 'query:', movieGenreQuery, 'page:', page,
         'mode:', pattern.mode, 'minRating:', minRating, 'minVotes:', minVoteCount);
 
-      const movieResponse = await tmdbApi.get('/discover/movie', {
-        params: {
-          with_genres: movieGenreQuery,  // Use | for OR query instead of , for AND
-          page,
-          sort_by: 'popularity.desc',
-          'vote_count.gte': minVoteCount,
-          'vote_average.gte': minRating,
-        },
-      });
+      let movies: any[] = [];
+      let attempts = 0;
+      const maxAttempts = 5;
 
-      let movies = (movieResponse.data?.results || [])
-        .map((item: any) => normalizeContentItem(item, 'movie'));
-
-      movies = filterItems(movies);
-
-      console.log('[SmartRecs] Movies after filtering:', movies.length, 'of', movieResponse.data?.results?.length);
-
-      // If we got very few results and this is movie-only mode, try another page
-      if (mediaType === 'movie' && movies.length < 5) {
-        page = page + 3; // Try a few pages ahead
-        console.log('[SmartRecs] Fetching more movies, page:', page);
-
-        const secondResponse = await tmdbApi.get('/discover/movie', {
+      // FALLBACK MECHANISM: Try multiple pages if current page returns 0 results
+      while (movies.length < 5 && attempts < maxAttempts) {
+        const movieResponse = await tmdbApi.get('/discover/movie', {
           params: {
-            with_genres: movieGenreQuery,  // Use same OR query
-            page,
+            with_genres: movieGenreQuery,  // Use | for OR query instead of , for AND
+            page: page + attempts,
             sort_by: 'popularity.desc',
-            'vote_count.gte': 100,
-            'vote_average.gte': 6.0,
+            'vote_count.gte': minVoteCount,
+            'vote_average.gte': minRating,
           },
         });
 
-        const moreMovies = (secondResponse.data?.results || [])
+        const fetchedMovies = (movieResponse.data?.results || [])
           .map((item: any) => normalizeContentItem(item, 'movie'));
 
-        const filteredMoreMovies = filterItems(moreMovies);
-        console.log('[SmartRecs] More movies after filtering:', filteredMoreMovies.length);
-        movies = [...movies, ...filteredMoreMovies];
+        const filteredMovies = filterItems(fetchedMovies);
+
+        console.log(`[SmartRecs] Movies page ${page + attempts}: ${filteredMovies.length} of ${fetchedMovies.length} (attempt ${attempts + 1}/${maxAttempts})`);
+
+        if (filteredMovies.length === 0 && fetchedMovies.length > 0) {
+          console.warn(`[SmartRecs] Page ${page + attempts} returned 0 after filtering. All ${fetchedMovies.length} items were excluded. Trying next page.`);
+        }
+
+        movies = [...movies, ...filteredMovies];
+        attempts++;
+
+        // Break early if we got enough results
+        if (movies.length >= (mediaType === 'movie' ? 10 : 5)) {
+          break;
+        }
       }
+
+      console.log('[SmartRecs] Movies total after', attempts, 'attempts:', movies.length);
 
       // Add to session cache only for mixed mode
       if (mediaType === 'mixed') {
@@ -530,48 +548,43 @@ export const getSmartRecommendations = async (
       console.log('[SmartRecs] Fetching TV with genre IDs:', tvGenreIds, 'query:', genreQuery, 'page:', page,
         'mode:', pattern.mode, 'minRating:', minRating, 'minVotes:', minVoteCount);
 
-      const tvResponse = await tmdbApi.get('/discover/tv', {
-        params: {
-          with_genres: genreQuery,  // Use | for OR query instead of , for AND
-          page,
-          sort_by: 'popularity.desc',
-          'vote_count.gte': minVoteCount,
-          'vote_average.gte': minRating,
-        },
-      });
+      let tvShows: any[] = [];
+      let attempts = 0;
+      const maxAttempts = 5;
 
-      console.log('[SmartRecs] TV API returned:', tvResponse.data?.results?.length || 0, 'items');
-
-      let tvShows = (tvResponse.data?.results || [])
-        .map((item: any) => normalizeContentItem(item, 'tv'));
-
-      tvShows = filterItems(tvShows);
-
-      console.log('[SmartRecs] TV after filtering:', tvShows.length, 'of', tvResponse.data?.results?.length);
-
-      // If we got very few results and this is TV-only mode, try fallback strategies
-      if (mediaType === 'tv' && tvShows.length < 5) {
-        console.log('[SmartRecs] Got few TV results, trying fallback...');
-
-        // Try fetching popular TV without genre filter
-        const fallbackResponse = await tmdbApi.get('/discover/tv', {
+      // FALLBACK MECHANISM: Try multiple pages if current page returns 0 results
+      while (tvShows.length < 5 && attempts < maxAttempts) {
+        const tvResponse = await tmdbApi.get('/discover/tv', {
           params: {
-            page: getRandomPage(),
+            with_genres: genreQuery,  // Use | for OR query instead of , for AND
+            page: page + attempts,
             sort_by: 'popularity.desc',
-            'vote_count.gte': 100,
-            'vote_average.gte': 6.5,
+            'vote_count.gte': minVoteCount,
+            'vote_average.gte': minRating,
           },
         });
 
-        console.log('[SmartRecs] Fallback TV (no genre filter) returned:', fallbackResponse.data?.results?.length || 0, 'items');
-
-        const moreTVShows = (fallbackResponse.data?.results || [])
+        const fetchedTV = (tvResponse.data?.results || [])
           .map((item: any) => normalizeContentItem(item, 'tv'));
 
-        const filteredMoreTV = filterItems(moreTVShows);
-        console.log('[SmartRecs] Fallback TV after filtering:', filteredMoreTV.length);
-        tvShows = [...tvShows, ...filteredMoreTV];
+        const filteredTV = filterItems(fetchedTV);
+
+        console.log(`[SmartRecs] TV page ${page + attempts}: ${filteredTV.length} of ${fetchedTV.length} (attempt ${attempts + 1}/${maxAttempts})`);
+
+        if (filteredTV.length === 0 && fetchedTV.length > 0) {
+          console.warn(`[SmartRecs] Page ${page + attempts} returned 0 after filtering. All ${fetchedTV.length} items were excluded. Trying next page.`);
+        }
+
+        tvShows = [...tvShows, ...filteredTV];
+        attempts++;
+
+        // Break early if we got enough results
+        if (tvShows.length >= (mediaType === 'tv' ? 10 : 5)) {
+          break;
+        }
       }
+
+      console.log('[SmartRecs] TV total after', attempts, 'attempts:', tvShows.length);
 
       // Add to session cache only for mixed mode
       if (mediaType === 'mixed') {
