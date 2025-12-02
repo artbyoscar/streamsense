@@ -8,6 +8,11 @@ import { supabase } from '@/config/supabase';
 import { tmdbApi } from '@/services/tmdb';
 import { contentDNAService, ContentDNA, UserTasteProfile } from './contentDNA';
 import { llmRecommendationService } from './llmRecommendations';
+import {
+  contextualRecommendationService,
+  ContextualRecommendationService,
+  type ViewingContext,
+} from './contextualRecommendations';
 
 export interface ContentItem {
   id: number;
@@ -56,15 +61,10 @@ export type LaneStrategy =
   | 'adjacent_interest'      // Bridge to new genres
   | 'llm_powered';           // AI-curated with reasoning
 
-export interface ViewingContext {
-  timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'lateNight';
-  dayOfWeek?: 'weekday' | 'weekend';
-  mood?: 'relaxed' | 'energetic' | 'thoughtful';
-}
-
 export class RecommendationLanesService {
   /**
    * Generate multiple recommendation lanes for a user
+   * @param context - Optional viewing context for Layer 6 adjustments. If not provided, auto-detects current context.
    */
   async generateLanes(userId: string, context?: ViewingContext): Promise<RecommendationLane[]> {
     console.log(`[Lanes] Generating recommendation lanes for user ${userId}...`);
@@ -76,6 +76,10 @@ export class RecommendationLanesService {
         console.log('[Lanes] No taste profile available, returning empty lanes');
         return [];
       }
+
+      // Get or auto-detect viewing context for Layer 6 adjustments
+      const viewingContext = context || ContextualRecommendationService.getCurrentContext();
+      console.log('[Lanes] Viewing context:', viewingContext);
 
       const recentWatched = await this.getRecentWatched(userId, 10);
       const lanes: RecommendationLane[] = [];
@@ -114,7 +118,7 @@ export class RecommendationLanesService {
           userId,
           tasteProfile: profile,
           recentWatched: recentWatched.slice(0, 5),
-          currentMood: context?.mood,
+          currentMood: viewingContext.recentMood,
           limit: 10,
         });
 
@@ -274,6 +278,26 @@ export class RecommendationLanesService {
       }
 
       console.log(`[Lanes] Generated ${lanes.length} recommendation lanes`);
+
+      // LAYER 6: Apply contextual adjustments to all lanes
+      console.log('[Lanes] Applying Layer 6 contextual adjustments...');
+      for (const lane of lanes) {
+        if (lane.items.length > 0) {
+          try {
+            lane.items = await contextualRecommendationService.getContextAwareRecommendations(
+              userId,
+              viewingContext,
+              lane.items
+            );
+          } catch (error) {
+            console.warn(`[Lanes] Failed to apply context to lane ${lane.id}:`, error);
+            // Continue with original ordering if context adjustment fails
+          }
+        }
+      }
+
+      console.log('[Lanes] Context adjustments applied to all lanes');
+
       return lanes.sort((a, b) => b.priority - a.priority);
     } catch (error) {
       console.error('[Lanes] Error generating lanes:', error);
