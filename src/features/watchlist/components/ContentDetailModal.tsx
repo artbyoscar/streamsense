@@ -247,6 +247,13 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               await trackGenreInteraction(user.id, genreIds, contentType, 'START_WATCHING');
             } else if (selectedStatus === 'watched') {
               await trackGenreInteraction(user.id, genreIds, contentType, 'COMPLETE_WATCHING');
+
+              // Update taste profile after completing content
+              recommendationOrchestrator.updateUserProfile(user.id).then(() => {
+                console.log('[ContentDetail] User profile updated after completing content');
+              }).catch((error) => {
+                console.error('[ContentDetail] Error updating user profile:', error);
+              });
             }
           }
 
@@ -299,6 +306,13 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             await trackGenreInteraction(user.id, genreIds, contentType, 'ADD_TO_WATCHLIST');
             await trackGenreInteraction(user.id, genreIds, contentType, 'COMPLETE_WATCHING');
 
+            // Update taste profile after completing content
+            recommendationOrchestrator.updateUserProfile(user.id).then(() => {
+              console.log('[ContentDetail] User profile updated after completing content');
+            }).catch((error) => {
+              console.error('[ContentDetail] Error updating user profile:', error);
+            });
+
             // Track rating if provided
             if (rating >= 4) {
               // 4, 4.5, or 5 = high rating
@@ -307,16 +321,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               // 0.5, 1, 1.5, or 2 = low rating
               await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_LOW');
             }
-            // 2.5, 3, 3.5 = neutral, no tracking
-
-            // Update user taste profile after rating
-            if (rating > 0) {
-              recommendationOrchestrator.updateUserProfile(user.id).then(() => {
-                console.log('[ContentDetail] User profile updated after rating');
-              }).catch((error) => {
-                console.error('[ContentDetail] Error updating user profile:', error);
-              });
-            }
+            // 2.5, 3, 3.5 = neutral, no tracking (profile already updated above)
           }
         }
 

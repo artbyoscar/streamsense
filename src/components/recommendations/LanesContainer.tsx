@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useAuth } from '@/contexts/AuthContext';
 import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
+import { useTasteProfile } from '@/hooks/useTasteProfile';
 import type { RecommendationLane as LaneType } from '@/services/recommendationLanes';
 import { RecommendationLane } from './RecommendationLane';
 import { LaneSkeleton } from './LaneSkeleton';
@@ -22,11 +23,17 @@ import { TasteSignatureBanner } from './TasteSignatureBanner';
 export const LanesContainer: React.FC = () => {
   const { user } = useAuth();
   const [lanes, setLanes] = useState<LaneType[]>([]);
-  const [tasteSignature, setTasteSignature] = useState<string>('');
-  const [confidence, setConfidence] = useState<number>(0.5);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Use taste profile hook for automatic caching and staleness management
+  const {
+    profile,
+    isLoading: profileLoading,
+    isStale,
+    refreshProfile,
+  } = useTasteProfile(user?.id);
 
   const loadRecommendations = async (isRefresh = false) => {
     if (!user?.id) return;
@@ -41,16 +48,14 @@ export const LanesContainer: React.FC = () => {
 
       console.log('[LanesContainer] Loading recommendations for user:', user.id);
 
+      // Refresh profile if stale and this is a manual refresh
+      if (isRefresh && isStale) {
+        console.log('[LanesContainer] Profile is stale, refreshing...');
+        await refreshProfile();
+      }
+
       // Generate lanes using orchestrator
       const generatedLanes = await recommendationOrchestrator.generateLanes(user.id);
-
-      // Get taste profile for signature
-      const profile = await recommendationOrchestrator['getUserProfile'](user.id);
-
-      if (profile) {
-        setTasteSignature(profile.tasteSignature);
-        setConfidence(profile.confidence);
-      }
 
       setLanes(generatedLanes);
       console.log('[LanesContainer] Loaded', generatedLanes.length, 'lanes');
@@ -145,10 +150,10 @@ export const LanesContainer: React.FC = () => {
       }
     >
       {/* Taste Signature Banner */}
-      {tasteSignature && (
+      {profile?.tasteSignature && (
         <TasteSignatureBanner
-          signature={tasteSignature}
-          confidence={confidence}
+          signature={profile.tasteSignature}
+          confidence={profile.confidence}
         />
       )}
 
