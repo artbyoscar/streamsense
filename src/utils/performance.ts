@@ -308,6 +308,157 @@ export function measureTimeToInteractive(screenName: string): void {
 }
 
 // ============================================================================
+// RECOMMENDATION PERFORMANCE TRACKING
+// ============================================================================
+
+interface PerformanceMetric {
+  operation: string;
+  duration: number;
+  timestamp: number;
+  details?: Record<string, any>;
+}
+
+const metrics: PerformanceMetric[] = [];
+const MAX_METRICS = 100; // Keep only last 100 metrics
+
+/**
+ * Performance timer for recommendation operations
+ */
+export class PerformanceTimer {
+  private startTime: number;
+  private operation: string;
+  private details?: Record<string, any>;
+
+  constructor(operation: string, details?: Record<string, any>) {
+    this.operation = operation;
+    this.details = details;
+    this.startTime = Date.now();
+  }
+
+  end(): number {
+    const duration = Date.now() - this.startTime;
+    this.logPerformance(duration);
+    return duration;
+  }
+
+  private logPerformance(duration: number): void {
+    const metric: PerformanceMetric = {
+      operation: this.operation,
+      duration,
+      timestamp: Date.now(),
+      details: this.details,
+    };
+
+    // Add to metrics array
+    metrics.push(metric);
+
+    // Keep only last MAX_METRICS
+    if (metrics.length > MAX_METRICS) {
+      metrics.shift();
+    }
+
+    // Log to console with color coding
+    const indicator = duration < 100 ? '✓' : duration < 500 ? '⚠' : '✗';
+    const detailsStr = this.details ? ` ${JSON.stringify(this.details)}` : '';
+    console.log(`[Perf] ${indicator} ${this.operation}: ${duration}ms${detailsStr}`);
+  }
+}
+
+/**
+ * Batch timer for measuring multiple operations
+ */
+export class BatchTimer {
+  private operation: string;
+  private batchSize: number;
+  private startTime: number;
+
+  constructor(operation: string, batchSize: number) {
+    this.operation = operation;
+    this.batchSize = batchSize;
+    this.startTime = Date.now();
+  }
+
+  end(): void {
+    const duration = Date.now() - this.startTime;
+    const avgPerItem = duration / this.batchSize;
+
+    const metric: PerformanceMetric = {
+      operation: this.operation,
+      duration,
+      timestamp: Date.now(),
+      details: {
+        batchSize: this.batchSize,
+        avgPerItem: Math.round(avgPerItem),
+      },
+    };
+
+    metrics.push(metric);
+    if (metrics.length > MAX_METRICS) {
+      metrics.shift();
+    }
+
+    console.log(`[Perf] ${this.operation}: ${duration}ms (${this.batchSize} items, ${Math.round(avgPerItem)}ms/item)`);
+  }
+}
+
+/**
+ * Get all performance metrics
+ */
+export function getPerformanceMetrics(): PerformanceMetric[] {
+  return [...metrics];
+}
+
+/**
+ * Get metrics summary
+ */
+export function getPerformanceSummary(): Record<string, {
+  count: number;
+  avgDuration: number;
+  minDuration: number;
+  maxDuration: number;
+}> {
+  const summary: Record<string, any> = {};
+
+  metrics.forEach((metric) => {
+    if (!summary[metric.operation]) {
+      summary[metric.operation] = {
+        count: 0,
+        total: 0,
+        min: Infinity,
+        max: 0,
+      };
+    }
+
+    const s = summary[metric.operation];
+    s.count++;
+    s.total += metric.duration;
+    s.min = Math.min(s.min, metric.duration);
+    s.max = Math.max(s.max, metric.duration);
+  });
+
+  // Convert to final format
+  Object.keys(summary).forEach((key) => {
+    const s = summary[key];
+    summary[key] = {
+      count: s.count,
+      avgDuration: Math.round(s.total / s.count),
+      minDuration: s.min,
+      maxDuration: s.max,
+    };
+  });
+
+  return summary;
+}
+
+/**
+ * Clear performance metrics
+ */
+export function clearPerformanceMetrics(): void {
+  metrics.length = 0;
+  console.log('[Perf] Metrics cleared');
+}
+
+// ============================================================================
 // REACT IMPORTS (needed for hooks)
 // ============================================================================
 
