@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
 import { UnifiedContent } from '@/types';
+import { isAnime, isWesternAnimation } from '@/utils/genreUtils';
 
 // Map genre names to IDs (must match what's used in WatchlistScreen/smartRecommendations)
 const GENRE_NAME_TO_ID: Record<string, number[]> = {
@@ -100,8 +101,14 @@ export const useRecommendationCache = (userId: string | undefined) => {
                     const targetIds = GENRE_NAME_TO_ID[genre];
 
                     const genreItems = validItems.filter(item => {
-                        // Check genre IDs
-                        // Handle both number arrays (genre_ids) and object arrays (genres)
+                        // Special handling for Anime vs Animation using utility functions
+                        if (genre === 'Anime') {
+                            return isAnime(item);
+                        } else if (genre === 'Animation') {
+                            return isWesternAnimation(item);
+                        }
+
+                        // Standard genre filtering for all other genres
                         const itemGenreIds: number[] = [];
 
                         if (item.genre_ids && Array.isArray(item.genre_ids)) {
@@ -115,28 +122,11 @@ export const useRecommendationCache = (userId: string | undefined) => {
                             });
                         }
 
-                        // Debug log for first few items of first genre to verify structure
-                        if (genre === genreNames[0] && validItems.indexOf(item) < 3) {
-                            console.log(`[RecCache] Item: ${item.title}, Genres:`, itemGenreIds);
-                        }
-
-                        const hasMatch = itemGenreIds.some((id: number) => targetIds.includes(id));
-
-                        // Special handling for Anime vs Animation
-                        if (genre === 'Anime') {
-                            const isAnimated = itemGenreIds.includes(16);
-                            const isJapanese = item.original_language === 'ja';
-                            return isAnimated && isJapanese;
-                        } else if (genre === 'Animation') {
-                            const isAnimated = itemGenreIds.includes(16);
-                            const isJapanese = item.original_language === 'ja';
-                            return isAnimated && !isJapanese;
-                        }
-
-                        return hasMatch;
+                        return itemGenreIds.some((id: number) => targetIds.includes(id));
                     });
 
                     byGenre.set(genre, genreItems);
+                    console.log(`[RecCache] Genre '${genre}': ${genreItems.length} items`);
                 }
 
                 // Pre-organize by media type
@@ -240,20 +230,31 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
                             // Update byGenre for affected genres
                             validNew.forEach(item => {
-                                const itemGenreIds: number[] = [];
-                                if (item.genre_ids && Array.isArray(item.genre_ids)) {
-                                    itemGenreIds.push(...item.genre_ids);
-                                }
-                                if (item.genres && Array.isArray(item.genres)) {
-                                    item.genres.forEach((g: any) => {
-                                        if (typeof g === 'number') itemGenreIds.push(g);
-                                        else if (g && g.id) itemGenreIds.push(g.id);
-                                    });
-                                }
-
                                 // Update all genre buckets that this item belongs to
                                 for (const [genreName, genreIds] of Object.entries(GENRE_NAME_TO_ID)) {
-                                    if (itemGenreIds.some(id => genreIds.includes(id))) {
+                                    let shouldAdd = false;
+
+                                    // Special handling for Anime vs Animation
+                                    if (genreName === 'Anime') {
+                                        shouldAdd = isAnime(item);
+                                    } else if (genreName === 'Animation') {
+                                        shouldAdd = isWesternAnimation(item);
+                                    } else {
+                                        // Standard genre matching
+                                        const itemGenreIds: number[] = [];
+                                        if (item.genre_ids && Array.isArray(item.genre_ids)) {
+                                            itemGenreIds.push(...item.genre_ids);
+                                        }
+                                        if (item.genres && Array.isArray(item.genres)) {
+                                            item.genres.forEach((g: any) => {
+                                                if (typeof g === 'number') itemGenreIds.push(g);
+                                                else if (g && g.id) itemGenreIds.push(g.id);
+                                            });
+                                        }
+                                        shouldAdd = itemGenreIds.some(id => genreIds.includes(id));
+                                    }
+
+                                    if (shouldAdd) {
                                         const existing = cache.byGenre.get(genreName) || [];
                                         cache.byGenre.set(genreName, [...existing, item]);
                                     }
