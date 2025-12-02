@@ -13,6 +13,9 @@ import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
 import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/ThemeProvider';
 import { initializeExclusions } from './src/services/smartRecommendations';
+import { getPileOfShame } from './src/services/pileOfShame';
+import { tipsCache } from './src/services/tipsCache';
+import { supabase } from './src/config/supabase';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +29,39 @@ const AuthScreenContext = React.createContext<{
 });
 
 export const useAuthScreen = () => React.useContext(AuthScreenContext);
+
+/**
+ * Preload Tips page data in the background
+ * This ensures the Worth Discovering section loads instantly
+ */
+const preloadTipsData = async (userId: string) => {
+  try {
+    console.log('[Preload] Starting tips data preload...');
+
+    // Load watchlist IDs for exclusions
+    const { data: watchlistItems } = await supabase
+      .from('watchlist_items')
+      .select('content(tmdb_id)')
+      .eq('user_id', userId);
+
+    const watchlistIds = watchlistItems
+      ?.filter(item => item.content)
+      .map(item => (item.content as any).tmdb_id) || [];
+
+    console.log('[Preload] Fetching blindspots with', watchlistIds.length, 'exclusions');
+
+    // Load blindspots (Worth Discovering)
+    const blindspots = await getPileOfShame(userId, 12, watchlistIds);
+
+    // Cache them
+    tipsCache.set('blindspots', blindspots);
+
+    console.log('[Preload] Tips data cached:', blindspots.length, 'blindspot items');
+  } catch (error) {
+    console.warn('[Preload] Failed to preload tips:', error);
+    // Don't throw - this is a background operation
+  }
+};
 
 // Wrapper component that handles Login/Register switching
 function AuthFlow() {
@@ -57,6 +93,13 @@ function AppContent() {
     if (isAuthenticated && user?.id) {
       console.log('[App] Initializing exclusions for user:', user.id);
       initializeExclusions(user.id);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  // Preload Tips page data in background for instant loading
+  useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      preloadTipsData(user.id);
     }
   }, [isAuthenticated, user?.id]);
 

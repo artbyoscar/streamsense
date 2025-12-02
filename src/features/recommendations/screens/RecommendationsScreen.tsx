@@ -39,6 +39,7 @@ import { AnimatedCarouselItem, useAnimatedCarousel } from '@/components';
 import * as Haptics from 'expo-haptics';
 import { generateCoachingSuggestions, type CoachingSuggestion } from '@/services/subscriptionCoachService';
 import { tipsExclusionService } from '@/services/tipsExclusionService';
+import { tipsCache } from '@/services/tipsCache';
 
 // Streaming services with genres they're known for
 const STREAMING_SERVICES = [
@@ -193,7 +194,11 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
 
       if (moreBlindspots.length > 0) {
         console.log('[Tips] Loaded', moreBlindspots.length, 'more blindspots');
-        setPileOfShameData(prev => [...prev, ...moreBlindspots]);
+        const updatedData = [...pileOfShameData, ...moreBlindspots];
+        setPileOfShameData(updatedData);
+
+        // Update cache with new items
+        tipsCache.set('blindspots', updatedData);
 
         // Haptic feedback for successful load
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -439,29 +444,44 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
         setLoadingRewatch(false);
       }
 
-      // Load Pile of Shame separately (can be slow, load after rewatch)
+      // Load Pile of Shame - check cache first for instant loading
       // Exclude everything in watchlist AND everything in rewatch list
       const excludedIds = tipsExclusionService.getAllExcludedIds();
       console.log('[Tips] Loading blindspots with', excludedIds.length, 'exclusions');
 
-      // Load with timeout - start with 12 items instead of 20 for faster initial load
-      const shamePromise = withTimeout(
-        getPileOfShame(user.id, 12, excludedIds),
-        8000, // 8 second timeout
-        []
-      );
-
-      shamePromise.then(shame => {
-        console.log('[Tips] Pile of shame:', shame);
-        setPileOfShameData(shame);
+      // Check cache first
+      const cachedBlindspots = tipsCache.get('blindspots');
+      if (cachedBlindspots && cachedBlindspots.length > 0) {
+        console.log('[Tips] Using cached blindspots:', cachedBlindspots.length, 'items');
+        setPileOfShameData(cachedBlindspots);
         setLoadingPileOfShame(false);
 
         // Mark hidden gems as shown
-        tipsExclusionService.markShown('hiddenGems', shame.map(s => s.id));
-      }).catch(error => {
-        console.error('[Tips] Pile of shame failed:', error);
-        setLoadingPileOfShame(false);
-      });
+        tipsExclusionService.markShown('hiddenGems', cachedBlindspots.map((s: any) => s.id));
+      } else {
+        // Fetch if not cached
+        console.log('[Tips] No cache found, fetching blindspots...');
+        const shamePromise = withTimeout(
+          getPileOfShame(user.id, 12, excludedIds),
+          8000, // 8 second timeout
+          []
+        );
+
+        shamePromise.then(shame => {
+          console.log('[Tips] Pile of shame:', shame);
+          setPileOfShameData(shame);
+          setLoadingPileOfShame(false);
+
+          // Cache for next time
+          tipsCache.set('blindspots', shame);
+
+          // Mark hidden gems as shown
+          tipsExclusionService.markShown('hiddenGems', shame.map(s => s.id));
+        }).catch(error => {
+          console.error('[Tips] Pile of shame failed:', error);
+          setLoadingPileOfShame(false);
+        });
+      }
 
       // Calculate service insights - how many favorites are on each service
       const insights: Record<string, number> = {};
@@ -1330,6 +1350,11 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
           if (selectedContent) {
             // Use 'success' haptic for adding to watchlist
             removePileItem(selectedContent.id, 'success');
+
+            // Update cache - remove the added item
+            const updatedData = pileOfShameData.filter(item => item.id !== selectedContent.id);
+            setPileOfShameData(updatedData);
+            tipsCache.set('blindspots', updatedData);
           }
           // Don't refresh the entire pile - let user continue browsing
           // The pile will naturally refresh when user navigates away and returns
