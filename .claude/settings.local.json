@@ -1,9 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(done)",
-      "Bash(while IFS= read -r file)",
-      "Bash(do awk '/\\.map\\s*\\(/{found=1; line=$0} found && /<>/{print FILENAME\"\"\"\":\"\"\"\"NR\"\"\"\":\"\"\"\"line\"\"\"\":\"\"\"\"$0} found && /<\\/>/   {found=0}' \"$file\")"
+      "Bash(timeout:*)",
+      "Bash(ping:*)"
     ],
     "deny": [],
     "ask": []
