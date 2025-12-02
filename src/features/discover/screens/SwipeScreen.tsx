@@ -595,23 +595,23 @@ export const SwipeScreen: React.FC = () => {
           { paddingBottom: Math.max(insets.bottom, 20) + 20 },
         ]}
       >
-        <View style={styles.buttonsRow}>
+        <View style={styles.primaryButtonsRow}>
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
             onPress={() => handleButtonPress('hide')}
           >
-            <Ionicons name="close" size={32} color="#FFFFFF" />
+            <Ionicons name="close" size={28} color="#FFFFFF" />
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
             onPress={() => handleButtonPress('watchlist')}
           >
-            <Ionicons name="heart" size={32} color="#FFFFFF" />
+            <Ionicons name="heart" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.buttonsRow}>
+        <View style={styles.secondaryButtonsRow}>
           <TouchableOpacity
             style={[styles.actionButton, styles.watchingButton, { backgroundColor: colors.primary }]}
             onPress={() => handleButtonPress('watching')}
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: 20,
-    marginBottom: 10,
+    marginBottom: 4,  // Reduced from 10 to move title higher
     zIndex: 10,
   },
   headerTitle: {
@@ -747,12 +747,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 120,
+    marginBottom: 160,  // Increased from 120 to push buttons lower
     zIndex: 1,
   },
   card: {
-    width: CARD_WIDTH,
-    height: SCREEN_HEIGHT * 0.65,
+    width: SCREEN_WIDTH * 0.85,  // Changed from 0.9 to 0.85 for smaller card
+    maxWidth: 320,  // Added max width constraint
+    height: SCREEN_HEIGHT * 0.6,  // Reduced from 0.65 for better proportion
     borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -827,20 +828,20 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 40,  // Reduced from 60 to push buttons lower
     width: '100%',
     zIndex: 50,
     elevation: 20,
     flexDirection: 'column', // Stack rows vertically
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    paddingHorizontal: 24,  // Increased horizontal padding
+    paddingTop: 8,  // Reduced top padding
   },
   actionButton: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 64,  // Slightly larger from 60
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
@@ -864,7 +865,7 @@ const styles = StyleSheet.create({
   },
   instructions: {
     position: 'absolute',
-    top: 120,
+    top: 110,  // Reduced from 120 to move higher with header
     left: 20,
     right: 20,
     flexDirection: 'row',
@@ -909,14 +910,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  buttonsRow: {
+  primaryButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 48,  // Large spacing between X and Heart buttons
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 16,  // Spacing between primary and secondary rows
     width: '100%',
-    maxWidth: 340, // Prevent buttons from getting too wide on tablets
+    maxWidth: 340,
+  },
+  secondaryButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,  // Smaller spacing between Watching and Watched buttons
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 0,
+    width: '100%',
+    maxWidth: 340,
+  },
+  buttonsRow: {
+    // Legacy - keeping for backwards compatibility
+    flexDirection: 'row',
+    gap: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    width: '100%',
+    maxWidth: 340,
   },
   watchedButton: {
     minWidth: 120, // Match watchingButton
