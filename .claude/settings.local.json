@@ -1,32 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dir:*)",
-      "Bash(npm install:*)",
-      "Bash(npm run type-check:*)",
-      "Bash(npm run format:*)",
-      "Bash(powershell:*)",
-      "Bash(tree:*)",
-      "Bash(mv:*)",
-      "Bash(npx expo start:*)",
-      "Bash(findstr:*)",
-      "Bash(grep:*)",
-      "Bash(npm ls:*)",
-      "Bash(npm uninstall:*)",
-      "Bash(if [ -f .env ])",
-      "Bash(then grep -E \"^(EXPO_PUBLIC_|SUPABASE_)\" .env)",
-      "Bash(else echo \"No .env file found\")",
-      "Bash(fi)",
-      "Bash(npx react-native start --reset-cache)",
-      "Bash(cat:*)",
-      "Bash(taskkill:*)",
-      "Bash(pkill:*)",
-      "Bash(ls:*)",
-      "Bash(npx tsc:*)",
-      "Bash(xargs:*)",
-      "Bash(netstat:*)",
-      "Bash(node -e:*)",
-      "Bash(find:*)"
+      "Bash(done)",
+      "Bash(while IFS= read -r file)",
+      "Bash(do awk '/\\.map\\s*\\(/{found=1; line=$0} found && /<>/{print FILENAME\"\"\"\":\"\"\"\"NR\"\"\"\":\"\"\"\"line\"\"\"\":\"\"\"\"$0} found && /<\\/>/   {found=0}' \"$file\")"
     ],
     "deny": [],
     "ask": []

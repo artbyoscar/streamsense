@@ -69,8 +69,8 @@ export const PlaidConnectionOnboardingScreen: React.FC<PlaidConnectionOnboarding
 
       {/* Benefits */}
       <View style={styles.benefitsSection}>
-        {BENEFITS.map((benefit, index) => (
-          <View key={index} style={styles.benefit}>
+        {BENEFITS.map((benefit) => (
+          <View key={benefit.title} style={styles.benefit}>
             <View style={styles.benefitIcon}>
               <MaterialCommunityIcons
                 name={benefit.icon}

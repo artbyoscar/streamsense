@@ -187,8 +187,8 @@ export const PremiumScreen: React.FC = () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Premium Features</Text>
 
-          {PREMIUM_FEATURES.map((feature, index) => (
-            <View key={index} style={styles.featureItem}>
+          {PREMIUM_FEATURES.map((feature) => (
+            <View key={feature.title} style={styles.featureItem}>
               <View style={styles.featureIconContainer}>
                 <MaterialCommunityIcons
                   name={feature.icon}
@@ -230,8 +230,8 @@ export const PremiumScreen: React.FC = () => {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>What's Included</Text>
 
-        {PREMIUM_FEATURES.map((feature, index) => (
-          <View key={index} style={styles.featureItem}>
+        {PREMIUM_FEATURES.map((feature) => (
+          <View key={feature.title} style={styles.featureItem}>
             <View style={styles.featureIconContainer}>
               <MaterialCommunityIcons
                 name={feature.icon}

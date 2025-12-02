@@ -161,8 +161,8 @@ export const PaywallModal: React.FC<PaywallModalProps> = ({
             <View style={styles.highlightsSection}>
               <Text style={styles.highlightsTitle}>Premium Includes:</Text>
 
-              {PREMIUM_HIGHLIGHTS.map((highlight, index) => (
-                <View key={index} style={styles.highlightItem}>
+              {PREMIUM_HIGHLIGHTS.map((highlight) => (
+                <View key={highlight.icon} style={styles.highlightItem}>
                   <MaterialCommunityIcons
                     name={highlight.icon}
                     size={20}

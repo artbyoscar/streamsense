@@ -266,7 +266,7 @@ export const UpgradeScreen: React.FC = () => {
 
         {PREMIUM_BENEFITS.map((benefit, index) => (
           <BenefitItem
-            key={index}
+            key={benefit.title}
             icon={benefit.icon}
             title={benefit.title}
             description={benefit.description}

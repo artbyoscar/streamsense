@@ -143,7 +143,7 @@ export const SkeletonCard: React.FC<SkeletonCardProps> = ({
 
         {Array.from({ length: lines }).map((_, index) => (
           <Skeleton
-            key={index}
+            key={`line-${index}`}
             width={index === lines - 1 ? '60%' : '100%'}
             height={14}
             style={styles.cardLine}
@@ -249,7 +249,7 @@ export const SkeletonList: React.FC<SkeletonListProps> = ({
     <View style={styles.list}>
       {Array.from({ length: count }).map((_, index) => (
         <SkeletonListItem
-          key={index}
+          key={`list-item-${index}`}
           showAvatar={showAvatar}
           showSubtitle={showSubtitle}
         />

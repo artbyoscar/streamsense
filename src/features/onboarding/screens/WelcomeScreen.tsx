@@ -56,8 +56,8 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onGetStarted }) =>
 
       {/* Value Propositions */}
       <View style={styles.valuePropsSection}>
-        {VALUE_PROPS.map((prop, index) => (
-          <View key={index} style={styles.valueProp}>
+        {VALUE_PROPS.map((prop) => (
+          <View key={prop.title} style={styles.valueProp}>
             <View style={[styles.valueIcon, { backgroundColor: `${prop.color}15` }]}>
               <MaterialCommunityIcons name={prop.icon} size={28} color={prop.color} />
             </View>
