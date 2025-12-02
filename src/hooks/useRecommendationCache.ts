@@ -58,6 +58,20 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
                 console.log(`[RecCache] Fetched ${allRecs.length} items`);
 
+                // Debug: Log sample of fetched items to verify data structure
+                if (allRecs.length > 0) {
+                    console.log('[RecCache] Sample item:', {
+                        id: allRecs[0].id,
+                        title: allRecs[0].title,
+                        media_type: allRecs[0].media_type,
+                        type: allRecs[0].type,
+                        genre_ids: allRecs[0].genre_ids,
+                        genres: allRecs[0].genres,
+                    });
+                } else {
+                    console.warn('[RecCache] WARNING: getSmartRecommendations returned 0 items!');
+                }
+
                 // Pre-organize by genre
                 const byGenre = new Map<string, UnifiedContent[]>();
                 const genreNames = Object.keys(GENRE_NAME_TO_ID);
@@ -109,6 +123,13 @@ export const useRecommendationCache = (userId: string | undefined) => {
                 const movies = allRecs.filter(i => i.media_type === 'movie' || i.type === 'movie');
                 const tv = allRecs.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
 
+                console.log('[RecCache] Cache structure built:', {
+                    totalItems: allRecs.length,
+                    movieCount: movies.length,
+                    tvCount: tv.length,
+                    genreCounts: Array.from(byGenre.entries()).map(([name, items]) => ({ name, count: items.length })),
+                });
+
                 setCache({
                     all: allRecs,
                     byGenre,
@@ -130,13 +151,20 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
     // Instant filtering from cache
     const getFiltered = useCallback((mediaType: 'all' | 'movie' | 'tv', genre: string) => {
-        if (!cache) return [];
+        if (!cache) {
+            console.log('[RecCache] getFiltered called but cache is null');
+            return [];
+        }
+
+        console.log('[RecCache] getFiltered - Cache has', cache.all.length, 'items total');
+        console.log('[RecCache] getFiltered - Filters: mediaType=', mediaType, 'genre=', genre);
 
         let results = cache.all;
 
         // 1. Filter by media type first (most efficient)
         if (mediaType !== 'all') {
             results = cache.byMediaType[mediaType] || [];
+            console.log('[RecCache] After media type filter:', results.length, 'items');
         }
 
         // 2. Filter by genre
@@ -144,11 +172,14 @@ export const useRecommendationCache = (userId: string | undefined) => {
             // If we have pre-calculated genre list, intersect it with current results
             // This is faster than re-filtering the whole list
             const genreItems = cache.byGenre.get(genre) || [];
+            console.log('[RecCache] Genre', genre, 'has', genreItems.length, 'pre-calculated items');
             const genreIds = new Set(genreItems.map(i => i.id));
 
             results = results.filter(r => genreIds.has(r.id));
+            console.log('[RecCache] After genre filter:', results.length, 'items');
         }
 
+        console.log('[RecCache] Final results:', results.length, 'items');
         return results;
     }, [cache]);
 
