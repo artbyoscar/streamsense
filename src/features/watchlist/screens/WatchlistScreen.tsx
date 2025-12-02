@@ -562,14 +562,14 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
               ))}
             </ScrollView>
 
-            {loadingForYou ? (
+            {loadingForYou || !cache ? (
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={colors.primary} />
                 <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
                   Loading {activeGenreFilter !== 'All' ? activeGenreFilter : ''} recommendations...
                 </Text>
               </View>
-            ) : (
+            ) : filteredRecommendations.length > 0 ? (
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -607,20 +607,20 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
                     </TouchableOpacity>
                   </Animated.View>
                 ))}
-
-
               </ScrollView>
+            ) : (
+              <View style={[styles.onboardingCard, { backgroundColor: colors.card }]}>
+                <MaterialCommunityIcons name="star-four-points" size={32} color={colors.primary} />
+                <Text style={[styles.onboardingTitle, { color: colors.text }]}>
+                  No recommendations for {activeGenreFilter !== 'All' ? activeGenreFilter : 'this filter'}
+                </Text>
+                <Text style={[styles.onboardingText, { color: colors.textSecondary }]}>
+                  {activeGenreFilter !== 'All'
+                    ? 'Try selecting "All" or a different genre to see more recommendations'
+                    : 'Keep swiping in Discover to help us learn your taste!'}
+                </Text>
+              </View>
             )}
-          </View>
-        ) : !loadingForYou && totalItems > 0 ? (
-          <View style={[styles.onboardingCard, { backgroundColor: colors.card }]}>
-            <MaterialCommunityIcons name="star-four-points" size={32} color={colors.primary} />
-            <Text style={[styles.onboardingTitle, { color: colors.text }]}>
-              Personalized picks coming soon
-            </Text>
-            <Text style={[styles.onboardingText, { color: colors.textSecondary }]}>
-              Add shows and movies to your watchlist to get recommendations tailored to your taste
-            </Text>
           </View>
         ) : null}
 
