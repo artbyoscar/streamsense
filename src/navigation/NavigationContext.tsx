@@ -20,6 +20,8 @@ interface NavigationContextType {
   setShowContentDetail: (show: boolean) => void;
   showPlaidConnection: boolean;
   setShowPlaidConnection: (show: boolean) => void;
+  showDebugRecommendations: boolean;
+  setShowDebugRecommendations: (show: boolean) => void;
   selectedContent: UnifiedContent | null;
   setSelectedContent: (content: UnifiedContent | null) => void;
   selectedSubscriptionId: string | null;
@@ -46,6 +48,8 @@ export const useCustomNavigation = () => {
       setShowContentDetail: (show: boolean) => console.log('[Navigation] Would show content detail:', show),
       showPlaidConnection: false,
       setShowPlaidConnection: (show: boolean) => console.log('[Navigation] Would show plaid connection:', show),
+      showDebugRecommendations: false,
+      setShowDebugRecommendations: (show: boolean) => console.log('[Navigation] Would show debug recommendations:', show),
       selectedContent: null,
       setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
       selectedSubscriptionId: null,
@@ -63,6 +67,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [showContentSearch, setShowContentSearch] = useState(false);
   const [showContentDetail, setShowContentDetail] = useState(false);
   const [showPlaidConnection, setShowPlaidConnection] = useState(false);
+  const [showDebugRecommendations, setShowDebugRecommendations] = useState(false);
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -93,6 +98,9 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     } else if (screen === 'PlaidConnection') {
       console.log('[Navigation] Opening PlaidConnection modal');
       setShowPlaidConnection(true);
+    } else if (screen === 'DebugRecommendations') {
+      console.log('[Navigation] Opening DebugRecommendations modal');
+      setShowDebugRecommendations(true);
     } else if (screen === 'SettingsTab' || screen === 'Settings') {
       setActiveTab('Settings');
     } else if (screen === 'WatchlistTab' || screen === 'Watchlist') {
@@ -116,6 +124,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowContentDetail,
         showPlaidConnection,
         setShowPlaidConnection,
+        showDebugRecommendations,
+        setShowDebugRecommendations,
         selectedContent,
         setSelectedContent,
         selectedSubscriptionId,

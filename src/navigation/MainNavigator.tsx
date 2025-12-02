@@ -16,6 +16,7 @@ import { SubscriptionForm } from '@/features/subscriptions/components/Subscripti
 import { ContentSearchModal } from '@/features/watchlist/components/ContentSearchModal';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 import { PlaidConnectionScreen } from '@/features/onboarding/screens/PlaidConnectionScreen';
+import { DebugRecommendationsScreen } from '@/screens/DebugRecommendationsScreen';
 import { NavigationProvider, useCustomNavigation } from './NavigationContext';
 import { useTheme } from '@/providers/ThemeProvider';
 // import { useNotifications } from '@/hooks/useNotifications'; // Disabled: requires dev build
@@ -33,6 +34,8 @@ const Navigator: React.FC = () => {
     setShowContentDetail,
     showPlaidConnection,
     setShowPlaidConnection,
+    showDebugRecommendations,
+    setShowDebugRecommendations,
     selectedContent,
     setSelectedContent,
     selectedSubscriptionId,
@@ -146,6 +149,26 @@ const Navigator: React.FC = () => {
       >
         <PlaidConnectionScreen onClose={() => setShowPlaidConnection(false)} />
       </Modal>
+
+      {/* Debug Recommendations Modal (Dev Only) */}
+      {__DEV__ && (
+        <Modal
+          visible={showDebugRecommendations}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowDebugRecommendations(false)}
+        >
+          <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top']}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Debug Recommendations</Text>
+              <TouchableOpacity onPress={() => setShowDebugRecommendations(false)}>
+                <MaterialCommunityIcons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            <DebugRecommendationsScreen />
+          </SafeAreaView>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 };

@@ -19,6 +19,7 @@ import { useAuth } from '@/features/auth';
 import { usePremiumStore } from '@/features/premium';
 import { COLORS, Card } from '@/components';
 import { useTheme } from '@/providers/ThemeProvider';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 
 // ============================================================================
 // TYPES
@@ -142,6 +143,7 @@ export const SettingsScreen: React.FC = () => {
   const { user, logout } = useAuth();
   const { isPremium, expirationDate } = usePremiumStore();
   const { themeMode, setThemeMode, colors } = useTheme();
+  const { navigateToScreen } = useCustomNavigation();
 
   // Preferences state
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -425,6 +427,15 @@ export const SettingsScreen: React.FC = () => {
         <>
           <SectionHeader title="Developer" />
           <Card style={styles.card}>
+            <SettingItem
+              icon="bug"
+              title="Debug Recommendations"
+              subtitle="Test and validate recommendation intelligence"
+              onPress={() => navigateToScreen('DebugRecommendations')}
+            />
+
+            <View style={styles.divider} />
+
             <SettingItem
               icon="test-tube"
               title="Test Features"
