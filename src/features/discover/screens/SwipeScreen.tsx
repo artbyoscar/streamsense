@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { StarRating } from '@/components/StarRating';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -503,12 +504,11 @@ export const SwipeScreen: React.FC = () => {
               </Text>
 
               <View style={styles.cardMetaRow}>
-                <View style={styles.ratingContainer}>
-                  <Ionicons name="star" size={16} color="#FFD700" />
-                  <Text style={[styles.ratingText, { color: colors.text }]}>
-                    {(cards[currentIndex + 1].rating || (cards[currentIndex + 1] as any).vote_average || 0).toFixed(1)}
-                  </Text>
-                </View>
+                <StarRating
+                  rating={cards[currentIndex + 1].rating || (cards[currentIndex + 1] as any).vote_average || 0}
+                  size={16}
+                  showNumber={true}
+                />
                 <Text style={[styles.typeText, { color: colors.textSecondary }]}>
                   {(cards[currentIndex + 1].type || (cards[currentIndex + 1] as any).media_type || 'movie') === 'tv' ? '📺 TV Show' : '🎬 Movie'}
                 </Text>
@@ -559,12 +559,7 @@ export const SwipeScreen: React.FC = () => {
 
               <View style={styles.cardMetaRow}>
                 {rating > 0 && (
-                  <View style={styles.ratingContainer}>
-                    <Ionicons name="star" size={16} color="#FFD700" />
-                    <Text style={[styles.ratingText, { color: colors.text }]}>
-                      {rating.toFixed(1)}
-                    </Text>
-                  </View>
+                  <StarRating rating={rating} size={16} showNumber={true} />
                 )}
                 {year && (
                   <Text style={[styles.yearText, { color: colors.textSecondary }]}>
