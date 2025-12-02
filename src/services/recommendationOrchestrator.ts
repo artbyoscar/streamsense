@@ -18,6 +18,7 @@ import { interestGraphService } from './interestGraph';
 import { contextualRecommendationService, ContextualRecommendationService } from './contextualRecommendations';
 import { llmRecommendationService } from './llmRecommendations';
 import { getSmartRecommendations } from './smartRecommendations'; // Fallback
+import { GLOBAL_EDGES } from '@/data/globalInterestEdges';
 
 export interface OrchestratorStats {
   dnaComputations: number;
@@ -405,30 +406,8 @@ export class RecommendationOrchestrator {
 
       console.log('[Orchestrator] Seeding global graph edges...');
 
-      // Pre-defined thematic relationships (from Layer 5 design)
-      const globalEdges = [
-        // Genre bridges
-        { from: 'genre_878', to: 'genre_14', weight: 0.7, type: 'thematic_link' }, // Sci-Fi ↔ Fantasy
-        { from: 'genre_28', to: 'genre_53', weight: 0.8, type: 'thematic_link' }, // Action ↔ Thriller
-        { from: 'genre_18', to: 'genre_10749', weight: 0.6, type: 'thematic_link' }, // Drama ↔ Romance
-        { from: 'genre_80', to: 'genre_53', weight: 0.9, type: 'thematic_link' }, // Crime ↔ Thriller
-        { from: 'genre_27', to: 'genre_53', weight: 0.8, type: 'thematic_link' }, // Horror ↔ Thriller
-
-        // Theme bridges
-        { from: 'theme_technology', to: 'theme_identity', weight: 0.7, type: 'thematic_link' },
-        { from: 'theme_power', to: 'theme_betrayal', weight: 0.8, type: 'thematic_link' },
-        { from: 'theme_familyDynamics', to: 'theme_comingOfAge', weight: 0.7, type: 'thematic_link' },
-        { from: 'theme_survival', to: 'theme_isolation', weight: 0.8, type: 'thematic_link' },
-        { from: 'theme_love', to: 'theme_loss', weight: 0.7, type: 'thematic_link' },
-
-        // Tone ↔ Theme bridges
-        { from: 'tone_cerebral', to: 'theme_identity', weight: 0.6, type: 'thematic_link' },
-        { from: 'tone_dark', to: 'theme_betrayal', weight: 0.7, type: 'thematic_link' },
-        { from: 'tone_emotional', to: 'theme_loss', weight: 0.7, type: 'thematic_link' },
-        { from: 'tone_tense', to: 'theme_survival', weight: 0.8, type: 'thematic_link' },
-      ];
-
-      const edges = globalEdges.map(edge => ({
+      // Use comprehensive pre-defined relationships from globalInterestEdges.ts
+      const edges = GLOBAL_EDGES.map(edge => ({
         from_node_type: edge.from.split('_')[0],
         from_node_id: edge.from,
         to_node_type: edge.to.split('_')[0],
