@@ -1,9 +1,11 @@
 /**
  * Discover Screen - Tinder-Inspired Swipe Interface
  * Polished card-based UI for rapid content discovery
+ * 
+ * Fixed for StreamSense codebase compatibility
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,27 +16,29 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  useAnimatedGestureHandler,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
   withTiming,
   runOnJS,
   interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { X, Heart, Play, CheckCircle2, Info, Star, Sparkles, RefreshCw } from 'lucide-react-native';
-import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/config/supabase';
-import { getSmartRecommendations } from '@/services/smartRecommendations';
-import { trackGenreInteraction } from '@/services/genreAffinity';
-import type { UnifiedContent } from '@/types';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const CARD_WIDTH = SCREEN_WIDTH * 0.85;
-const CARD_MAX_WIDTH = 340;
+// Relative imports matching your project structure
+import { useAuth } from '../../../hooks/useAuth';
+import { supabase } from '../../../config/supabase';
+import { getSmartRecommendations } from '../../../services/smartRecommendations';
+import { trackGenreInteraction } from '../../../services/genreAffinity';
+import type { UnifiedContent } from '../../../types';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 340);
+const SWIPE_THRESHOLD = 120;
 
 // ============================================================================
 // MAIN COMPONENT
@@ -47,12 +51,10 @@ export const SwipeScreen: React.FC = () => {
   const [items, setItems] = useState<UnifiedContent[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
-  const [showInfoHint, setShowInfoHint] = useState(true);
 
   // Animation values
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
-  const cardRotate = useSharedValue(0);
 
   // Current item
   const currentItem = items[currentIndex];
@@ -66,7 +68,13 @@ export const SwipeScreen: React.FC = () => {
 
     try {
       setIsLoading(true);
-      const recommendations = await getSmartRecommendations(user.id, 50);
+      const recommendations = await getSmartRecommendations({
+        userId: user.id,
+        limit: 50,
+        mediaType: 'mixed',
+        forceRefresh: false,
+        excludeSessionItems: true,
+      });
       setItems(recommendations);
       setCurrentIndex(0);
     } catch (error) {
@@ -84,8 +92,8 @@ export const SwipeScreen: React.FC = () => {
   useEffect(() => {
     if (items.length > 0) {
       items.slice(currentIndex + 1, currentIndex + 4).forEach(item => {
-        if (item.poster_path) {
-          const imageUrl = `https://image.tmdb.org/t/p/w500${item.poster_path}`;
+        if (item.posterPath) {
+          const imageUrl = `https://image.tmdb.org/t/p/w500${item.posterPath}`;
           Image.prefetch(imageUrl);
         }
       });
@@ -96,14 +104,20 @@ export const SwipeScreen: React.FC = () => {
   // ACTIONS
   // ============================================================================
 
+  const resetCard = useCallback(() => {
+    translateX.value = 0;
+    translateY.value = 0;
+  }, [translateX, translateY]);
+
   const moveToNext = useCallback(() => {
     if (currentIndex < items.length - 1) {
       setCurrentIndex(prev => prev + 1);
-      translateX.value = 0;
-      translateY.value = 0;
-      cardRotate.value = 0;
+      resetCard();
+    } else {
+      // End of deck
+      setCurrentIndex(items.length);
     }
-  }, [currentIndex, items.length]);
+  }, [currentIndex, items.length, resetCard]);
 
   const handleLike = useCallback(async () => {
     if (!user?.id || !currentItem) return;
@@ -115,47 +129,36 @@ export const SwipeScreen: React.FC = () => {
       await supabase.from('watchlist_items').insert({
         user_id: user.id,
         tmdb_id: currentItem.id,
-        media_type: currentItem.media_type || 'movie',
+        media_type: currentItem.type,
         status: 'want_to_watch',
       });
 
-      // Track interaction
-      const genreIds = currentItem.genre_ids || [];
-      await trackGenreInteraction(
-        user.id,
-        genreIds,
-        currentItem.media_type || 'movie',
-        'ADD_TO_WATCHLIST'
-      );
+      // Track interaction - extract genre IDs from genres array
+      const genreIds = currentItem.genres?.map(g => g.id) || [];
+      if (genreIds.length > 0) {
+        await trackGenreInteraction(
+          user.id,
+          genreIds,
+          currentItem.type,
+          'ADD_TO_WATCHLIST'
+        );
+      }
 
-      console.log('[Discover] Added to watchlist:', currentItem.title || currentItem.name);
+      console.log('[Discover] Added to watchlist:', currentItem.title);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error adding to watchlist:', error);
+      moveToNext(); // Still move on even if error
     }
   }, [user, currentItem, moveToNext]);
 
-  const handleSkip = useCallback(async () => {
-    if (!user?.id || !currentItem) return;
-
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-      // Track as "not interested"
-      const genreIds = currentItem.genre_ids || [];
-      await trackGenreInteraction(
-        user.id,
-        genreIds,
-        currentItem.media_type || 'movie',
-        'SKIP_RECOMMENDATION'
-      );
-
-      console.log('[Discover] Skipped:', currentItem.title || currentItem.name);
-      moveToNext();
-    } catch (error) {
-      console.error('[Discover] Error skipping:', error);
-    }
-  }, [user, currentItem, moveToNext]);
+  const handleSkip = useCallback(() => {
+    if (!currentItem) return;
+    
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log('[Discover] Skipped:', currentItem.title);
+    moveToNext();
+  }, [currentItem, moveToNext]);
 
   const handleWatching = useCallback(async () => {
     if (!user?.id || !currentItem) return;
@@ -166,22 +169,25 @@ export const SwipeScreen: React.FC = () => {
       await supabase.from('watchlist_items').insert({
         user_id: user.id,
         tmdb_id: currentItem.id,
-        media_type: currentItem.media_type || 'movie',
+        media_type: currentItem.type,
         status: 'watching',
       });
 
-      const genreIds = currentItem.genre_ids || [];
-      await trackGenreInteraction(
-        user.id,
-        genreIds,
-        currentItem.media_type || 'movie',
-        'START_WATCHING'
-      );
+      const genreIds = currentItem.genres?.map(g => g.id) || [];
+      if (genreIds.length > 0) {
+        await trackGenreInteraction(
+          user.id,
+          genreIds,
+          currentItem.type,
+          'START_WATCHING'
+        );
+      }
 
-      console.log('[Discover] Marked as watching:', currentItem.title || currentItem.name);
+      console.log('[Discover] Marked as watching:', currentItem.title);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error marking as watching:', error);
+      moveToNext();
     }
   }, [user, currentItem, moveToNext]);
 
@@ -194,33 +200,35 @@ export const SwipeScreen: React.FC = () => {
       await supabase.from('watchlist_items').insert({
         user_id: user.id,
         tmdb_id: currentItem.id,
-        media_type: currentItem.media_type || 'movie',
+        media_type: currentItem.type,
         status: 'watched',
         watched: true,
         watched_at: new Date().toISOString(),
       });
 
-      const genreIds = currentItem.genre_ids || [];
-      await trackGenreInteraction(
-        user.id,
-        genreIds,
-        currentItem.media_type || 'movie',
-        'COMPLETE_WATCHING'
-      );
+      const genreIds = currentItem.genres?.map(g => g.id) || [];
+      if (genreIds.length > 0) {
+        await trackGenreInteraction(
+          user.id,
+          genreIds,
+          currentItem.type,
+          'COMPLETE_WATCHING'
+        );
+      }
 
-      console.log('[Discover] Marked as watched:', currentItem.title || currentItem.name);
+      console.log('[Discover] Marked as watched:', currentItem.title);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error marking as watched:', error);
+      moveToNext();
     }
   }, [user, currentItem, moveToNext]);
 
   const openDetails = useCallback(() => {
     if (!currentItem) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowInfoHint(false);
     // TODO: Open ContentDetailModal
-    console.log('[Discover] Show details for:', currentItem.title || currentItem.name);
+    console.log('[Discover] Show details for:', currentItem.title);
   }, [currentItem]);
 
   const handleRefresh = useCallback(() => {
@@ -229,66 +237,80 @@ export const SwipeScreen: React.FC = () => {
   }, [loadItems]);
 
   // ============================================================================
-  // GESTURE HANDLING
+  // GESTURE HANDLING (Reanimated v4 compatible)
   // ============================================================================
 
-  const gestureHandler = useAnimatedGestureHandler<PanGestureHandlerGestureEvent>({
-    onActive: (event) => {
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
       translateX.value = event.translationX;
-      translateY.value = event.translationY * 0.5; // Dampen vertical movement
-      cardRotate.value = interpolate(
-        event.translationX,
-        [-200, 0, 200],
-        [-15, 0, 15]
-      );
-    },
-    onEnd: (event) => {
-      const shouldDismissRight = event.translationX > 120;
-      const shouldDismissLeft = event.translationX < -120;
+      translateY.value = event.translationY * 0.5; // Dampen vertical
+    })
+    .onEnd((event) => {
+      const shouldDismissRight = event.translationX > SWIPE_THRESHOLD;
+      const shouldDismissLeft = event.translationX < -SWIPE_THRESHOLD;
 
       if (shouldDismissRight) {
-        translateX.value = withTiming(400, { duration: 200 });
-        runOnJS(handleLike)();
+        translateX.value = withTiming(400, { duration: 200 }, () => {
+          runOnJS(handleLike)();
+        });
       } else if (shouldDismissLeft) {
-        translateX.value = withTiming(-400, { duration: 200 });
-        runOnJS(handleSkip)();
+        translateX.value = withTiming(-400, { duration: 200 }, () => {
+          runOnJS(handleSkip)();
+        });
       } else {
         // Spring back to center
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
-        cardRotate.value = withSpring(0, { damping: 15 });
       }
-    },
+    });
+
+  const animatedCardStyle = useAnimatedStyle(() => {
+    const rotation = interpolate(
+      translateX.value,
+      [-200, 0, 200],
+      [-15, 0, 15],
+      Extrapolation.CLAMP
+    );
+
+    return {
+      transform: [
+        { translateX: translateX.value },
+        { translateY: translateY.value },
+        { rotate: `${rotation}deg` },
+      ],
+    };
   });
 
-  const animatedCardStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { rotate: `${cardRotate.value}deg` },
-    ],
-  }));
-
   const likeIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [0, 100], [0, 1], 'clamp'),
+    opacity: interpolate(
+      translateX.value,
+      [0, 100],
+      [0, 1],
+      Extrapolation.CLAMP
+    ),
   }));
 
   const skipIndicatorStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(translateX.value, [-100, 0], [1, 0], 'clamp'),
+    opacity: interpolate(
+      translateX.value,
+      [-100, 0],
+      [1, 0],
+      Extrapolation.CLAMP
+    ),
   }));
 
   // ============================================================================
   // HELPERS
   // ============================================================================
 
-  const getImageUrl = (posterPath: string | null) => {
-    if (!posterPath) return null;
+  const getImageUrl = (posterPath: string | null | undefined): string | undefined => {
+    if (!posterPath) return undefined;
     return `https://image.tmdb.org/t/p/w500${posterPath}`;
   };
 
-  const getYear = (item: UnifiedContent) => {
-    const date = item.release_date || item.first_air_date;
-    return date ? new Date(date).getFullYear() : '—';
+  const getYear = (item: UnifiedContent): string => {
+    if (!item.releaseDate) return '—';
+    return new Date(item.releaseDate).getFullYear().toString();
   };
 
   // ============================================================================
@@ -320,12 +342,7 @@ export const SwipeScreen: React.FC = () => {
   if (isLoading) {
     return (
       <View style={styles.container}>
-        <View style={styles.cardContainer}>
-          <View style={[styles.card, styles.skeletonCard]}>
-            <View style={styles.skeletonShimmer} />
-          </View>
-        </View>
-        <View style={styles.loadingOverlay}>
+        <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#a78bfa" />
           <Text style={styles.loadingText}>Finding great content...</Text>
         </View>
@@ -344,7 +361,7 @@ export const SwipeScreen: React.FC = () => {
           <Sparkles size={64} color="#666" />
           <Text style={styles.emptyTitle}>All Caught Up!</Text>
           <Text style={styles.emptySubtitle}>
-            You've seen all available recommendations
+            You have seen all available recommendations
           </Text>
           <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
             <RefreshCw size={20} color="#a78bfa" />
@@ -358,6 +375,8 @@ export const SwipeScreen: React.FC = () => {
   // ============================================================================
   // MAIN RENDER
   // ============================================================================
+
+  const imageUri = getImageUrl(currentItem.posterPath);
 
   return (
     <View style={styles.container}>
@@ -374,14 +393,20 @@ export const SwipeScreen: React.FC = () => {
 
       {/* CARD ZONE */}
       <View style={styles.cardContainer}>
-        <PanGestureHandler onGestureEvent={gestureHandler}>
+        <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.card, animatedCardStyle]}>
             {/* Poster Image */}
-            <Image
-              source={{ uri: getImageUrl(currentItem.poster_path) }}
-              style={styles.poster}
-              resizeMode="cover"
-            />
+            {imageUri ? (
+              <Image
+                source={{ uri: imageUri }}
+                style={styles.poster}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={[styles.poster, styles.posterPlaceholder]}>
+                <Text style={styles.placeholderText}>No Image</Text>
+              </View>
+            )}
 
             {/* Gradient Overlay */}
             <LinearGradient
@@ -392,27 +417,27 @@ export const SwipeScreen: React.FC = () => {
 
             {/* Swipe Indicators */}
             <Animated.View style={[styles.likeIndicator, likeIndicatorStyle]}>
-              <Heart size={40} color="#22c55e" fill="#22c55e" />
+              <Heart size={32} color="#22c55e" fill="#22c55e" />
               <Text style={styles.indicatorText}>WANT TO WATCH</Text>
             </Animated.View>
 
             <Animated.View style={[styles.skipIndicator, skipIndicatorStyle]}>
-              <X size={40} color="#ef4444" strokeWidth={3} />
+              <X size={32} color="#ef4444" strokeWidth={3} />
               <Text style={styles.indicatorText}>NOT INTERESTED</Text>
             </Animated.View>
 
             {/* Content Info Overlay */}
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle} numberOfLines={2}>
-                {currentItem.title || currentItem.name}
+                {currentItem.title}
               </Text>
               <View style={styles.metaRow}>
-                {currentItem.vote_average && currentItem.vote_average > 0 && (
+                {currentItem.rating > 0 && (
                   <>
                     <View style={styles.ratingBadge}>
                       <Star size={14} color="#fbbf24" fill="#fbbf24" />
                       <Text style={styles.ratingText}>
-                        {currentItem.vote_average.toFixed(1)}
+                        {currentItem.rating.toFixed(1)}
                       </Text>
                     </View>
                     <Text style={styles.metaDot}>•</Text>
@@ -421,7 +446,7 @@ export const SwipeScreen: React.FC = () => {
                 <Text style={styles.metaText}>{getYear(currentItem)}</Text>
                 <Text style={styles.metaDot}>•</Text>
                 <Text style={styles.metaText}>
-                  {currentItem.media_type === 'tv' ? 'TV Show' : 'Movie'}
+                  {currentItem.type === 'tv' ? 'TV Show' : 'Movie'}
                 </Text>
               </View>
             </View>
@@ -435,7 +460,7 @@ export const SwipeScreen: React.FC = () => {
               <Info size={20} color="rgba(255,255,255,0.9)" />
             </TouchableOpacity>
           </Animated.View>
-        </PanGestureHandler>
+        </GestureDetector>
       </View>
 
       {/* PRIMARY ACTIONS ZONE */}
@@ -530,7 +555,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   card: {
-    width: CARD_WIDTH > CARD_MAX_WIDTH ? CARD_MAX_WIDTH : CARD_WIDTH,
+    width: CARD_WIDTH,
     aspectRatio: 0.67,
     borderRadius: 20,
     overflow: 'hidden',
@@ -545,6 +570,15 @@ const styles = StyleSheet.create({
     position: 'absolute',
     width: '100%',
     height: '100%',
+  },
+  posterPlaceholder: {
+    backgroundColor: '#2a2a2a',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    color: '#666',
+    fontSize: 16,
   },
   gradient: {
     position: 'absolute',
@@ -637,7 +671,7 @@ const styles = StyleSheet.create({
   },
   indicatorText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
   },
 
@@ -749,21 +783,8 @@ const styles = StyleSheet.create({
   },
 
   // Loading State
-  skeletonCard: {
-    backgroundColor: '#1a1a1a',
-  },
-  skeletonShimmer: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#2a2a2a',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -773,3 +794,5 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
 });
+
+export default SwipeScreen;
