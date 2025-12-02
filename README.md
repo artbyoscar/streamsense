@@ -6,6 +6,159 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ---
 
+## 🎨 Design Philosophy
+
+StreamSense's UI draws inspiration from three industry leaders, combining the best patterns from each:
+
+| Inspiration | What We Borrow | Where It Appears |
+|-------------|----------------|------------------|
+| **Rocket Money** | Value-first dashboard, hero metrics, grouped cards, annual projections | Home Screen |
+| **Tinder** | Swipe-based discovery, satisfying gestures, clear binary actions | Discover Screen |
+| **Netflix** | Multi-lane browsing, contextual labels, hero spotlight, progressive disclosure | Watchlist/For You |
+
+### Core Design Principles
+
+1. **Value First**: Every screen communicates financial value alongside entertainment
+2. **Glanceable Metrics**: Key numbers visible without scrolling or tapping
+3. **Contextual Intelligence**: Explain WHY something is recommended
+4. **Service Awareness**: Always show which streaming service has the content
+5. **Satisfying Interactions**: Haptic feedback, smooth animations, clear state changes
+6. **Progressive Disclosure**: Show summary first, details on demand
+
+---
+
+## 📱 Screen Designs
+
+### Home Screen (Rocket Money Inspired)
+
+The dashboard communicates value at a glance with a hero spending card and quick insights.
+
+```
+┌────────────────────────────────────────────┐
+│ 🎬 StreamSense                        ⚙️  │
+├────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────┐ │
+│ │ MONTHLY STREAMING      ✓ Great Value  │ │
+│ │         $22.98                         │ │
+│ │ ↗ $3 less than last month   [chart]   │ │
+│ │ 📅 $276/year across 2 services        │ │
+│ └────────────────────────────────────────┘ │
+│ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
+│ │ 12       │ │ 24h      │ │ $0.96    │    │
+│ │ Watched  │ │Watch Time│ │Cost/Hour │    │
+│ └──────────┘ └──────────┘ └──────────┘    │
+│ Coming Up                        See All > │
+│ [Bills + New Releases horizontal scroll]   │
+│ Your Services                          +   │
+│ [Service cards with value indicators]      │
+│ Continue Watching                          │
+│ [Content cards with progress bars]         │
+│ Picked For You              ✨ Discover    │
+│ [Recommendation preview with match %]      │
+└────────────────────────────────────────────┘
+```
+
+**Key Components:**
+- Hero Spending Card with value status badge (Great Value / Review Needed / Low Usage)
+- Quick Insights Row (3 glanceable metrics: watched count, watch time, cost per hour)
+- Upcoming Section (bills and new releases mixed, sorted by date)
+- Services List with value dot indicators (green/amber/red)
+- Continue Watching with progress bars
+- Picked For You preview with match percentages and Discover CTA
+
+### Discover Screen (Tinder Inspired)
+
+Swipe-based content discovery with satisfying gestures and clear actions.
+
+```
+┌────────────────────────────────────────────┐
+│ Discover                         1 of 40   │
+│ Quick swipe to build your watchlist        │
+├────────────────────────────────────────────┤
+│                                            │
+│        ┌──────────────────────┐            │
+│        │  [94%]          [i]  │            │
+│        │                      │            │
+│        │    POSTER IMAGE      │            │
+│        │    (swipeable)       │            │
+│        │                      │            │
+│        │  ░░░ GRADIENT ░░░░░  │            │
+│        │  The Wild Robot      │            │
+│        │  ★ 8.3 • 2024 • Movie│            │
+│        └──────────────────────┘            │
+│                                            │
+│           ( ✕ )         ( ♥ )              │
+│            Skip          Like              │
+│                                            │
+│      [▶ Watching]    [✓ Watched]           │
+└────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- Full-bleed poster imagery (85% width, 0.67 aspect ratio)
+- Gradient overlay for text legibility
+- Swipe gestures with rotation animation (±15° on drag)
+- Visual feedback indicators ("WANT TO WATCH" green / "NOT INTERESTED" red)
+- Large primary action buttons (72px diameter)
+- Secondary action pills (Watching/Watched)
+- Haptic feedback on all interactions
+- Match percentage badge (top-left)
+- Info button for detail sheet (top-right)
+- Position counter ("1 of 40")
+
+### Watchlist/For You Screen (Netflix Inspired)
+
+Multi-lane browsing with contextual recommendation labels.
+
+```
+┌────────────────────────────────────────────┐
+│ Watchlist                            🔍    │
+│ ✨ Dark Thriller Enthusiast • Sci-Fi Fan  │
+├────────────────────────────────────────────┤
+│ [For You][Want to Watch][Watching][Watched]│
+├────────────────────────────────────────────┤
+│ [All][Action][Drama][Sci-Fi][Comedy]...    │
+├────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────┐ │
+│ │     HERO SPOTLIGHT (backdrop)          │ │
+│ │     94% Match                          │ │
+│ │     Movie Title                        │ │
+│ │     ★ 8.5 • 2024 • Movie              │ │
+│ │     [Hulu] Included in subscription    │ │
+│ │     [+ My List]  [ℹ Details]           │ │
+│ └────────────────────────────────────────┘ │
+│                                            │
+│ Because You Watched Inception    See All > │
+│ Similar tone and themes                    │
+│ [poster][poster][poster][poster]...        │
+│                                            │
+│ Mind-Bending Sci-Fi              See All > │
+│ Your personalized picks                    │
+│ [poster][poster][poster][poster]...        │
+│                                            │
+│ Hidden Gems                      See All > │
+│ Under-the-radar picks for you              │
+│ [poster][poster][poster][poster]...        │
+│                                            │
+│ Trending on Your Services        See All > │
+│ [poster][poster][poster][poster]...        │
+└────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- Taste signature displayed in header (computed from viewing history)
+- Tab bar with icons (For You / Want to Watch / Watching / Watched)
+- Sticky genre filter chips (horizontal scroll)
+- Hero spotlight with backdrop, match percentage, service badge
+- Multiple recommendation lanes with distinct strategies
+- Lane headers with title, subtitle, and "See All" action
+- Service badges on content cards (N, H, D+, P, etc.)
+- Match percentage badges on recommendations
+- Progress bars on "Watching" items
+- Empty states with actionable CTAs
+
+---
+
 ## 🧠 Recommendation Intelligence Architecture
 
 StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon's approaches. This is not a single algorithm but an ensemble of specialized systems, each capturing different aspects of user taste.
@@ -45,10 +198,10 @@ Each lane represents a distinct recommendation strategy:
 | Talent Spotlight | Works by favorite directors/actors | "More from Christopher Nolan" |
 | Theme Deep Dive | Content strong in preferred themes | "Stories of Identity" |
 | Hidden Gems | Under-discovered high-quality matches | "Hidden Gems For You" |
-| Trending For You | Popular content filtered to taste | "Trending That Matches Your Taste" |
+| Trending For You | Popular content filtered to taste | "Trending on Your Services" |
 | Exploration | Deliberate variety introduction | "Expand Your Horizons" |
 | Classic Essentials | Timeless films matching profile | "Classics You Have Not Seen" |
-| New Releases | Recent content matching preferences | "New Releases For You" |
+| New Releases | Recent content matching preferences | "New on [Service Name]" |
 | Adjacent Interests | Bridge to unexplored territories | "You Might Also Like" |
 
 ### User Taste Profile
@@ -74,6 +227,60 @@ Maps relationships between user interests for intelligent discovery:
 
 ---
 
+## 🎨 UI Component Library
+
+### New Components (In Development)
+
+| Component | Purpose | Screen |
+|-----------|---------|--------|
+| `HeroSpendCard` | Giant spending metric with value status | Home |
+| `QuickInsights` | 3-widget metric row | Home |
+| `UpcomingSection` | Horizontal scroll of bills + releases | Home |
+| `ServicesSection` | Service list with value dots | Home |
+| `SwipeCard` | Animated poster card with gestures | Discover |
+| `SwipeIndicator` | Visual feedback on swipe direction | Discover |
+| `ActionButtons` | Skip/Like circular buttons | Discover |
+| `TabBar` | Segmented tab navigation | Watchlist |
+| `GenreFilterChips` | Horizontal scrolling genre pills | Watchlist |
+| `HeroSpotlight` | Large featured recommendation | Watchlist |
+| `RecommendationLane` | Horizontal content row with header | Watchlist |
+| `ContentCard` | Poster with badges (match %, service) | Multiple |
+| `ServiceBadge` | Colored indicator for streaming service | Multiple |
+
+### Color Palette
+
+```
+Background:        #0f0f0f (near black)
+Card Background:   #1a1a1a
+Primary Accent:    #a78bfa (purple)
+Success/Good:      #22c55e (green)
+Warning:           #f59e0b (amber)
+Error/Poor:        #ef4444 (red)
+Rating:            #fbbf24 (gold)
+Text Primary:      #ffffff
+Text Secondary:    #888888
+Text Muted:        #666666
+Border Subtle:     rgba(255,255,255,0.05)
+Border Light:      rgba(255,255,255,0.08)
+```
+
+### Service Brand Colors
+
+```typescript
+const SERVICE_COLORS = {
+  'Netflix': '#E50914',
+  'Hulu': '#1CE783',
+  'Disney+': '#113CCF',
+  'Prime Video': '#00A8E1',
+  'HBO Max': '#B026FF',
+  'Apple TV+': '#000000',
+  'Peacock': '#000000',
+  'Paramount+': '#0064FF',
+};
+```
+
+---
+
 ## 📊 Project Status
 
 ### Overall Completion: **85%**
@@ -92,7 +299,9 @@ Maps relationships between user interests for intelligent discovery:
 | **Interest Graph** | 🔧 Implementing | 20% | Global edges defined |
 | SVD Matrix Factorization | ⚠️ Blocked | 80% | FK error needs refactor |
 | Value Score Analytics | ✅ Complete | 100% | Human-readable labels |
-| Discover (Swipe) Page | 🔧 In Progress | 75% | UI improvements pending |
+| **Home Screen UI** | 🔧 Redesigning | 30% | Rocket Money inspired, specs complete |
+| **Discover Screen UI** | 🔧 Redesigning | 40% | Tinder inspired, specs complete |
+| **Watchlist Screen UI** | 🔧 Redesigning | 25% | Netflix inspired, specs complete |
 | Tips & Insights | ✅ Complete | 90% | Churn predictions active |
 | Worth Discovering | ✅ Complete | 90% | Variety improvements pending |
 | LLM Integration | ⏳ Planned | 0% | Claude Haiku integration |
@@ -174,7 +383,6 @@ Maps relationships between user interests for intelligent discovery:
 |-------|--------|--------|
 | SVD FK Relationship Error | Blocks matrix factorization | Refactor needed |
 | React.Fragment Warnings | Console spam (12-20 per load) | Source unknown |
-| Discover Page Layout | UI needs polish | Prompts ready |
 | Genre Filter (Anime vs Animation) | Incorrect classification | Fix designed |
 
 ### Medium Priority
@@ -199,7 +407,7 @@ Maps relationships between user interests for intelligent discovery:
 
 ## 🚀 Development Pipeline
 
-### Phase 1: Recommendation Intelligence Foundation (Current)
+### Phase 1: Recommendation Intelligence Foundation (Complete)
 
 1. **Content DNA Service**
    - [x] Database schema for content_dna table
@@ -218,7 +426,38 @@ Maps relationships between user interests for intelligent discovery:
    - [ ] Cluster detection algorithm
    - [ ] Seed content identification
 
-### Phase 2: Multi-Lane System (Week 2-3)
+### Phase 2: UI Redesign (Current Sprint)
+
+1. **Home Screen (Rocket Money Style)**
+   - [x] Design specifications complete
+   - [ ] Hero spending card with value status
+   - [ ] Quick insights row (3 metrics)
+   - [ ] Upcoming section (bills + releases)
+   - [ ] Services list with value indicators
+   - [ ] Continue Watching section
+   - [ ] Picked For You preview
+
+2. **Discover Screen (Tinder Style)**
+   - [x] Design specifications complete
+   - [ ] Full-bleed poster cards
+   - [ ] Swipe gesture handling (react-native-reanimated)
+   - [ ] Rotation animation on drag
+   - [ ] Visual swipe indicators
+   - [ ] Primary action buttons (Skip/Like)
+   - [ ] Secondary action pills (Watching/Watched)
+   - [ ] Haptic feedback integration
+
+3. **Watchlist Screen (Netflix Style)**
+   - [x] Design specifications complete
+   - [ ] Tab bar (For You / Want to Watch / Watching / Watched)
+   - [ ] Genre filter chips (sticky)
+   - [ ] Hero spotlight component
+   - [ ] Recommendation lane component
+   - [ ] Content card with service badges
+   - [ ] Progress bars for watching items
+   - [ ] Empty states with CTAs
+
+### Phase 3: Multi-Lane System (Week 3-4)
 
 1. **Recommendation Lanes Service**
    - [ ] Lane generation orchestrator
@@ -232,12 +471,7 @@ Maps relationships between user interests for intelligent discovery:
    - [ ] Talent Spotlight lanes
    - [ ] Exploration lanes
 
-3. **UI Components**
-   - [ ] RecommendationLane component
-   - [ ] LaneCard component
-   - [ ] LanesContainer with progressive loading
-
-### Phase 3: Intelligence Layer (Week 3-4)
+### Phase 4: Intelligence Layer (Week 4-5)
 
 1. **Interest Graph**
    - [x] Global edge definitions
@@ -249,7 +483,7 @@ Maps relationships between user interests for intelligent discovery:
    - [ ] Controlled variety introduction
    - [ ] Filter bubble prevention
 
-### Phase 4: LLM Integration (Week 4-5)
+### Phase 5: LLM Integration (Week 5-6)
 
 1. **Claude Haiku Service**
    - [ ] Supabase Edge Function for API calls
@@ -261,7 +495,7 @@ Maps relationships between user interests for intelligent discovery:
    - [ ] Mood-based requests
    - [ ] Explanation generation
 
-### Phase 5: Contextual Intelligence (Week 5-6)
+### Phase 6: Contextual Intelligence (Week 6-7)
 
 1. **Temporal Patterns**
    - [ ] Track viewing times
@@ -328,6 +562,10 @@ Blindspots Generated:  9 unique recommendations
 | Content API | TMDb (The Movie Database) |
 | Banking | Plaid (subscription detection) |
 | AI/ML | Claude Haiku (planned), SVD Matrix Factorization |
+| Animations | React Native Reanimated |
+| Gestures | React Native Gesture Handler |
+| Gradients | Expo Linear Gradient |
+| Haptics | Expo Haptics |
 | Navigation | Custom state-based tabs |
 | Styling | StyleSheet + Dark mode |
 
@@ -338,40 +576,59 @@ Blindspots Generated:  9 unique recommendations
 ```
 src/
 ├── components/
-│   ├── recommendations/     # Lane UI components (NEW)
+│   ├── home/                    # Home screen components
+│   │   ├── HeroSpendCard.tsx
+│   │   ├── QuickInsights.tsx
+│   │   ├── UpcomingSection.tsx
+│   │   └── ServicesSection.tsx
+│   ├── discover/                # Discover screen components
+│   │   ├── SwipeCard.tsx
+│   │   ├── SwipeIndicator.tsx
+│   │   └── ActionButtons.tsx
+│   ├── watchlist/               # Watchlist screen components
+│   │   ├── TabBar.tsx
+│   │   ├── GenreFilterChips.tsx
+│   │   ├── HeroSpotlight.tsx
+│   │   └── RecommendationLane.tsx
+│   ├── recommendations/         # Lane UI components
 │   ├── ContentCard.tsx
-│   ├── GenreChips.tsx
+│   ├── ServiceBadge.tsx
 │   └── ...
 ├── contexts/
 │   ├── AuthContext.tsx
 │   └── ThemeContext.tsx
 ├── hooks/
 │   ├── useRecommendationCache.ts
-│   ├── useTasteProfile.ts    # (NEW)
+│   ├── useTasteProfile.ts
+│   ├── useSubscriptionStats.ts
+│   ├── useWatchingStats.ts
+│   ├── useUpcoming.ts
+│   ├── useRecommendationLanes.ts
 │   └── ...
 ├── screens/
-│   ├── DashboardScreen.tsx
-│   ├── DiscoverScreen.tsx
-│   ├── WatchlistScreen.tsx
+│   ├── DashboardScreen.tsx      # Redesigning
+│   ├── DiscoverScreen.tsx       # Redesigning
+│   ├── WatchlistScreen.tsx      # Redesigning
 │   ├── TipsScreen.tsx
 │   ├── SettingsScreen.tsx
-│   └── DebugRecommendationsScreen.tsx  # (NEW)
+│   └── DebugRecommendationsScreen.tsx
 ├── services/
-│   ├── recommendationOrchestrator.ts   # (NEW) Coordinates all services
-│   ├── contentDNA.ts                   # (NEW) DNA computation
-│   ├── userTasteProfile.ts             # (NEW) Profile building
-│   ├── recommendationLanes.ts          # (NEW) Multi-lane generation
-│   ├── interestGraph.ts                # (NEW) Interest connections
-│   ├── contextualRecommendations.ts    # (NEW) Time/mood awareness
-│   ├── llmRecommendations.ts           # (NEW) Claude integration
-│   ├── smartRecommendations.ts         # Core recommendation engine
-│   ├── blindspotRecommendations.ts     # Hidden gems & exploration
-│   ├── matrixFactorization.ts          # SVD collaborative filtering
-│   ├── genreAffinity.ts                # Genre preference learning
-│   ├── valueScore.ts                   # Subscription value analysis
+│   ├── recommendationOrchestrator.ts
+│   ├── contentDNA.ts
+│   ├── userTasteProfile.ts
+│   ├── recommendationLanes.ts
+│   ├── interestGraph.ts
+│   ├── contextualRecommendations.ts
+│   ├── llmRecommendations.ts
+│   ├── smartRecommendations.ts
+│   ├── blindspotRecommendations.ts
+│   ├── matrixFactorization.ts
+│   ├── genreAffinity.ts
+│   ├── valueScore.ts
 │   └── ...
 ├── data/
-│   └── globalInterestEdges.ts          # (NEW) Pre-defined relationships
+│   ├── globalInterestEdges.ts
+│   └── serviceColors.ts
 ├── types/
 │   └── index.ts
 └── utils/
@@ -380,10 +637,10 @@ src/
 supabase/
 ├── migrations/
 │   ├── 20251202000000_create_svd_recommendations.sql
-│   └── 20251202010000_recommendation_intelligence.sql  # (NEW)
+│   └── 20251202010000_recommendation_intelligence.sql
 └── functions/
     ├── compute-svd-recommendations/
-    └── llm-recommendations/             # (NEW)
+    └── llm-recommendations/
 ```
 
 ---
@@ -414,6 +671,7 @@ supabase/
 - Interest graph exploration
 
 ### Cost Structure (1,000 users)
+
 | Component | Monthly Cost |
 |-----------|--------------|
 | Supabase | ~$25 |
@@ -429,22 +687,36 @@ supabase/
 
 | Milestone | Target | Status |
 |-----------|--------|--------|
-| Recommendation Intelligence Schema | Week 1 | 🔧 In Progress |
-| Content DNA + Taste Profiles | Week 2 | ⏳ Pending |
-| Multi-Lane UI | Week 3 | ⏳ Pending |
-| Interest Graph + Bridge Recs | Week 4 | ⏳ Pending |
-| LLM Integration | Week 5 | ⏳ Pending |
-| Contextual Intelligence | Week 6 | ⏳ Pending |
-| Polish & Testing | Week 7 | ⏳ Pending |
-| Waitlist Launch | Week 8 | ⏳ Pending |
-| Alpha Release | Week 9-10 | ⏳ Pending |
-| Public Beta | Week 12 | ⏳ Pending |
+| Recommendation Intelligence Schema | Week 1 | ✅ Complete |
+| UI Design Specifications | Week 2 | ✅ Complete |
+| UI Redesign Implementation | Week 2-3 | 🔧 In Progress |
+| Content DNA + Taste Profiles | Week 3-4 | ⏳ Pending |
+| Multi-Lane UI Integration | Week 4-5 | ⏳ Pending |
+| Interest Graph + Bridge Recs | Week 5-6 | ⏳ Pending |
+| LLM Integration | Week 6-7 | ⏳ Pending |
+| Contextual Intelligence | Week 7-8 | ⏳ Pending |
+| Polish & Testing | Week 8-9 | ⏳ Pending |
+| Waitlist Launch | Week 9-10 | ⏳ Pending |
+| Alpha Release | Week 11-12 | ⏳ Pending |
+| Public Beta | Week 14 | ⏳ Pending |
 
 ---
 
 ## 📝 Recent Updates
 
-### Session 3 (Current) - Recommendation Intelligence Architecture
+### Session 4 (Current) - UI Redesign Sprint
+- Analyzed Rocket Money UI patterns for value communication
+- Designed Home screen with hero spending card, quick insights, upcoming section
+- Analyzed Tinder UI patterns for swipe-based discovery
+- Designed Discover screen with gesture-based card interactions and haptic feedback
+- Analyzed Netflix UI patterns for content browsing
+- Designed Watchlist screen with multi-lane recommendation system, taste signature, hero spotlight
+- Created comprehensive component specifications for all three screens
+- Defined color palette and service brand colors
+- Specified new hooks for data fetching (useSubscriptionStats, useUpcoming, useRecommendationLanes, etc.)
+- Created implementation prompts for Claude Code
+
+### Session 3 - Recommendation Intelligence Architecture
 - Designed 6-layer recommendation intelligence system
 - Created Content DNA schema with 40+ content dimensions
 - Defined User Taste Profile structure with exploration scoring
@@ -476,6 +748,7 @@ supabase/
 - `journal.txt` - Development transcript catalog
 - `docs/SVD_RECOMMENDATIONS.md` - Matrix factorization documentation
 - `docs/CONTENT_DNA.md` - Content DNA system documentation (pending)
+- `docs/UI_DESIGN.md` - UI specifications and component library (pending)
 
 ---
 
@@ -493,8 +766,21 @@ StreamSense occupies a unique position in the market:
 | Content DNA Matching | ❌ | ❌ | ✅ | ✅ |
 | Cost Optimization | ✅ | ❌ | ❌ | ✅ |
 | Churn Predictions | ❌ | ❌ | ❌ | ✅ |
+| Service Badges on Recs | ❌ | ✅ | ❌ | ✅ |
+| Match Percentages | ❌ | ❌ | ✅ | ✅ |
+| Swipe Discovery | ❌ | ❌ | ❌ | ✅ |
+| Taste Signature | ❌ | ❌ | ✅ | ✅ |
 
 **No competitor effectively bridges financial tracking with entertainment intelligence.**
+
+---
+
+## 🎨 Design Credits
+
+UI patterns inspired by:
+- **Rocket Money** - Value-first dashboard design, hero metrics, grouped information cards
+- **Tinder** - Swipe-based discovery mechanics, satisfying gesture interactions
+- **Netflix** - Multi-lane content browsing, contextual recommendation labels, progressive disclosure
 
 ---
 
