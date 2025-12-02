@@ -130,6 +130,11 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
   const [showWatchTimeModal, setShowWatchTimeModal] = useState(false);
   const [coachingSuggestions, setCoachingSuggestions] = useState<CoachingSuggestion[]>([]);
 
+  // Individual loading states for progressive rendering
+  const [loadingPileOfShame, setLoadingPileOfShame] = useState(true);
+  const [loadingRewatch, setLoadingRewatch] = useState(true);
+  const [loadingValueScores, setLoadingValueScores] = useState(true);
+
   // Handle pile item press - transform to content format and show modal
   const handlePileItemPress = useCallback((item: ShameItem) => {
     console.log('[Tips] Pile item pressed:', item.title);
@@ -345,47 +350,118 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
 
       setServiceRecs(scored);
 
-      // Load value scores
-      const scores = await getUserValueScores(user.id);
-      console.log('[Tips] Value scores:', scores);
-      setValueScores(scores);
+      // Helper function to add timeout to promises
+      const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> => {
+        return Promise.race([
+          promise,
+          new Promise<T>((_, reject) =>
+            setTimeout(() => reject(new Error('timeout')), timeoutMs)
+          )
+        ]).catch((error) => {
+          console.warn('[Tips] Operation timeout or failed:', error.message);
+          return fallback;
+        });
+      };
 
-      // Load churn recommendations
-      const churn = await getChurnRecommendations(user.id);
-      console.log('[Tips] Churn recommendations:', churn);
-      setChurnRecs(churn);
+      // Load all data in parallel for performance
+      console.log('[Tips] Starting parallel data load...');
+      const startTime = Date.now();
 
-      // Check and award new achievements
-      const newAchievements = await checkAchievements(user.id);
-      if (newAchievements.length > 0) {
-        console.log('[Tips] New achievements unlocked:', newAchievements);
+      const results = await Promise.allSettled([
+        // Value scores - 3s timeout
+        withTimeout(getUserValueScores(user.id), 3000, []),
+
+        // Churn recommendations - 3s timeout
+        withTimeout(getChurnRecommendations(user.id), 3000, []),
+
+        // Achievements - check and get progress in parallel - 2s timeout
+        withTimeout(
+          Promise.all([
+            checkAchievements(user.id),
+            getAchievementProgress(user.id)
+          ]),
+          2000,
+          [[], { unlocked: [], locked: [], totalPoints: 0, progress: 0 }]
+        ),
+
+        // Rewatch suggestions - 4s timeout
+        withTimeout(getRewatchSuggestions(user.id, 10), 4000, []),
+      ]);
+
+      const loadTime = Date.now() - startTime;
+      console.log(`[Tips] Parallel load completed in ${loadTime}ms`);
+
+      // Process results
+      const [scoresResult, churnResult, achievementsResult, rewatchResult] = results;
+
+      // Value scores
+      if (scoresResult.status === 'fulfilled') {
+        console.log('[Tips] Value scores:', scoresResult.value);
+        setValueScores(scoresResult.value);
+        setLoadingValueScores(false);
+      } else {
+        console.error('[Tips] Value scores failed:', scoresResult.reason);
+        setLoadingValueScores(false);
       }
 
-      // Load achievement progress
-      const achievementData = await getAchievementProgress(user.id);
-      console.log('[Tips] Achievement progress:', achievementData);
-      setAchievements(achievementData);
+      // Churn recommendations
+      if (churnResult.status === 'fulfilled') {
+        console.log('[Tips] Churn recommendations:', churnResult.value);
+        setChurnRecs(churnResult.value);
+      } else {
+        console.error('[Tips] Churn failed:', churnResult.reason);
+      }
 
-      // 1. Load Rewatch Suggestions (Worth Watching / Rewatching)
-      // These are things user has already seen, so we load them first
-      const rewatch = await getRewatchSuggestions(user.id, 10);
-      console.log('[Tips] Rewatch suggestions:', rewatch);
-      setRewatchSuggestions(rewatch);
+      // Achievements
+      if (achievementsResult.status === 'fulfilled') {
+        const [newAchievements, achievementData] = achievementsResult.value;
+        if (newAchievements.length > 0) {
+          console.log('[Tips] New achievements unlocked:', newAchievements);
+        }
+        console.log('[Tips] Achievement progress:', achievementData);
+        setAchievements(achievementData);
+      } else {
+        console.error('[Tips] Achievements failed:', achievementsResult.reason);
+      }
 
-      // Mark rewatch items as shown
-      tipsExclusionService.markShown('rewatch', rewatch.map(r => r.tmdbId));
+      // Rewatch suggestions
+      let rewatch: RewatchSuggestion[] = [];
+      if (rewatchResult.status === 'fulfilled') {
+        rewatch = rewatchResult.value;
+        console.log('[Tips] Rewatch suggestions:', rewatch);
+        setRewatchSuggestions(rewatch);
+        setLoadingRewatch(false);
 
-      // 2. Load Pile of Shame (Worth Discovering / Hidden Gems)
+        // Mark rewatch items as shown
+        tipsExclusionService.markShown('rewatch', rewatch.map(r => r.tmdbId));
+      } else {
+        console.error('[Tips] Rewatch failed:', rewatchResult.reason);
+        setLoadingRewatch(false);
+      }
+
+      // Load Pile of Shame separately (can be slow, load after rewatch)
       // Exclude everything in watchlist AND everything in rewatch list
       const excludedIds = tipsExclusionService.getAllExcludedIds();
       console.log('[Tips] Loading blindspots with', excludedIds.length, 'exclusions');
 
-      const shame = await getPileOfShame(user.id, 20, excludedIds);
-      console.log('[Tips] Pile of shame:', shame);
-      setPileOfShameData(shame);
+      // Load with timeout - start with 12 items instead of 20 for faster initial load
+      const shamePromise = withTimeout(
+        getPileOfShame(user.id, 12, excludedIds),
+        8000, // 8 second timeout
+        []
+      );
 
-      // Mark hidden gems as shown
-      tipsExclusionService.markShown('hiddenGems', shame.map(s => s.id));
+      shamePromise.then(shame => {
+        console.log('[Tips] Pile of shame:', shame);
+        setPileOfShameData(shame);
+        setLoadingPileOfShame(false);
+
+        // Mark hidden gems as shown
+        tipsExclusionService.markShown('hiddenGems', shame.map(s => s.id));
+      }).catch(error => {
+        console.error('[Tips] Pile of shame failed:', error);
+        setLoadingPileOfShame(false);
+      });
 
       // Calculate service insights - how many favorites are on each service
       const insights: Record<string, number> = {};
@@ -656,7 +732,19 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
         )}
 
         {/* Worth Discovering Section */}
-        {pileOfShame.length > 0 && (
+        {loadingPileOfShame ? (
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              💎 Worth Discovering
+            </Text>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Finding hidden gems for you...
+              </Text>
+            </View>
+          </View>
+        ) : pileOfShame.length > 0 ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               💎 Worth Discovering
@@ -764,7 +852,19 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
         )}
 
         {/* Worth Rewatching Section */}
-        {rewatchSuggestions.length > 0 && (
+        {loadingRewatch ? (
+          <View style={[styles.card, { backgroundColor: colors.card }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              🔁 Worth Rewatching
+            </Text>
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+                Finding favorites to rewatch...
+              </Text>
+            </View>
+          </View>
+        ) : rewatchSuggestions.length > 0 ? (
           <>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               🔁 Worth Rewatching
@@ -1470,6 +1570,15 @@ const styles = StyleSheet.create({
   insightText: {
     fontSize: 11,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
   },
 });
 
