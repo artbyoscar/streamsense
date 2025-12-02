@@ -37,14 +37,27 @@ export const initializeExclusions = async (userId: string) => {
     watchlistTmdbIds = new Set(); // Keep in sync
 
     ids.forEach(id => {
-      const num = Number(id);
+      // Try direct number conversion first
+      let num = Number(id);
+
       if (!isNaN(num)) {
+        // Direct tmdb_id like "99966"
         globalExcludeIds.add(num);
-        watchlistTmdbIds.add(num); // Ensure both sets are synchronized
+        watchlistTmdbIds.add(num);
+      } else {
+        // Try parsing content_id format: "tv-99966" or "movie-12345"
+        const match = id.match(/^(tv|movie)-(\d+)$/);
+        if (match) {
+          num = parseInt(match[2], 10);
+          globalExcludeIds.add(num);
+          watchlistTmdbIds.add(num);
+        }
+        // Ignore UUID format - we need tmdb_id for exclusions
       }
     });
 
     console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items (watchlist: ${watchlistTmdbIds.size})`);
+    console.log(`[SmartRecs] Sample exclusions:`, Array.from(globalExcludeIds).slice(0, 10));
   } catch (error) {
     console.error('[SmartRecs] Error initializing exclusions:', error);
   }
@@ -109,8 +122,17 @@ const initializeCaches = async (userId: string) => {
     const ids = await getWatchlistIds(userId);
     watchlistTmdbIds = new Set();
     ids.forEach(id => {
-      const num = Number(id);
-      if (!isNaN(num)) watchlistTmdbIds.add(num);
+      let num = Number(id);
+      if (!isNaN(num)) {
+        watchlistTmdbIds.add(num);
+      } else {
+        // Parse content_id format: "tv-99966" or "movie-12345"
+        const match = id.match(/^(tv|movie)-(\d+)$/);
+        if (match) {
+          num = parseInt(match[2], 10);
+          watchlistTmdbIds.add(num);
+        }
+      }
     });
 
     console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
@@ -370,14 +392,22 @@ export const getSmartRecommendations = async (
   globalExcludeIds = new Set(); // Keep in sync with watchlistTmdbIds
 
   ids.forEach(id => {
-    const num = Number(id);
+    let num = Number(id);
     if (!isNaN(num)) {
       watchlistTmdbIds.add(num);
-      globalExcludeIds.add(num); // Ensure both sets are synchronized
+      globalExcludeIds.add(num);
+    } else {
+      // Parse content_id format: "tv-99966" or "movie-12345"
+      const match = id.match(/^(tv|movie)-(\d+)$/);
+      if (match) {
+        num = parseInt(match[2], 10);
+        watchlistTmdbIds.add(num);
+        globalExcludeIds.add(num);
+      }
     }
   });
 
-  console.log(`[SmartRecs] Watchlist exclusions updated: ${watchlistTmdbIds.size} items`);
+  console.log(`[SmartRecs] Watchlist exclusions updated: ${watchlistTmdbIds.size} items (global: ${globalExcludeIds.size})`);
 
   // SMART CACHE MANAGEMENT: Prevent session cache from growing too large
   // When cache exceeds 500 items, keep only the most recent 200
@@ -810,11 +840,24 @@ export const getSmartRecommendations = async (
 export const refreshWatchlistCache = async (userId: string) => {
   const ids = await getWatchlistIds(userId);
   watchlistTmdbIds = new Set();
+  globalExcludeIds = new Set(); // Keep in sync
+
   ids.forEach(id => {
-    const num = Number(id);
-    if (!isNaN(num)) watchlistTmdbIds.add(num);
+    let num = Number(id);
+    if (!isNaN(num)) {
+      watchlistTmdbIds.add(num);
+      globalExcludeIds.add(num);
+    } else {
+      // Parse content_id format: "tv-99966" or "movie-12345"
+      const match = id.match(/^(tv|movie)-(\d+)$/);
+      if (match) {
+        num = parseInt(match[2], 10);
+        watchlistTmdbIds.add(num);
+        globalExcludeIds.add(num);
+      }
+    }
   });
-  console.log('[SmartRecs] Refreshed watchlist cache:', watchlistTmdbIds.size, 'items');
+  console.log('[SmartRecs] Refreshed watchlist cache:', watchlistTmdbIds.size, 'items (global:', globalExcludeIds.size, ')');
 };
 
 // Clear all caches
