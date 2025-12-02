@@ -752,7 +752,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 100,
+    marginBottom: 120,
     zIndex: 1,
   },
   card: {
@@ -786,7 +786,7 @@ const styles = StyleSheet.create({
     paddingBottom: 0, // Remove padding from container, move to scrollContent
   },
   scrollContent: {
-    paddingBottom: 150, // Heavy padding to ensure text doesn't go behind buttons
+    paddingBottom: 180, // Heavy padding to ensure text doesn't go behind buttons
   },
   cardTitle: {
     fontSize: 22,
@@ -820,10 +820,11 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 6,
+    marginTop: 8,
   },
   overviewScroll: {
     flex: 1,
-    maxHeight: 90, // Limit overview height to prevent layout issues
+    maxHeight: 120, // Increased to show more overview text
   },
   cardOverview: {
     fontSize: 14,
@@ -831,7 +832,7 @@ const styles = StyleSheet.create({
   },
   buttonsContainer: {
     position: 'absolute',
-    bottom: 40,
+    bottom: 60,
     width: '100%',
     zIndex: 50,
     elevation: 20,
