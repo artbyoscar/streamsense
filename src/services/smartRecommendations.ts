@@ -241,6 +241,7 @@ interface RecommendationOptions {
   mediaType?: 'movie' | 'tv' | 'mixed';
   forceRefresh?: boolean;
   excludeSessionItems?: boolean;  // For infinite feeds (Discover), set to false
+  genres?: number[];  // Specific genre IDs to fetch (overrides user's top genres)
 }
 
 /**
@@ -521,9 +522,12 @@ export const getSmartRecommendations = async (
       let page = getRandomPage();
 
       // Convert genre names to movie-specific genre IDs
-      const movieGenreIds = topGenres
-        .flatMap(name => MOVIE_GENRE_IDS[name] || [])
-        .slice(0, 3);
+      // If specific genres are requested, use those instead of user's top genres
+      const movieGenreIds = options.genres && options.genres.length > 0
+        ? options.genres
+        : topGenres
+            .flatMap(name => MOVIE_GENRE_IDS[name] || [])
+            .slice(0, 3);
 
       // Use first 2-3 genres with OR operator for variety (not too specific, not too broad)
       const movieGenreQuery = movieGenreIds.join('|');
@@ -583,9 +587,12 @@ export const getSmartRecommendations = async (
     // Fetch TV shows
     if (mediaType === 'tv' || mediaType === 'mixed') {
       // Convert genre names to TV-specific genre IDs
-      const tvGenreIds = topGenres
-        .flatMap(name => TV_GENRE_IDS[name] || [])
-        .slice(0, 2); // Use fewer genres for TV to avoid overly specific queries
+      // If specific genres are requested, use those instead of user's top genres
+      const tvGenreIds = options.genres && options.genres.length > 0
+        ? options.genres
+        : topGenres
+            .flatMap(name => TV_GENRE_IDS[name] || [])
+            .slice(0, 2); // Use fewer genres for TV to avoid overly specific queries
 
       let page = getRandomPage();
 

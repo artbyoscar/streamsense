@@ -169,8 +169,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
         loadAll();
     }, [userId]);
 
-    // Instant filtering from cache
-    const getFiltered = useCallback((mediaType: 'all' | 'movie' | 'tv', genre: string) => {
+    // Instant filtering from cache with on-demand fetching
+    const getFiltered = useCallback(async (mediaType: 'all' | 'movie' | 'tv', genre: string) => {
         if (!cache) {
             console.log('[RecCache] getFiltered called but cache is null');
             return [];
@@ -197,11 +197,87 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
             results = results.filter(r => genreIds.has(r.id));
             console.log('[RecCache] After genre filter:', results.length, 'items');
+
+            // If we have too few items for this genre, fetch more from TMDb
+            if (results.length < 10 && userId) {
+                console.log(`[RecCache] Only ${results.length} ${genre} items in cache. Fetching more...`);
+
+                const targetGenreIds = GENRE_NAME_TO_ID[genre];
+                if (targetGenreIds && targetGenreIds.length > 0) {
+                    try {
+                        const newItems = await getSmartRecommendations({
+                            userId,
+                            limit: 30, // Fetch extra to ensure we have enough after filtering
+                            mediaType: mediaType === 'all' ? 'mixed' : mediaType,
+                            genres: targetGenreIds,
+                        });
+
+                        console.log(`[RecCache] Fetched ${newItems.length} new ${genre} items`);
+
+                        // Validate and add to cache (avoiding duplicates)
+                        const existingIds = new Set(cache.all.map(i => i.id));
+                        const validNew = newItems.filter(item => {
+                            const hasPoster = !!(item.posterPath || item.poster_path);
+                            const hasTitle = !!(item.title || item.name);
+                            const isNew = !existingIds.has(item.id);
+                            return hasPoster && hasTitle && isNew;
+                        });
+
+                        if (validNew.length > 0) {
+                            console.log(`[RecCache] Adding ${validNew.length} new items to cache`);
+
+                            // Update cache.all
+                            cache.all = [...cache.all, ...validNew];
+
+                            // Update byMediaType
+                            validNew.forEach(item => {
+                                if (item.media_type === 'movie' || item.type === 'movie') {
+                                    cache.byMediaType.movie.push(item);
+                                } else if (item.media_type === 'tv' || item.type === 'tv' || item.type === 'series') {
+                                    cache.byMediaType.tv.push(item);
+                                }
+                            });
+
+                            // Update byGenre for affected genres
+                            validNew.forEach(item => {
+                                const itemGenreIds: number[] = [];
+                                if (item.genre_ids && Array.isArray(item.genre_ids)) {
+                                    itemGenreIds.push(...item.genre_ids);
+                                }
+                                if (item.genres && Array.isArray(item.genres)) {
+                                    item.genres.forEach((g: any) => {
+                                        if (typeof g === 'number') itemGenreIds.push(g);
+                                        else if (g && g.id) itemGenreIds.push(g.id);
+                                    });
+                                }
+
+                                // Update all genre buckets that this item belongs to
+                                for (const [genreName, genreIds] of Object.entries(GENRE_NAME_TO_ID)) {
+                                    if (itemGenreIds.some(id => genreIds.includes(id))) {
+                                        const existing = cache.byGenre.get(genreName) || [];
+                                        cache.byGenre.set(genreName, [...existing, item]);
+                                    }
+                                }
+                            });
+
+                            // Re-filter with updated cache
+                            const updatedGenreItems = cache.byGenre.get(genre) || [];
+                            const updatedGenreIds = new Set(updatedGenreItems.map(i => i.id));
+                            const baseResults = mediaType !== 'all' ? cache.byMediaType[mediaType] : cache.all;
+                            results = baseResults.filter(r => updatedGenreIds.has(r.id));
+
+                            console.log(`[RecCache] After fetch and re-filter: ${results.length} items`);
+                        }
+                    } catch (error) {
+                        console.error(`[RecCache] Error fetching more ${genre} content:`, error);
+                    }
+                }
+            }
         }
 
         console.log('[RecCache] Final results:', results.length, 'items');
         return results;
-    }, [cache]);
+    }, [cache, userId]);
 
     const refreshCache = useCallback(async () => {
         if (!userId) return;

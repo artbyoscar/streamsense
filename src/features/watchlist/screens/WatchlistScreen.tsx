@@ -115,18 +115,31 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   // DERIVED STATE - Use useMemo to avoid infinite loops
   // ============================================================================
 
-  // Select recommendations based on media type filter (client-side, instant!)
-  // Select recommendations based on media type filter (client-side, instant!)
-  // Select recommendations based on media type filter (client-side, instant!)
-  const selectedRecommendations = useMemo(() => {
-    // Use the hook's getFiltered function which is already optimized
-    const results = getFilteredRecommendations(mediaTypeFilter, activeGenreFilter);
+  // Select recommendations based on media type filter (client-side with async fetch if needed)
+  const [selectedRecommendations, setSelectedRecommendations] = useState<any[]>([]);
+  const [isFiltering, setIsFiltering] = useState(false);
 
-    console.log(`[Watchlist] Filtered results: ${results.length} items (Type: ${mediaTypeFilter}, Genre: ${activeGenreFilter})`);
-    if (results.length === 0 && activeGenreFilter !== 'All') {
-      console.log('[Watchlist] Zero results for genre filter. Checking cache state...');
-    }
-    return results;
+  useEffect(() => {
+    const fetchFilteredResults = async () => {
+      setIsFiltering(true);
+      try {
+        // Use the hook's getFiltered function which now supports async fetching
+        const results = await getFilteredRecommendations(mediaTypeFilter, activeGenreFilter);
+
+        console.log(`[Watchlist] Filtered results: ${results.length} items (Type: ${mediaTypeFilter}, Genre: ${activeGenreFilter})`);
+        if (results.length === 0 && activeGenreFilter !== 'All') {
+          console.log('[Watchlist] Zero results for genre filter. May have fetched new content.');
+        }
+        setSelectedRecommendations(results);
+      } catch (error) {
+        console.error('[Watchlist] Error filtering recommendations:', error);
+        setSelectedRecommendations([]);
+      } finally {
+        setIsFiltering(false);
+      }
+    };
+
+    fetchFilteredResults();
   }, [mediaTypeFilter, activeGenreFilter, getFilteredRecommendations]);
 
   // ROBUST filtering that handles different data structures
