@@ -56,32 +56,41 @@ const statusToRating = (status: string): number => {
 
 /**
  * Fetch all user interactions from database
+ * NO JOIN - fetches directly from watchlist_items using tmdb_id
  */
 export const getUserInteractions = async (): Promise<UserInteraction[]> => {
   console.log('[SVD] Fetching user interactions from database...');
 
-  const { data, error } = await supabase
+  // Get watchlist items without JOIN - use tmdb_id directly
+  const { data: watchlistItems, error } = await supabase
     .from('watchlist_items')
-    .select(`
-      user_id,
-      content!inner(tmdb_id),
-      status,
-      created_at
-    `);
+    .select('user_id, tmdb_id, status, rating, created_at')
+    .not('tmdb_id', 'is', null); // Only items with tmdb_id
 
   if (error) {
     console.error('[SVD] Error fetching interactions:', error);
     throw error;
   }
 
-  const interactions: UserInteraction[] = data
-    .filter(item => item.content && (item.content as any).tmdb_id)
-    .map(item => ({
+  if (!watchlistItems || watchlistItems.length === 0) {
+    console.log('[SVD] No watchlist items found');
+    return [];
+  }
+
+  // Convert to interactions, using explicit rating if available
+  const interactions: UserInteraction[] = watchlistItems.map(item => {
+    // Use explicit rating (1-5) if available, otherwise derive from status
+    const rating = item.rating && item.rating > 0
+      ? item.rating
+      : statusToRating(item.status);
+
+    return {
       userId: item.user_id,
-      tmdbId: (item.content as any).tmdb_id,
-      rating: statusToRating(item.status),
+      tmdbId: item.tmdb_id,
+      rating,
       timestamp: new Date(item.created_at),
-    }));
+    };
+  });
 
   console.log(`[SVD] Loaded ${interactions.length} user interactions`);
   return interactions;
