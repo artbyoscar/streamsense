@@ -451,77 +451,52 @@ export const SwipeScreen: React.FC = () => {
       <View
         style={[
           styles.header,
-          {
-            paddingTop: Math.max(insets.top, 44) + 16,
-            paddingBottom: 16,
-          },
+          { paddingTop: Math.max(insets.top, 44) + 8 },
         ]}
       >
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          Discover
-        </Text>
+        <View style={styles.headerRow}>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            Discover
+          </Text>
+          <Text style={[styles.counterText, { color: colors.textSecondary }]}>
+            {currentIndex + 1} of {cards.length}
+          </Text>
+        </View>
         <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
           Quick swipe to build your watchlist
         </Text>
-        <Text style={[styles.counterText, { color: colors.textSecondary }]}>
-          {currentIndex + 1} of {cards.length}
-        </Text>
       </View>
 
-      {/* Card Stack */}
-      <View style={styles.cardStack}>
-        {/* Next Card (Background) */}
-        {currentIndex + 1 < cards.length && (
-          <View
-            style={[
-              styles.card,
-              {
-                backgroundColor: colors.card,
-                position: 'absolute',
-                zIndex: 0,
-                transform: [{ scale: 0.95 }, { translateY: 10 }],
-                opacity: 0.8,
-              }
-            ]}
-          >
-            {/* Poster - Top 55% */}
-            {cards[currentIndex + 1].posterPath || (cards[currentIndex + 1] as any).poster_path ? (
-              <Image
-                source={{ uri: `https://image.tmdb.org/t/p/w500${cards[currentIndex + 1].posterPath || (cards[currentIndex + 1] as any).poster_path}` }}
-                style={styles.cardPoster}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
-                <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
-              </View>
-            )}
+      {/* Legend Bar */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={[styles.legendBar, { backgroundColor: colors.card }]}
+        contentContainerStyle={styles.legendContent}
+      >
+        <View style={styles.legendItem}>
+          <Ionicons name="close" size={14} color="#EF4444" />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Not interested</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Ionicons name="heart" size={14} color="#22C55E" />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Want to watch</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Ionicons name="play" size={14} color={colors.primary} />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Watching</Text>
+        </View>
+        <View style={styles.legendItem}>
+          <Ionicons name="checkmark-circle" size={14} color="#8B5CF6" />
+          <Text style={[styles.legendText, { color: colors.textSecondary }]}>Watched</Text>
+        </View>
+      </ScrollView>
 
-            {/* Content Info - Bottom 45% */}
-            <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
-                {cards[currentIndex + 1].title || (cards[currentIndex + 1] as any).name || 'Unknown Title'}
-              </Text>
-
-              <View style={styles.cardMetaRow}>
-                <StarRating
-                  rating={cards[currentIndex + 1].rating || (cards[currentIndex + 1] as any).vote_average || 0}
-                  size={16}
-                  showNumber={true}
-                />
-                <Text style={[styles.typeText, { color: colors.textSecondary }]}>
-                  {(cards[currentIndex + 1].type || (cards[currentIndex + 1] as any).media_type || 'movie') === 'tv' ? '📺 TV Show' : '🎬 Movie'}
-                </Text>
-              </View>
-            </View>
-          </View>
-        )}
-
-        {/* Current Card (Foreground) */}
+      {/* Card Area - Centered */}
+      <View style={styles.cardArea}>
+        {/* Current Card */}
         <GestureDetector gesture={panGesture}>
-          <Animated.View
-            style={[styles.card, cardAnimatedStyle, { backgroundColor: colors.card, zIndex: 1 }]}
-          >
+          <Animated.View style={[styles.card, cardAnimatedStyle]}>
             {/* Swipe Overlays */}
             <Animated.View style={[styles.overlay, styles.likeOverlay, likeOverlayStyle]}>
               <Text style={styles.overlayText}>WANT TO WATCH</Text>
@@ -535,126 +510,96 @@ export const SwipeScreen: React.FC = () => {
               <Text style={styles.overlayText}>ALREADY WATCHED</Text>
             </Animated.View>
 
-            {/* Poster - Top 55% */}
-            {posterUrl ? (
-              <Image
-                source={{ uri: posterUrl }}
-                style={styles.cardPoster}
-                resizeMode="contain"
-              />
-            ) : (
-              <View style={[styles.cardPosterPlaceholder, { backgroundColor: colors.background }]}>
-                <MaterialCommunityIcons name="movie-open" size={80} color={colors.textSecondary} />
-                <Text style={[styles.noImageText, { color: colors.textSecondary }]}>
-                  No Image Available
-                </Text>
-              </View>
-            )}
+            {/* Poster */}
+            <View style={styles.posterContainer}>
+              {posterUrl ? (
+                <Image
+                  source={{ uri: posterUrl }}
+                  style={styles.poster}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={[styles.posterPlaceholder, { backgroundColor: colors.card }]}>
+                  <MaterialCommunityIcons name="movie-open" size={60} color={colors.textSecondary} />
+                  <Text style={[styles.noImageText, { color: colors.textSecondary }]}>
+                    No Image
+                  </Text>
+                </View>
+              )}
+            </View>
 
-            {/* Content Info - Bottom 45% */}
-            <View style={[styles.cardContent, { backgroundColor: colors.card }]}>
-              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>
+            {/* Content Info Below Poster */}
+            <View style={styles.contentInfo}>
+              <Text style={[styles.contentTitle, { color: colors.text }]} numberOfLines={2}>
                 {title}
               </Text>
 
-              <View style={styles.cardMetaRow}>
+              <View style={styles.metaRow}>
                 {rating > 0 && (
-                  <StarRating rating={rating} size={16} showNumber={true} />
+                  <>
+                    <StarRating rating={rating} size={15} showNumber={false} />
+                    <Text style={[styles.ratingText, { color: '#fbbf24' }]}>
+                      {rating.toFixed(1)}
+                    </Text>
+                    <Text style={[styles.metaDivider, { color: '#444' }]}>•</Text>
+                  </>
                 )}
                 {year && (
-                  <Text style={[styles.yearText, { color: colors.textSecondary }]}>
-                    {year}
-                  </Text>
+                  <>
+                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                      {year}
+                    </Text>
+                    <Text style={[styles.metaDivider, { color: '#444' }]}>•</Text>
+                  </>
                 )}
-                <Text style={[styles.typeText, { color: colors.textSecondary }]}>
-                  {mediaType === 'tv' ? '📺 TV Show' : '🎬 Movie'}
+                <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                  {mediaType === 'tv' ? 'TV Show' : 'Movie'}
                 </Text>
               </View>
-
-              <Text style={[styles.aboutLabel, { color: colors.textSecondary }]}>
-                About
-              </Text>
-              <ScrollView
-                style={styles.overviewScroll}
-                contentContainerStyle={styles.scrollContent}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={[styles.cardOverview, { color: colors.text }]}>
-                  {overview}
-                </Text>
-              </ScrollView>
             </View>
           </Animated.View>
         </GestureDetector>
       </View>
 
-      {/* Action Buttons - 4 buttons in a grid */}
+      {/* Action Buttons - Fixed at Bottom */}
       <View
         style={[
-          styles.buttonsContainer,
-          { paddingBottom: Math.max(insets.bottom, 20) + 20 },
+          styles.actionsContainer,
+          { paddingBottom: Math.max(insets.bottom, 20) + 16 },
         ]}
       >
-        <View style={styles.primaryButtonsRow}>
+        <View style={styles.primaryActions}>
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#EF4444' }]}
+            style={styles.skipButton}
             onPress={() => handleButtonPress('hide')}
           >
-            <Ionicons name="close" size={28} color="#FFFFFF" />
+            <Ionicons name="close" size={32} color="#ef4444" />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: '#22C55E' }]}
+            style={styles.likeButton}
             onPress={() => handleButtonPress('watchlist')}
           >
-            <Ionicons name="heart" size={28} color="#FFFFFF" />
+            <Ionicons name="heart" size={32} color="#22c55e" />
           </TouchableOpacity>
         </View>
 
-        <View style={styles.secondaryButtonsRow}>
+        <View style={styles.secondaryActions}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.watchingButton, { backgroundColor: colors.primary }]}
+            style={[styles.secondaryButton, styles.watchingButton]}
             onPress={() => handleButtonPress('watching')}
           >
-            <Ionicons name="play" size={24} color="#FFFFFF" />
-            <Text style={styles.watchingButtonText}>Watching</Text>
+            <Ionicons name="play" size={18} color="#8b5cf6" />
+            <Text style={[styles.secondaryButtonText, { color: '#ffffff' }]}>Watching</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionButton, styles.watchedButton, { backgroundColor: '#8B5CF6' }]}
+            style={[styles.secondaryButton, styles.watchedButton]}
             onPress={() => handleButtonPress('watched')}
           >
-            <Ionicons name="checkmark-circle" size={24} color="#FFFFFF" />
-            <Text style={styles.watchedButtonText}>Watched</Text>
+            <Ionicons name="checkmark-circle" size={18} color="#8b5cf6" />
+            <Text style={[styles.secondaryButtonText, { color: '#ffffff' }]}>Watched</Text>
           </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Instructions */}
-      <View style={[styles.instructions, { backgroundColor: colors.card }]}>
-        <View style={styles.instructionItem}>
-          <Ionicons name="close" size={16} color="#EF4444" />
-          <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Not interested
-          </Text>
-        </View>
-        <View style={styles.instructionItem}>
-          <Ionicons name="heart" size={16} color="#22C55E" />
-          <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Want to watch
-          </Text>
-        </View>
-        <View style={styles.instructionItem}>
-          <Ionicons name="play" size={16} color={colors.primary} />
-          <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Watching now
-          </Text>
-        </View>
-        <View style={styles.instructionItem}>
-          <Ionicons name="checkmark-circle" size={16} color="#8B5CF6" />
-          <Text style={[styles.instructionText, { color: colors.textSecondary }]}>
-            Already watched
-          </Text>
         </View>
       </View>
 
@@ -723,166 +668,168 @@ export const SwipeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
   },
+  // Header
   header: {
     paddingHorizontal: 20,
-    marginBottom: 4,  // Reduced from 10 to move title higher
-    zIndex: 10,
+    paddingBottom: 8,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 13,
+    marginTop: 2,
   },
   counterText: {
-    fontSize: 13,
-    fontWeight: '600',
+    fontSize: 14,
   },
-  cardStack: {
-    flex: 1,
+  // Legend Bar
+  legendBar: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  legendContent: {
+    gap: 16,
+  },
+  legendItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+  },
+  legendText: {
+    fontSize: 12,
+  },
+  // Card Area - Centered
+  cardArea: {
+    flex: 1,
     justifyContent: 'center',
-    marginBottom: 160,  // Increased from 120 to push buttons lower
-    zIndex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
   card: {
-    width: SCREEN_WIDTH * 0.85,  // Changed from 0.9 to 0.85 for smaller card
-    maxWidth: 320,  // Added max width constraint
-    height: SCREEN_HEIGHT * 0.6,  // Reduced from 0.65 for better proportion
-    borderRadius: 20,
+    width: '75%',
+    maxWidth: 280,
+    alignItems: 'center',
+  },
+  posterContainer: {
+    width: '100%',
+    aspectRatio: 0.67,
+    borderRadius: 12,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    backgroundColor: '#1a1a1a',
     elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
   },
-  cardPoster: {
+  poster: {
     width: '100%',
-    height: '55%', // Poster takes 55% of card height
+    height: '100%',
   },
-  cardPosterPlaceholder: {
+  posterPlaceholder: {
     width: '100%',
-    height: '55%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
   },
   noImageText: {
-    fontSize: 14,
-    marginTop: 12,
-  },
-  cardContent: {
-    flex: 1, // Takes remaining 45%
-    padding: 16,
-    paddingBottom: 16,
-  },
-  scrollContent: {
-    paddingBottom: 8,
-  },
-  cardTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  cardMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  ratingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  yearText: {
-    fontSize: 14,
-  },
-  typeText: {
-    fontSize: 14,
-  },
-  aboutLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
     marginTop: 8,
   },
-  overviewScroll: {
-    flex: 1,
-    maxHeight: 100,
-  },
-  cardOverview: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  buttonsContainer: {
-    position: 'absolute',
-    bottom: 40,  // Reduced from 60 to push buttons lower
+  // Content Info Below Poster
+  contentInfo: {
     width: '100%',
-    zIndex: 50,
-    elevation: 20,
-    flexDirection: 'column', // Stack rows vertically
-    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,  // Increased horizontal padding
-    paddingTop: 8,  // Reduced top padding
+    marginTop: 16,
   },
-  actionButton: {
-    width: 64,  // Slightly larger from 60
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+  contentTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
   },
-  watchingButton: {
-    minWidth: 120, // Responsive width with minimum
-    maxWidth: 160,
-    flex: 1,
+  metaRow: {
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    gap: 8,
   },
-  watchingButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+  ratingText: {
+    fontSize: 15,
     fontWeight: '600',
   },
-  instructions: {
-    position: 'absolute',
-    top: 110,  // Reduced from 120 to move higher with header
-    left: 20,
-    right: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    opacity: 0.9,
+  metaText: {
+    fontSize: 14,
   },
-  instructionItem: {
+  metaDivider: {
+    fontSize: 14,
+  },
+  // Action Buttons - Fixed at Bottom
+  actionsContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
+  primaryActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 60,
+    marginBottom: 16,
+  },
+  skipButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#ef4444',
+  },
+  likeButton: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: 'rgba(34, 197, 94, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#22c55e',
+  },
+  secondaryActions: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 25,
   },
-  instructionText: {
-    fontSize: 12,
+  watchingButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+    borderWidth: 1,
+    borderColor: '#8b5cf6',
   },
+  watchedButton: {
+    backgroundColor: 'rgba(139, 92, 246, 0.25)',
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -910,48 +857,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  primaryButtonsRow: {
-    flexDirection: 'row',
-    gap: 48,  // Large spacing between X and Heart buttons
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,  // Spacing between primary and secondary rows
-    width: '100%',
-    maxWidth: 340,
-  },
-  secondaryButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,  // Smaller spacing between Watching and Watched buttons
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 0,
-    width: '100%',
-    maxWidth: 340,
-  },
-  buttonsRow: {
-    // Legacy - keeping for backwards compatibility
-    flexDirection: 'row',
-    gap: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    width: '100%',
-    maxWidth: 340,
-  },
-  watchedButton: {
-    minWidth: 120, // Match watchingButton
-    maxWidth: 160,
-    flex: 1,
-    flexDirection: 'row',
-    gap: 6,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-  },
-  watchedButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  // Rating Modal
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
