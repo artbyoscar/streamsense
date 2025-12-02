@@ -112,20 +112,84 @@ export interface ContentDNA {
   similarTitles: number[]; // TMDb similar
 }
 
+/**
+ * Comprehensive User Taste Profile
+ * Goes beyond genre affinity to build a complete picture of user preferences
+ */
+export interface UserTasteProfile {
+  userId: string;
+
+  // Aggregated DNA preferences (learned from watched content)
+  preferredTone: ContentDNA['tone'];
+  preferredThemes: ContentDNA['themes'];
+  preferredPacing: ContentDNA['pacing'];
+  preferredAesthetic: ContentDNA['aesthetic'];
+  preferredNarrative: ContentDNA['narrative'];
+
+  // Explicit preferences
+  favoriteDirectors: Array<{ name: string; score: number }>;
+  favoriteActors: Array<{ name: string; score: number }>;
+  favoriteWriters: Array<{ name: string; score: number }>;
+  favoriteDecades: Array<{ decade: string; score: number }>;
+  favoriteOrigins: Array<{ country: string; score: number }>;
+
+  // Content tolerance
+  violenceTolerance: number;
+  complexityPreference: number;
+
+  // Viewing patterns
+  patterns: {
+    preferredLength: 'short' | 'medium' | 'long' | 'any';
+    bingeVsEpisodic: number; // 0=episodic, 1=binge
+    newVsClassic: number;    // 0=classics, 1=new releases
+    mainstreamVsNiche: number; // 0=mainstream, 1=niche
+    movieVsTv: number;       // 0=movies, 1=TV
+  };
+
+  // Interest graph
+  interestClusters: Array<{
+    name: string;           // "Christopher Nolan Mind-Benders"
+    seedContent: number[];  // TMDb IDs that define this cluster
+    strength: number;       // How strong is this interest
+  }>;
+
+  // Anti-preferences (what to avoid)
+  avoidGenres: number[];
+  avoidKeywords: string[];
+  avoidThemes: string[];
+
+  // Exploration appetite
+  explorationScore: number; // 0=stick to comfort zone, 1=adventurous
+
+  // Temporal preferences
+  timeBasedPreferences: {
+    weekdayEvening: string[];   // Genres/moods for weekday evenings
+    weekendAfternoon: string[];
+    lateNight: string[];
+  };
+
+  // Computed meta-insights
+  tasteSignature: string;    // "Dark Thriller Enthusiast with Animation Soft Spot"
+  discoveryOpportunities: string[]; // Adjacent genres not yet explored
+
+  // Confidence metrics
+  confidence: number; // 0-1
+  sampleSize: number; // Number of items in profile
+  lastUpdated: Date;
+}
+
+/**
+ * Legacy interface - kept for backward compatibility
+ */
 export interface UserDNAProfile {
-  // Preferred attributes (aggregated from watchlist)
   tone: ContentDNA['tone'];
   pacing: ContentDNA['pacing'];
   themes: ContentDNA['themes'];
   aesthetic: ContentDNA['aesthetic'];
   narrative: ContentDNA['narrative'];
-
-  // Favorite talent
   favoriteDirectors: { name: string; count: number }[];
   favoriteActors: { name: string; count: number }[];
   favoriteWriters: { name: string; count: number }[];
-
-  // Confidence (0-1)
   confidence: number;
   sampleSize: number;
 }
@@ -464,6 +528,519 @@ export class ContentDNAService {
     const intersection = [...set1].filter(x => set2.has(x)).length;
     const union = new Set([...s1, ...s2]).size;
     return union > 0 ? intersection / union : 0;
+  }
+
+  /**
+   * Build comprehensive taste profile from user's watchlist
+   */
+  async buildUserTasteProfile(userId: string): Promise<UserTasteProfile | null> {
+    console.log(`[TasteProfile] Building taste profile for user ${userId}...`);
+
+    try {
+      // Fetch user's watchlist items
+      const { data: watchlistItems, error } = await supabase
+        .from('watchlist_items')
+        .select('tmdb_id, media_type, status, rating, created_at')
+        .eq('user_id', userId)
+        .in('status', ['watched', 'watching']) // Only items they've engaged with
+        .not('tmdb_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100); // Analyze last 100 items
+
+      if (error) throw error;
+      if (!watchlistItems || watchlistItems.length === 0) {
+        console.log('[TasteProfile] No watchlist items found');
+        return null;
+      }
+
+      console.log(`[TasteProfile] Analyzing ${watchlistItems.length} watchlist items...`);
+
+      // Compute DNA for all watchlist items
+      const dnaProfiles: ContentDNA[] = [];
+      for (const item of watchlistItems) {
+        try {
+          const mediaType = item.media_type === 'tv' ? 'tv' : 'movie';
+          const dna = await this.computeDNA(item.tmdb_id, mediaType);
+          dnaProfiles.push(dna);
+        } catch (error) {
+          console.warn(`[TasteProfile] Failed to compute DNA for ${item.tmdb_id}:`, error);
+        }
+      }
+
+      if (dnaProfiles.length === 0) {
+        console.log('[TasteProfile] No DNA profiles computed');
+        return null;
+      }
+
+      console.log(`[TasteProfile] Computed ${dnaProfiles.length} DNA profiles`);
+
+      // Build taste profile
+      const profile: UserTasteProfile = {
+        userId,
+        preferredTone: this.aggregateTone(dnaProfiles),
+        preferredThemes: this.aggregateThemes(dnaProfiles),
+        preferredPacing: this.aggregatePacing(dnaProfiles),
+        preferredAesthetic: this.aggregateAesthetic(dnaProfiles),
+        preferredNarrative: this.aggregateNarrative(dnaProfiles),
+        favoriteDirectors: this.computeFavoriteDirectors(dnaProfiles),
+        favoriteActors: this.computeFavoriteActors(dnaProfiles),
+        favoriteWriters: this.computeFavoriteWriters(dnaProfiles),
+        favoriteDecades: this.computeFavoriteDecades(dnaProfiles),
+        favoriteOrigins: this.computeFavoriteOrigins(dnaProfiles),
+        violenceTolerance: this.computeViolenceTolerance(dnaProfiles),
+        complexityPreference: this.computeComplexityPreference(dnaProfiles),
+        patterns: this.computeViewingPatterns(dnaProfiles, watchlistItems),
+        interestClusters: this.detectInterestClusters(dnaProfiles),
+        avoidGenres: [], // TODO: Implement anti-preference detection
+        avoidKeywords: [],
+        avoidThemes: [],
+        explorationScore: this.computeExplorationScore(dnaProfiles),
+        timeBasedPreferences: {
+          weekdayEvening: [],
+          weekendAfternoon: [],
+          lateNight: [],
+        },
+        tasteSignature: this.computeTasteSignature(dnaProfiles),
+        discoveryOpportunities: this.findDiscoveryOpportunities(dnaProfiles),
+        confidence: Math.min(1, dnaProfiles.length / 50),
+        sampleSize: dnaProfiles.length,
+        lastUpdated: new Date(),
+      };
+
+      console.log('[TasteProfile] Profile built successfully');
+      console.log('[TasteProfile] Taste Signature:', profile.tasteSignature);
+      console.log('[TasteProfile] Discovery Opportunities:', profile.discoveryOpportunities);
+
+      return profile;
+    } catch (error) {
+      console.error('[TasteProfile] Error building taste profile:', error);
+      return null;
+    }
+  }
+
+  private aggregateTone(profiles: ContentDNA[]): ContentDNA['tone'] {
+    const avg = {
+      dark: 0,
+      humorous: 0,
+      tense: 0,
+      emotional: 0,
+      cerebral: 0,
+      escapist: 0,
+    };
+
+    profiles.forEach(p => {
+      avg.dark += p.tone.dark;
+      avg.humorous += p.tone.humorous;
+      avg.tense += p.tone.tense;
+      avg.emotional += p.tone.emotional;
+      avg.cerebral += p.tone.cerebral;
+      avg.escapist += p.tone.escapist;
+    });
+
+    const count = profiles.length;
+    return {
+      dark: avg.dark / count,
+      humorous: avg.humorous / count,
+      tense: avg.tense / count,
+      emotional: avg.emotional / count,
+      cerebral: avg.cerebral / count,
+      escapist: avg.escapist / count,
+    };
+  }
+
+  private aggregateThemes(profiles: ContentDNA[]): ContentDNA['themes'] {
+    const avg = {
+      redemption: 0, revenge: 0, familyDynamics: 0, comingOfAge: 0,
+      goodVsEvil: 0, survival: 0, identity: 0, power: 0,
+      love: 0, loss: 0, technology: 0, nature: 0,
+      isolation: 0, friendship: 0, betrayal: 0, justice: 0,
+    };
+
+    profiles.forEach(p => {
+      Object.keys(avg).forEach(key => {
+        avg[key as keyof typeof avg] += p.themes[key as keyof typeof p.themes];
+      });
+    });
+
+    const count = profiles.length;
+    Object.keys(avg).forEach(key => {
+      avg[key as keyof typeof avg] /= count;
+    });
+
+    return avg;
+  }
+
+  private aggregatePacing(profiles: ContentDNA[]): ContentDNA['pacing'] {
+    const avg = { slow: 0, medium: 0, fast: 0, episodic: 0, serialized: 0 };
+
+    profiles.forEach(p => {
+      avg.slow += p.pacing.slow;
+      avg.medium += p.pacing.medium;
+      avg.fast += p.pacing.fast;
+      avg.episodic += p.pacing.episodic;
+      avg.serialized += p.pacing.serialized;
+    });
+
+    const count = profiles.length;
+    return {
+      slow: avg.slow / count,
+      medium: avg.medium / count,
+      fast: avg.fast / count,
+      episodic: avg.episodic / count,
+      serialized: avg.serialized / count,
+    };
+  }
+
+  private aggregateAesthetic(profiles: ContentDNA[]): ContentDNA['aesthetic'] {
+    const avg = {
+      visuallyStunning: 0, gritty: 0, stylized: 0,
+      animated: 0, practicalEffects: 0, cgiHeavy: 0,
+    };
+
+    profiles.forEach(p => {
+      avg.visuallyStunning += p.aesthetic.visuallyStunning;
+      avg.gritty += p.aesthetic.gritty;
+      avg.stylized += p.aesthetic.stylized;
+      avg.animated += p.aesthetic.animated;
+      avg.practicalEffects += p.aesthetic.practicalEffects;
+      avg.cgiHeavy += p.aesthetic.cgiHeavy;
+    });
+
+    const count = profiles.length;
+    return {
+      visuallyStunning: avg.visuallyStunning / count,
+      gritty: avg.gritty / count,
+      stylized: avg.stylized / count,
+      animated: avg.animated / count,
+      practicalEffects: avg.practicalEffects / count,
+      cgiHeavy: avg.cgiHeavy / count,
+    };
+  }
+
+  private aggregateNarrative(profiles: ContentDNA[]): ContentDNA['narrative'] {
+    const avg = {
+      nonLinear: 0, multiPerspective: 0, unreliableNarrator: 0,
+      twistEnding: 0, openEnded: 0, closedEnding: 0,
+    };
+
+    profiles.forEach(p => {
+      avg.nonLinear += p.narrative.nonLinear;
+      avg.multiPerspective += p.narrative.multiPerspective;
+      avg.unreliableNarrator += p.narrative.unreliableNarrator;
+      avg.twistEnding += p.narrative.twistEnding;
+      avg.openEnded += p.narrative.openEnded;
+      avg.closedEnding += p.narrative.closedEnding;
+    });
+
+    const count = profiles.length;
+    return {
+      nonLinear: avg.nonLinear / count,
+      multiPerspective: avg.multiPerspective / count,
+      unreliableNarrator: avg.unreliableNarrator / count,
+      twistEnding: avg.twistEnding / count,
+      openEnded: avg.openEnded / count,
+      closedEnding: avg.closedEnding / count,
+    };
+  }
+
+  private computeFavoriteDirectors(profiles: ContentDNA[]): Array<{ name: string; score: number }> {
+    const directorCounts = new Map<string, number>();
+
+    profiles.forEach(p => {
+      p.talent.directors.forEach(director => {
+        directorCounts.set(director, (directorCounts.get(director) || 0) + 1);
+      });
+    });
+
+    return Array.from(directorCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        score: count / profiles.length,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteActors(profiles: ContentDNA[]): Array<{ name: string; score: number }> {
+    const actorCounts = new Map<string, number>();
+
+    profiles.forEach(p => {
+      p.talent.leadActors.forEach(actor => {
+        actorCounts.set(actor, (actorCounts.get(actor) || 0) + 1);
+      });
+    });
+
+    return Array.from(actorCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        score: count / profiles.length,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteWriters(profiles: ContentDNA[]): Array<{ name: string; score: number }> {
+    const writerCounts = new Map<string, number>();
+
+    profiles.forEach(p => {
+      p.talent.writers.forEach(writer => {
+        writerCounts.set(writer, (writerCounts.get(writer) || 0) + 1);
+      });
+    });
+
+    return Array.from(writerCounts.entries())
+      .map(([name, count]) => ({
+        name,
+        score: count / profiles.length,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteDecades(profiles: ContentDNA[]): Array<{ decade: string; score: number }> {
+    const decadeCounts = new Map<string, number>();
+
+    profiles.forEach(p => {
+      const era = p.production.era;
+      let decade = 'Unknown';
+
+      if (era === 'contemporary') decade = '2020s';
+      else if (era === 'modern') decade = '2000s-2010s';
+      else if (era === 'classic') decade = 'Pre-2000';
+
+      decadeCounts.set(decade, (decadeCounts.get(decade) || 0) + 1);
+    });
+
+    return Array.from(decadeCounts.entries())
+      .map(([decade, count]) => ({
+        decade,
+        score: count / profiles.length,
+      }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  private computeFavoriteOrigins(profiles: ContentDNA[]): Array<{ country: string; score: number }> {
+    const countryCounts = new Map<string, number>();
+
+    profiles.forEach(p => {
+      p.production.originCountry.forEach(country => {
+        countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
+      });
+    });
+
+    return Array.from(countryCounts.entries())
+      .map(([country, count]) => ({
+        country,
+        score: count / profiles.length,
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }
+
+  private computeViolenceTolerance(profiles: ContentDNA[]): number {
+    const avgViolence = profiles.reduce((sum, p) => sum + p.content.violence, 0) / profiles.length;
+    return avgViolence;
+  }
+
+  private computeComplexityPreference(profiles: ContentDNA[]): number {
+    const cerebralScore = profiles.reduce((sum, p) => sum + p.tone.cerebral, 0) / profiles.length;
+    const nonLinearScore = profiles.reduce((sum, p) => sum + p.narrative.nonLinear, 0) / profiles.length;
+    return (cerebralScore + nonLinearScore) / 2;
+  }
+
+  private computeViewingPatterns(profiles: ContentDNA[], watchlistItems: any[]): UserTasteProfile['patterns'] {
+    // Movie vs TV preference
+    const movieCount = profiles.filter(p => p.mediaType === 'movie').length;
+    const tvCount = profiles.filter(p => p.mediaType === 'tv').length;
+    const movieVsTv = tvCount / Math.max(1, movieCount + tvCount);
+
+    // Binge vs Episodic
+    const bingeScore = profiles.reduce((sum, p) => sum + p.pacing.serialized, 0) / profiles.length;
+
+    // New vs Classic
+    const newCount = profiles.filter(p => p.production.era === 'contemporary').length;
+    const classicCount = profiles.filter(p => p.production.era === 'classic').length;
+    const newVsClassic = newCount / Math.max(1, newCount + classicCount);
+
+    // Mainstream vs Niche (based on budget)
+    const blockbusterCount = profiles.filter(p => p.production.budget === 'blockbuster').length;
+    const indieCount = profiles.filter(p => p.production.budget === 'indie').length;
+    const mainstreamVsNiche = indieCount / Math.max(1, blockbusterCount + indieCount);
+
+    return {
+      preferredLength: 'any', // TODO: Implement runtime analysis
+      bingeVsEpisodic: bingeScore,
+      newVsClassic,
+      mainstreamVsNiche,
+      movieVsTv,
+    };
+  }
+
+  private detectInterestClusters(profiles: ContentDNA[]): UserTasteProfile['interestClusters'] {
+    const clusters: UserTasteProfile['interestClusters'] = [];
+
+    // Director-based clusters
+    const directorGroups = new Map<string, number[]>();
+    profiles.forEach(p => {
+      p.talent.directors.forEach(director => {
+        if (!directorGroups.has(director)) {
+          directorGroups.set(director, []);
+        }
+        directorGroups.get(director)!.push(p.tmdbId);
+      });
+    });
+
+    // Create clusters for directors with 2+ works
+    directorGroups.forEach((tmdbIds, director) => {
+      if (tmdbIds.length >= 2) {
+        clusters.push({
+          name: `${director} Films`,
+          seedContent: tmdbIds,
+          strength: tmdbIds.length / profiles.length,
+        });
+      }
+    });
+
+    // Theme-based clusters
+    const themeEntries = Object.entries(this.aggregateThemes(profiles))
+      .filter(([_, score]) => score > 0.3)
+      .sort(([_, a], [__, b]) => b - a)
+      .slice(0, 3);
+
+    themeEntries.forEach(([theme, score]) => {
+      const relatedContent = profiles
+        .filter(p => p.themes[theme as keyof ContentDNA['themes']] > 0.3)
+        .map(p => p.tmdbId);
+
+      if (relatedContent.length >= 3) {
+        const themeName = theme.replace(/([A-Z])/g, ' $1').trim();
+        clusters.push({
+          name: `${themeName.charAt(0).toUpperCase() + themeName.slice(1)} Stories`,
+          seedContent: relatedContent,
+          strength: score,
+        });
+      }
+    });
+
+    return clusters.sort((a, b) => b.strength - a.strength).slice(0, 5);
+  }
+
+  private computeExplorationScore(profiles: ContentDNA[]): number {
+    // Measure diversity across different dimensions
+    const toneVariance = this.computeVariance(profiles.map(p => Object.values(p.tone)));
+    const themeVariance = this.computeVariance(profiles.map(p => Object.values(p.themes)));
+
+    // High variance = more exploratory
+    // Low variance = sticks to comfort zone
+    return Math.min(1, (toneVariance + themeVariance) / 2);
+  }
+
+  private computeVariance(vectors: number[][]): number {
+    if (vectors.length === 0) return 0;
+
+    // Compute mean vector
+    const dimensions = vectors[0].length;
+    const mean = new Array(dimensions).fill(0);
+    vectors.forEach(v => {
+      v.forEach((val, i) => mean[i] += val);
+    });
+    mean.forEach((_, i) => mean[i] /= vectors.length);
+
+    // Compute variance
+    let variance = 0;
+    vectors.forEach(v => {
+      v.forEach((val, i) => {
+        variance += Math.pow(val - mean[i], 2);
+      });
+    });
+
+    return variance / (vectors.length * dimensions);
+  }
+
+  private computeTasteSignature(profiles: ContentDNA[]): string {
+    const tone = this.aggregateTone(profiles);
+    const themes = this.aggregateThemes(profiles);
+    const aesthetic = this.aggregateAesthetic(profiles);
+
+    const parts: string[] = [];
+
+    // Dominant tone
+    const dominantTone = Object.entries(tone)
+      .sort(([_, a], [__, b]) => b - a)[0];
+    if (dominantTone[1] > 0.4) {
+      parts.push(dominantTone[0].charAt(0).toUpperCase() + dominantTone[0].slice(1));
+    }
+
+    // Dominant theme
+    const dominantTheme = Object.entries(themes)
+      .sort(([_, a], [__, b]) => b - a)[0];
+    if (dominantTheme[1] > 0.3) {
+      const themeName = dominantTheme[0].replace(/([A-Z])/g, ' $1').trim();
+      parts.push(themeName.charAt(0).toUpperCase() + themeName.slice(1));
+    }
+
+    // Aesthetic preference
+    if (aesthetic.visuallyStunning > 0.6) {
+      parts.push('Visual');
+    } else if (aesthetic.gritty > 0.6) {
+      parts.push('Gritty');
+    } else if (aesthetic.animated > 0.4) {
+      parts.push('Animation');
+    }
+
+    // Content type
+    const movieCount = profiles.filter(p => p.mediaType === 'movie').length;
+    const tvCount = profiles.filter(p => p.mediaType === 'tv').length;
+    if (movieCount > tvCount * 2) {
+      parts.push('Movie Enthusiast');
+    } else if (tvCount > movieCount * 2) {
+      parts.push('Series Watcher');
+    } else {
+      parts.push('Enthusiast');
+    }
+
+    return parts.join(' ') || 'Eclectic Viewer';
+  }
+
+  private findDiscoveryOpportunities(profiles: ContentDNA[]): string[] {
+    const opportunities: string[] = [];
+
+    const tone = this.aggregateTone(profiles);
+    const themes = this.aggregateThemes(profiles);
+
+    // Find unexplored tones
+    const lowTones = Object.entries(tone)
+      .filter(([_, score]) => score < 0.2)
+      .map(([name]) => name);
+
+    if (lowTones.includes('humorous') && tone.dark > 0.5) {
+      opportunities.push('Dark Comedies - blend your love of dark content with humor');
+    }
+
+    if (lowTones.includes('cerebral') && tone.escapist > 0.5) {
+      opportunities.push('Thought-provoking Sci-Fi - add intellectual depth to your escapist favorites');
+    }
+
+    // Find unexplored themes
+    const lowThemes = Object.entries(themes)
+      .filter(([_, score]) => score < 0.2)
+      .map(([name]) => name);
+
+    if (lowThemes.includes('comingOfAge')) {
+      opportunities.push('Coming-of-age stories - unexplored territory for you');
+    }
+
+    if (lowThemes.includes('nature')) {
+      opportunities.push('Nature documentaries and environmental stories');
+    }
+
+    // Era-based opportunities
+    const eras = profiles.map(p => p.production.era);
+    if (!eras.includes('classic')) {
+      opportunities.push('Classic cinema from the Golden Age');
+    }
+
+    return opportunities.slice(0, 5);
   }
 }
 
