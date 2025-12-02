@@ -196,11 +196,12 @@ export const extractContentDNA = (item: any, mediaType: 'movie' | 'tv'): Content
  */
 export const buildUserDNAProfile = async (userId: string): Promise<UserDNAProfile | null> => {
   try {
-    // Get user's watchlist (JOIN with content table to get tmdb_id)
+    // Get user's watchlist - NO JOIN, just get basic fields from watchlist_items
     const { data: watchlistItems, error } = await supabase
       .from('watchlist_items')
-      .select('content(tmdb_id, title, type, genres, release_date, vote_average, overview)')
+      .select('tmdb_id, media_type, created_at')
       .eq('user_id', userId)
+      .not('tmdb_id', 'is', null) // Only items with tmdb_id
       .limit(100); // Sample last 100 items
 
     if (error) throw error;
@@ -209,90 +210,16 @@ export const buildUserDNAProfile = async (userId: string): Promise<UserDNAProfil
       return null;
     }
 
-    // Extract DNA for each item
-    const dnaProfiles = watchlistItems
-      .filter(item => item.content) // Filter out items without content
-      .map(item => {
-        const content = item.content as any;
-        const mediaType = content.type as 'movie' | 'tv';
-        const releaseYear = content.release_date
-          ? new Date(content.release_date).getFullYear()
-          : 2020;
+    console.log('[ContentDNA] Skipping DNA profile - insufficient data in watchlist_items');
+    console.log('[ContentDNA] DNA matching requires full content details from TMDb API');
 
-        return extractContentDNA({
-          id: content.tmdb_id,
-          title: content.title,
-          genre_ids: content.genres || [],
-          release_date: content.release_date,
-          first_air_date: content.release_date, // Use release_date for both
-          vote_average: content.vote_average || 7.0,
-          runtime: 0, // Runtime not stored in content table
-          vote_count: 1000,
-        }, mediaType);
-      });
+    // Return a neutral/default profile instead of failing
+    // DNA matching will be skipped when profile is null
+    return null;
 
-    // Aggregate patterns
-    const tones = dnaProfiles.map(d => d.tone);
-    const paces = dnaProfiles.map(d => d.pace);
-    const eras = dnaProfiles.map(d => d.era);
-    const complexities = dnaProfiles.map(d => d.complexity);
-    const audiences = dnaProfiles.map(d => d.audienceType);
-
-    const runtimes = dnaProfiles.map(d => d.runtime || 90).filter(r => r > 0);
-    const ratings = dnaProfiles.map(d => d.rating).filter(r => r > 0);
-    const years = dnaProfiles.map(d => d.releaseYear);
-
-    // Calculate mode (most frequent value)
-    const mode = <T,>(arr: T[]): T => {
-      const frequency = new Map<T, number>();
-      arr.forEach(val => frequency.set(val, (frequency.get(val) || 0) + 1));
-      let maxFreq = 0;
-      let modeVal = arr[0];
-      frequency.forEach((freq, val) => {
-        if (freq > maxFreq) {
-          maxFreq = freq;
-          modeVal = val;
-        }
-      });
-      return modeVal;
-    };
-
-    const avg = (arr: number[]) => arr.reduce((a, b) => a + b, 0) / arr.length;
-
-    const profile: UserDNAProfile = {
-      preferredTone: mode(tones),
-      preferredPace: mode(paces),
-      preferredEra: mode(eras),
-      preferredComplexity: mode(complexities),
-      preferredAudience: mode(audiences),
-
-      avgRuntime: Math.round(avg(runtimes)),
-      avgRating: Math.round(avg(ratings) * 10) / 10,
-      avgReleaseYear: Math.round(avg(years)),
-
-      runtimeRange: {
-        min: Math.min(...runtimes),
-        max: Math.max(...runtimes),
-      },
-      ratingRange: {
-        min: Math.min(...ratings),
-        max: Math.max(...ratings),
-      },
-
-      confidence: Math.min(watchlistItems.length / 50, 1.0), // Max confidence at 50+ items
-      sampleSize: watchlistItems.length,
-    };
-
-    console.log('[ContentDNA] Built user DNA profile:', {
-      tone: profile.preferredTone,
-      pace: profile.preferredPace,
-      era: profile.preferredEra,
-      complexity: profile.preferredComplexity,
-      sampleSize: profile.sampleSize,
-      confidence: profile.confidence,
-    });
-
-    return profile;
+    // NOTE: Full DNA profile would require fetching each item from TMDb API
+    // which is expensive (100+ API calls). For now, we skip DNA matching.
+    // Alternative: Pre-populate content table with TMDb data and add FK relationship
   } catch (error) {
     console.error('[ContentDNA] Error building user DNA profile:', error);
     return null;

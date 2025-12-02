@@ -18,10 +18,10 @@ import { supabase } from '@/config/supabase';
 
 export interface CollaborativeRecommendation {
   id: number;
-  title: string;
+  title?: string; // Optional - fetch from TMDb API if needed
   mediaType: 'movie' | 'tv';
-  genreIds: number[];
-  rating: number;
+  genreIds?: number[]; // Optional - fetch from TMDb API if needed
+  rating?: number; // Optional - fetch from TMDb API if needed
   popularityScore: number;  // How many similar users have it
   confidence: number;       // 0-1, based on similar user count
 }
@@ -52,11 +52,12 @@ export const findSimilarUsers = async (
   userId: string
 ): Promise<SimilarUserProfile[]> => {
   try {
-    // Get current user's watchlist (JOIN with content table to get tmdb_id)
-    const { data: userWatchlist, error: watchlistError } = await supabase
+    // Get current user's watchlist - NO JOIN, use tmdb_id from watchlist_items directly
+    const { data: userWatchlist, error: watchlistError} = await supabase
       .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+      .select('tmdb_id')
+      .eq('user_id', userId)
+      .not('tmdb_id', 'is', null); // Only items with tmdb_id
 
     if (watchlistError) throw watchlistError;
     if (!userWatchlist || userWatchlist.length < COLLAB_CONFIG.MIN_OVERLAP_COUNT) {
@@ -65,17 +66,16 @@ export const findSimilarUsers = async (
     }
 
     const userWatchlistIds = new Set(
-      userWatchlist
-        .filter(w => w.content)
-        .map(w => (w.content as any).tmdb_id)
+      userWatchlist.map(w => w.tmdb_id)
     );
     const userWatchlistSize = userWatchlistIds.size;
 
-    // Get all other users' watchlists (JOIN with content table to get tmdb_id)
+    // Get all other users' watchlists - NO JOIN, use tmdb_id from watchlist_items directly
     const { data: otherUsersWatchlists, error: othersError } = await supabase
       .from('watchlist_items')
-      .select('user_id, content(tmdb_id)')
-      .neq('user_id', userId); // Exclude current user
+      .select('user_id, tmdb_id')
+      .neq('user_id', userId) // Exclude current user
+      .not('tmdb_id', 'is', null); // Only items with tmdb_id
 
     if (othersError) throw othersError;
     if (!otherUsersWatchlists || otherUsersWatchlists.length === 0) {
@@ -86,12 +86,10 @@ export const findSimilarUsers = async (
     // Group by user
     const userWatchlistsMap = new Map<string, Set<number>>();
     otherUsersWatchlists.forEach(item => {
-      if (item.content) { // Only process items with content
-        if (!userWatchlistsMap.has(item.user_id)) {
-          userWatchlistsMap.set(item.user_id, new Set());
-        }
-        userWatchlistsMap.get(item.user_id)!.add((item.content as any).tmdb_id);
+      if (!userWatchlistsMap.has(item.user_id)) {
+        userWatchlistsMap.set(item.user_id, new Set());
       }
+      userWatchlistsMap.get(item.user_id)!.add(item.tmdb_id);
     });
 
     // Calculate overlap with each user
@@ -160,26 +158,26 @@ export const getCollaborativeRecommendations = async (
       return [];
     }
 
-    // Get current user's watchlist (to exclude)
+    // Get current user's watchlist (to exclude) - NO JOIN
     const { data: userWatchlist, error: watchlistError } = await supabase
       .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+      .select('tmdb_id')
+      .eq('user_id', userId)
+      .not('tmdb_id', 'is', null);
 
     if (watchlistError) throw watchlistError;
 
     const userWatchlistIds = new Set(
-      (userWatchlist || [])
-        .filter(w => w.content)
-        .map(w => (w.content as any).tmdb_id)
+      (userWatchlist || []).map(w => w.tmdb_id)
     );
 
-    // Get watchlist items from similar users
+    // Get watchlist items from similar users - NO JOIN
     const similarUserIds = similarUsers.map(u => u.userId);
     const { data: similarUsersItems, error: itemsError } = await supabase
       .from('watchlist_items')
-      .select('content(tmdb_id, title, type, genres, vote_average)')
-      .in('user_id', similarUserIds);
+      .select('tmdb_id, media_type')
+      .in('user_id', similarUserIds)
+      .not('tmdb_id', 'is', null);
 
     if (itemsError) throw itemsError;
     if (!similarUsersItems || similarUsersItems.length === 0) {
@@ -189,31 +187,21 @@ export const getCollaborativeRecommendations = async (
     // Count how many similar users have each item
     const itemCounts = new Map<number, {
       count: number;
-      title: string;
       mediaType: 'movie' | 'tv';
-      genres: number[];
-      rating: number;
     }>();
 
     similarUsersItems.forEach(item => {
-      if (!item.content) return; // Skip items without content
-
-      const content = item.content as any;
-
       // Skip if current user already has this
-      if (userWatchlistIds.has(content.tmdb_id)) {
+      if (userWatchlistIds.has(item.tmdb_id)) {
         return;
       }
 
-      if (itemCounts.has(content.tmdb_id)) {
-        itemCounts.get(content.tmdb_id)!.count++;
+      if (itemCounts.has(item.tmdb_id)) {
+        itemCounts.get(item.tmdb_id)!.count++;
       } else {
-        itemCounts.set(content.tmdb_id, {
+        itemCounts.set(item.tmdb_id, {
           count: 1,
-          title: content.title || 'Unknown',
-          mediaType: content.type as 'movie' | 'tv' || 'movie',
-          genres: content.genres || [],
-          rating: content.vote_average || 0,
+          mediaType: item.media_type as 'movie' | 'tv' || 'movie',
         });
       }
     });
@@ -224,12 +212,10 @@ export const getCollaborativeRecommendations = async (
       if (data.count >= COLLAB_CONFIG.MIN_RECOMMENDATIONS_FROM) {
         recommendations.push({
           id: tmdbId,
-          title: data.title,
           mediaType: data.mediaType,
-          genreIds: data.genres,
-          rating: data.rating,
           popularityScore: data.count,
           confidence: Math.min(data.count / similarUsers.length, 1.0),
+          // Note: title, genreIds, rating should be fetched from TMDb API by caller
         });
       }
     });
@@ -239,7 +225,8 @@ export const getCollaborativeRecommendations = async (
 
     console.log('[Collab] Generated', recommendations.length, 'collaborative recommendations');
     console.log('[Collab] Top 3:', recommendations.slice(0, 3).map(r => ({
-      title: r.title,
+      id: r.id,
+      type: r.mediaType,
       popularity: r.popularityScore,
       confidence: `${(r.confidence * 100).toFixed(0)}%`,
     })));
