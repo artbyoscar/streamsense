@@ -182,8 +182,12 @@ export const getPersonalizedCategories = async (userId: string): Promise<Content
     categories.push({
       id: 'popular-movies',
       title: '🎬 Popular Movies',
-      endpoint: '/movie/popular',
+      endpoint: '/discover/movie',
       mediaType: 'movie',
+      params: {
+        sort_by: 'popularity.desc',
+        'vote_count.gte': '100',
+      },
     });
 
     // 6. Binge-Worthy TV (if user watches TV)
@@ -205,8 +209,12 @@ export const getPersonalizedCategories = async (userId: string): Promise<Content
     categories.push({
       id: 'top-rated',
       title: '⭐ Top Rated',
-      endpoint: '/movie/top_rated',
+      endpoint: '/discover/movie',
       mediaType: 'movie',
+      params: {
+        sort_by: 'vote_average.desc',
+        'vote_count.gte': '1000',
+      },
     });
 
     // 8. Award Winners / Critically Acclaimed
@@ -223,11 +231,20 @@ export const getPersonalizedCategories = async (userId: string): Promise<Content
     });
 
     // 9. In Theaters Now
+    const today = new Date();
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+
     categories.push({
       id: 'now-playing',
       title: '🎭 In Theaters Now',
-      endpoint: '/movie/now_playing',
+      endpoint: '/discover/movie',
       mediaType: 'movie',
+      params: {
+        'primary_release_date.gte': monthAgo.toISOString().split('T')[0],
+        'primary_release_date.lte': today.toISOString().split('T')[0],
+        sort_by: 'popularity.desc',
+      },
     });
 
     // 10. Coming Soon
@@ -252,8 +269,14 @@ export const getPersonalizedCategories = async (userId: string): Promise<Content
     categories.push({
       id: 'airing-today',
       title: '📡 Airing Today',
-      endpoint: '/tv/airing_today',
+      endpoint: '/discover/tv',
       mediaType: 'tv',
+      params: {
+        sort_by: 'popularity.desc',
+        'vote_count.gte': '10',
+        'air_date.gte': new Date().toISOString().split('T')[0],
+        'air_date.lte': new Date().toISOString().split('T')[0],
+      },
     });
 
     // 12. Mood-based categories based on user's top genres
@@ -366,10 +389,48 @@ export const getPersonalizedCategories = async (userId: string): Promise<Content
 export const getDefaultCategories = (): ContentCategory[] => {
   console.log('[ContentBrowse] Using default categories');
   return [
-    { id: 'trending', title: '🔥 Trending Today', endpoint: '/trending/all/day', mediaType: 'all' },
-    { id: 'popular-movies', title: '🎬 Popular Movies', endpoint: '/movie/popular', mediaType: 'movie' },
-    { id: 'popular-tv', title: '📺 Popular TV Shows', endpoint: '/tv/popular', mediaType: 'tv' },
-    { id: 'upcoming', title: '🎟️ Coming Soon', endpoint: '/movie/upcoming', mediaType: 'movie' },
+    {
+      id: 'trending',
+      title: '🔥 Trending Today',
+      endpoint: '/discover/movie',
+      mediaType: 'movie',
+      params: {
+        sort_by: 'popularity.desc',
+        'vote_count.gte': '100',
+        'primary_release_date.gte': new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      },
+    },
+    {
+      id: 'popular-movies',
+      title: '🎬 Popular Movies',
+      endpoint: '/discover/movie',
+      mediaType: 'movie',
+      params: {
+        sort_by: 'popularity.desc',
+        'vote_count.gte': '100',
+      },
+    },
+    {
+      id: 'popular-tv',
+      title: '📺 Popular TV Shows',
+      endpoint: '/discover/tv',
+      mediaType: 'tv',
+      params: {
+        sort_by: 'popularity.desc',
+        'vote_count.gte': '100',
+      },
+    },
+    {
+      id: 'upcoming',
+      title: '🎟️ Coming Soon',
+      endpoint: '/discover/movie',
+      mediaType: 'movie',
+      params: {
+        'primary_release_date.gte': new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        'primary_release_date.lte': new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        sort_by: 'primary_release_date.asc',
+      },
+    },
   ];
 };
 

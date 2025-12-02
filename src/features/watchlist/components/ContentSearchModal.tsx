@@ -78,6 +78,13 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
     }
   }, [visible, user?.id]);
 
+  // Log when Free to Me filter changes
+  useEffect(() => {
+    if (visible) {
+      console.log('[ContentSearch] Free to Me filter changed:', freeToMeOnly, 'Provider IDs:', userProviderIds);
+    }
+  }, [freeToMeOnly, visible]);
+
   // Load browse categories when modal opens or when Free to Me filter changes
   useEffect(() => {
     if (visible && !searchQuery) {
@@ -160,8 +167,21 @@ export const ContentSearchModal: React.FC<ContentSearchModalProps> = ({
       const currentItems = browseContent.get(categoryId) || [];
       const currentPage = Math.ceil(currentItems.length / 20) + 1;
 
+      // Build params including category params and provider filter
+      const params: Record<string, any> = {
+        ...category.params,
+        page: currentPage,
+      };
+
+      // Add provider filter if "Free to Me" is enabled
+      const providerIdsToUse = freeToMeOnly && userProviderIds.length > 0 ? userProviderIds : undefined;
+      if (providerIdsToUse && providerIdsToUse.length > 0 && category.endpoint.includes('/discover/')) {
+        params['watch_region'] = 'US';
+        params['with_watch_providers'] = providerIdsToUse.join('|');
+      }
+
       const response = await tmdbApi.get(category.endpoint, {
-        params: { page: currentPage }
+        params,
       });
 
       const newItems: UnifiedContent[] = response.data.results.map((item: any) => ({
