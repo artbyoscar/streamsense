@@ -17,6 +17,36 @@ import { tmdbApi } from '@/services/tmdb';
 import { getUserTopGenres } from './genreAffinity';
 import { getWatchlistIds } from './watchlistDataService';
 
+/**
+ * Randomization utilities for variety across sessions
+ */
+
+// Get random page number for TMDb queries
+const getRandomPage = (maxPage: number = 10): number => {
+  return Math.floor(Math.random() * maxPage) + 1;
+};
+
+// Get daily seed for consistent but varying results throughout the day
+const getDailySeed = (): number => {
+  const today = new Date();
+  return today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+};
+
+// Shuffle array with optional seed for controlled randomization
+const shuffleArray = <T>(array: T[], seed?: number): T[] => {
+  const result = [...array];
+  let currentSeed = seed || Math.random() * 1000000;
+
+  for (let i = result.length - 1; i > 0; i--) {
+    // Simple seeded random (Linear Congruential Generator)
+    currentSeed = (currentSeed * 9301 + 49297) % 233280;
+    const j = Math.floor((currentSeed / 233280) * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+};
+
 export type BlindspotReason =
   | 'unexplored_genre'    // Genre user hasn't touched
   | 'hidden_gem'          // High rating, low popularity
@@ -139,14 +169,14 @@ const getUnexploredGenreBlindspots = async (
       const genreId = genreIdMap[genreName];
       if (!genreId) continue;
 
-      // Fetch top-rated content in this genre
+      // Fetch top-rated content in this genre with random page for variety
       const response = await tmdbApi.get('/discover/movie', {
         params: {
           with_genres: genreId,
           sort_by: 'vote_average.desc',
           'vote_count.gte': 1000,
           'vote_average.gte': 7.5,
-          page: 1,
+          page: getRandomPage(5), // Random page 1-5 for variety
         },
       });
 
@@ -319,7 +349,7 @@ const getAdjacentInterestBlindspots = async (
         sort_by: 'vote_average.desc',
         'vote_count.gte': 1000,
         'vote_average.gte': 7.5,
-        page: 1,
+        page: getRandomPage(10), // Random page 1-10 for variety
       },
     });
 
@@ -461,8 +491,10 @@ export const generateBlindspotRecommendations = async (
       duplicatesRemoved: (unexploredGenre.length + hiddenGems.length + classicGaps.length + adjacentInterests.length + serviceExclusives.length) - allBlindspots.length,
     });
 
-    // Shuffle and limit
-    const shuffled = allBlindspots.sort(() => Math.random() - 0.5);
+    // Shuffle with daily seed for variety across sessions but consistency within a day
+    const dailySeed = getDailySeed();
+    const userSeed = userId.charCodeAt(0); // Add user-specific variation
+    const shuffled = shuffleArray(allBlindspots, dailySeed + userSeed);
     const results = shuffled.slice(0, limit);
 
     console.log('[Blindspot] Returning', results.length, 'blindspot recommendations');
