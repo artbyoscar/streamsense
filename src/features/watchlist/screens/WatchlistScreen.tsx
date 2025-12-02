@@ -250,12 +250,12 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   // Convert watchlist item to UnifiedContent for detail modal
   const convertToUnifiedContent = (item: WatchlistItemWithContent): UnifiedContent => {
     return {
-      id: item.content.tmdb_id,
-      title: item.content.title,
-      originalTitle: item.content.title,
-      type: item.content.type,
-      overview: item.content.overview || '',
-      posterPath: item.content.poster_url,
+      id: item.content?.tmdb_id || 0,
+      title: item.content?.title || 'Unknown Title',
+      originalTitle: item.content?.title || 'Unknown Title',
+      type: item.content?.type || 'movie',
+      overview: item.content?.overview || '',
+      posterPath: item.content?.poster_url || null,
       backdropPath: null,
       releaseDate: null,
       genres: [],
@@ -314,7 +314,13 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     items: WatchlistItemWithContent[],
     showRating: boolean = false
   ) => {
-    if (items.length === 0) return null;
+    // Guard: Don't render if no items
+    if (!items || items.length === 0) return null;
+
+    // Filter out any undefined/null items or items without content
+    const validItems = items.filter(item => item && item.content);
+
+    if (validItems.length === 0) return null;
 
     return (
       <View style={styles.section}>
@@ -324,8 +330,8 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.horizontalScroll}
         >
-          {items.map((item) => {
-            const posterUrl = item.content.poster_url
+          {validItems.map((item) => {
+            const posterUrl = item.content?.poster_url
               ? getPosterUrl(item.content.poster_url, 'small')
               : null;
 
@@ -343,7 +349,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
                   </View>
                 )}
                 <Text style={[styles.posterTitle, { color: colors.text }]} numberOfLines={2}>
-                  {item.content.title}
+                  {item.content?.title || 'Unknown Title'}
                 </Text>
                 {showRating && item.rating && (
                   <View style={styles.ratingContainer}>
@@ -575,7 +581,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.horizontalScroll}
               >
-                {filteredRecommendations.map(item => (
+                {filteredRecommendations.filter(item => item && item.id).map(item => (
                   <Animated.View
                     key={`foryou-${item.id}-${item.type}`}
                     layout={Layout.springify()}
@@ -597,7 +603,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
                         numberOfLines={2}
                         style={[styles.posterTitle, { color: colors.text }]}
                       >
-                        {item.title}
+                        {item?.title || 'Unknown'}
                       </Text>
                       <View style={styles.contentMeta}>
                         <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
