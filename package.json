@@ -38,6 +38,7 @@
     "expo-notifications": "^0.32.13",
     "expo-secure-store": "^15.0.7",
     "expo-status-bar": "~3.0.8",
+    "ml-matrix": "^6.12.1",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.66.1",

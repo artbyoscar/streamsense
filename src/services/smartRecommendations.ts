@@ -8,6 +8,7 @@ import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } f
 import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
 import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
+import { getSVDRecommendations, type Prediction } from './matrixFactorization';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -642,12 +643,74 @@ export const getSmartRecommendations = async (
     }
 
     // Mix in collaborative filtering recommendations (Strategy 5)
-    // "Users like you also enjoyed..."
-    const withCollaborative = await mixCollaborativeRecommendations(
+    // Blend both traditional collaborative filtering AND Netflix-style SVD
+    let withCollaborative = dnaRanked;
+
+    // 5a. Traditional collaborative filtering (user-user similarity)
+    withCollaborative = await mixCollaborativeRecommendations(
       userId,
       dnaRanked,
-      0.3 // 30% collaborative recommendations
+      0.2 // 20% traditional collaborative
     );
+
+    // 5b. SVD Matrix Factorization (Netflix-style, user-item latent factors)
+    try {
+      const svdPredictions = await getSVDRecommendations(userId, 20);
+
+      if (svdPredictions.length > 0) {
+        console.log(`[SmartRecs] Found ${svdPredictions.length} SVD predictions`);
+
+        // Fetch content details for SVD predictions
+        const svdContent = await Promise.all(
+          svdPredictions.slice(0, Math.ceil(limit * 0.3)).map(async (prediction) => {
+            try {
+              // Try to find in existing recommendations first
+              const existing = withCollaborative.find(r => r.id === prediction.tmdbId);
+              if (existing) {
+                // Boost existing item's score
+                return { ...existing, svd_boosted: true, predicted_rating: prediction.predictedRating };
+              }
+
+              // Fetch from TMDb if not in current set
+              const detailsResponse = await tmdbApi.get(`/movie/${prediction.tmdbId}`);
+              const item = normalizeContentItem(detailsResponse.data, 'movie');
+
+              return {
+                ...item,
+                svd_rating: prediction.predictedRating,
+                svd_confidence: prediction.confidence,
+              };
+            } catch (error) {
+              console.warn(`[SmartRecs] Failed to fetch SVD item ${prediction.tmdbId}:`, error);
+              return null;
+            }
+          })
+        );
+
+        const validSVDContent = svdContent.filter(item => item !== null);
+
+        // Blend SVD recommendations with existing (30% SVD, 70% existing)
+        const svdCount = Math.ceil(limit * 0.3);
+        const existingCount = limit - svdCount;
+
+        const blended = [
+          ...validSVDContent.slice(0, svdCount),
+          ...withCollaborative.slice(0, existingCount),
+        ];
+
+        withCollaborative = blended;
+
+        console.log('[SmartRecs] Blended with SVD:', {
+          svdItems: validSVDContent.length,
+          total: blended.length,
+        });
+      } else {
+        console.log('[SmartRecs] No SVD recommendations available, using traditional only');
+      }
+    } catch (svdError) {
+      console.warn('[SmartRecs] SVD recommendations failed, continuing without:', svdError);
+    }
+
     console.log('[SmartRecs] Mixed collaborative recommendations:', {
       original: dnaRanked.length,
       withCollab: withCollaborative.length,
