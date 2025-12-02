@@ -7,6 +7,7 @@
 import { supabase } from '@/config/supabase';
 import { tmdbApi } from '@/services/tmdb';
 import { contentDNAService, ContentDNA, UserTasteProfile } from './contentDNA';
+import { llmRecommendationService } from './llmRecommendations';
 
 export interface ContentItem {
   id: number;
@@ -22,6 +23,10 @@ export interface ContentItem {
   release_date?: string;
   first_air_date?: string;
   genre_ids?: number[];
+  // LLM-specific metadata (optional)
+  llmReasoning?: string;
+  llmConfidence?: number;
+  isStretch?: boolean;
 }
 
 export interface RecommendationLane {
@@ -48,7 +53,8 @@ export type LaneStrategy =
   | 'new_releases'           // Recent that matches taste
   | 'classic_essentials'     // Classics you haven't seen
   | 'franchise_completion'   // Complete a series you started
-  | 'adjacent_interest';     // Bridge to new genres
+  | 'adjacent_interest'      // Bridge to new genres
+  | 'llm_powered';           // AI-curated with reasoning
 
 export interface ViewingContext {
   timeOfDay?: 'morning' | 'afternoon' | 'evening' | 'lateNight';
@@ -100,6 +106,33 @@ export class RecommendationLanesService {
           explanation: `Content with similar DNA to ${seedTitle.title || seedTitle.name}`,
           priority: 90,
         });
+      }
+
+      // Lane 2.5: LLM-Powered Recommendations (optional - requires API key)
+      try {
+        const llmResponse = await llmRecommendationService.getPersonalizedRecommendations({
+          userId,
+          tasteProfile: profile,
+          recentWatched: recentWatched.slice(0, 5),
+          currentMood: context?.mood,
+          limit: 10,
+        });
+
+        if (llmResponse.recommendations.length >= 5) {
+          lanes.push({
+            id: 'llm_curated',
+            title: 'AI-Curated For You',
+            subtitle: 'Deeply personalized picks with reasoning',
+            strategy: 'llm_powered',
+            items: llmResponse.recommendations,
+            explanation: llmResponse.explanation,
+            priority: 88,
+          });
+          console.log('[Lanes] Added LLM-powered lane with', llmResponse.recommendations.length, 'items');
+        }
+      } catch (error) {
+        // LLM lane is optional - don't fail if API key not configured or request fails
+        console.log('[Lanes] Skipping LLM-powered lane:', error);
       }
 
       // Lane 3: Interest Cluster Deep Dives
