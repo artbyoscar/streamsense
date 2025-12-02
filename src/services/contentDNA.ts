@@ -555,55 +555,62 @@ export class ContentDNAService {
 
       console.log(`[TasteProfile] Analyzing ${watchlistItems.length} watchlist items...`);
 
-      // Compute DNA for all watchlist items
-      const dnaProfiles: ContentDNA[] = [];
+      // Compute DNA for all watchlist items with weights
+      const weightedProfiles: Array<{ dna: ContentDNA; weight: number }> = [];
+      const dnaMap = new Map<number, ContentDNA>();
+
       for (const item of watchlistItems) {
         try {
           const mediaType = item.media_type === 'tv' ? 'tv' : 'movie';
           const dna = await this.computeDNA(item.tmdb_id, mediaType);
-          dnaProfiles.push(dna);
+
+          // Calculate weight based on recency, rating, and completion
+          const weight = this.calculateItemWeight(item);
+
+          weightedProfiles.push({ dna, weight });
+          dnaMap.set(item.tmdb_id, dna);
         } catch (error) {
           console.warn(`[TasteProfile] Failed to compute DNA for ${item.tmdb_id}:`, error);
         }
       }
 
-      if (dnaProfiles.length === 0) {
+      if (weightedProfiles.length === 0) {
         console.log('[TasteProfile] No DNA profiles computed');
         return null;
       }
 
-      console.log(`[TasteProfile] Computed ${dnaProfiles.length} DNA profiles`);
+      console.log(`[TasteProfile] Computed ${weightedProfiles.length} weighted DNA profiles`);
 
-      // Build taste profile
+      // Build taste profile with weighted aggregation
       const profile: UserTasteProfile = {
         userId,
-        preferredTone: this.aggregateTone(dnaProfiles),
-        preferredThemes: this.aggregateThemes(dnaProfiles),
-        preferredPacing: this.aggregatePacing(dnaProfiles),
-        preferredAesthetic: this.aggregateAesthetic(dnaProfiles),
-        preferredNarrative: this.aggregateNarrative(dnaProfiles),
-        favoriteDirectors: this.computeFavoriteDirectors(dnaProfiles),
-        favoriteActors: this.computeFavoriteActors(dnaProfiles),
-        favoriteWriters: this.computeFavoriteWriters(dnaProfiles),
-        favoriteDecades: this.computeFavoriteDecades(dnaProfiles),
-        favoriteOrigins: this.computeFavoriteOrigins(dnaProfiles),
-        violenceTolerance: this.computeViolenceTolerance(dnaProfiles),
-        complexityPreference: this.computeComplexityPreference(dnaProfiles),
-        patterns: this.computeViewingPatterns(dnaProfiles, watchlistItems),
-        interestClusters: this.detectInterestClusters(dnaProfiles),
+        preferredTone: this.aggregateToneWeighted(weightedProfiles),
+        preferredThemes: this.aggregateThemesWeighted(weightedProfiles),
+        preferredPacing: this.aggregatePacingWeighted(weightedProfiles),
+        preferredAesthetic: this.aggregateAestheticWeighted(weightedProfiles),
+        preferredNarrative: this.aggregateNarrativeWeighted(weightedProfiles),
+        favoriteDirectors: this.computeFavoriteDirectorsWeighted(weightedProfiles),
+        favoriteActors: this.computeFavoriteActorsWeighted(weightedProfiles),
+        favoriteWriters: this.computeFavoriteWritersWeighted(weightedProfiles),
+        favoriteDecades: this.computeFavoriteDecadesWeighted(weightedProfiles),
+        favoriteOrigins: this.computeFavoriteOriginsWeighted(weightedProfiles),
+        violenceTolerance: this.computeViolenceToleranceWeighted(weightedProfiles),
+        complexityPreference: this.computeComplexityPreferenceWeighted(weightedProfiles),
+        patterns: this.computeViewingPatterns(weightedProfiles.map(wp => wp.dna), watchlistItems),
+        interestClusters: this.detectInterestClustersTemplate(watchlistItems, dnaMap),
         avoidGenres: [], // TODO: Implement anti-preference detection
         avoidKeywords: [],
         avoidThemes: [],
-        explorationScore: this.computeExplorationScore(dnaProfiles),
+        explorationScore: this.computeExplorationScore(weightedProfiles.map(wp => wp.dna)),
         timeBasedPreferences: {
           weekdayEvening: [],
           weekendAfternoon: [],
           lateNight: [],
         },
-        tasteSignature: this.computeTasteSignature(dnaProfiles),
-        discoveryOpportunities: this.findDiscoveryOpportunities(dnaProfiles),
-        confidence: Math.min(1, dnaProfiles.length / 50),
-        sampleSize: dnaProfiles.length,
+        tasteSignature: this.computeTasteSignatureEnhanced(weightedProfiles, watchlistItems, dnaMap),
+        discoveryOpportunities: this.findDiscoveryOpportunitiesEnhanced(watchlistItems, weightedProfiles),
+        confidence: Math.min(1, weightedProfiles.length / 50),
+        sampleSize: weightedProfiles.length,
         lastUpdated: new Date(),
       };
 
@@ -1041,6 +1048,439 @@ export class ContentDNAService {
     }
 
     return opportunities.slice(0, 5);
+  }
+
+  /**
+   * Calculate weight for a watchlist item based on recency, rating, and completion
+   */
+  private calculateItemWeight(item: any): number {
+    const now = Date.now();
+    let weight = 1;
+
+    // Base weight from rating
+    if (item.rating && item.rating > 0) {
+      weight = item.rating / 3; // 5-star = 1.67x, 1-star = 0.33x
+    }
+
+    // Recency boost (items from last 30 days get 1.5x)
+    const daysSinceWatch = (now - new Date(item.created_at).getTime()) / (1000 * 60 * 60 * 24);
+    if (daysSinceWatch < 30) {
+      weight *= 1.5;
+    } else if (daysSinceWatch < 90) {
+      weight *= 1.2;
+    }
+
+    // Completion bonus (watched > watching > want_to_watch)
+    if (item.status === 'watched') {
+      weight *= 1.3;
+    } else if (item.status === 'watching') {
+      weight *= 1.1;
+    }
+
+    return weight;
+  }
+
+  /**
+   * Weighted aggregation methods
+   */
+  private aggregateToneWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): ContentDNA['tone'] {
+    const weighted = { dark: 0, humorous: 0, tense: 0, emotional: 0, cerebral: 0, escapist: 0 };
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      weighted.dark += dna.tone.dark * weight;
+      weighted.humorous += dna.tone.humorous * weight;
+      weighted.tense += dna.tone.tense * weight;
+      weighted.emotional += dna.tone.emotional * weight;
+      weighted.cerebral += dna.tone.cerebral * weight;
+      weighted.escapist += dna.tone.escapist * weight;
+      totalWeight += weight;
+    });
+
+    return {
+      dark: weighted.dark / totalWeight,
+      humorous: weighted.humorous / totalWeight,
+      tense: weighted.tense / totalWeight,
+      emotional: weighted.emotional / totalWeight,
+      cerebral: weighted.cerebral / totalWeight,
+      escapist: weighted.escapist / totalWeight,
+    };
+  }
+
+  private aggregateThemesWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): ContentDNA['themes'] {
+    const weighted = {
+      redemption: 0, revenge: 0, familyDynamics: 0, comingOfAge: 0,
+      goodVsEvil: 0, survival: 0, identity: 0, power: 0,
+      love: 0, loss: 0, technology: 0, nature: 0,
+      isolation: 0, friendship: 0, betrayal: 0, justice: 0,
+    };
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      Object.keys(weighted).forEach(key => {
+        weighted[key as keyof typeof weighted] += dna.themes[key as keyof typeof dna.themes] * weight;
+      });
+      totalWeight += weight;
+    });
+
+    Object.keys(weighted).forEach(key => {
+      weighted[key as keyof typeof weighted] /= totalWeight;
+    });
+
+    return weighted;
+  }
+
+  private aggregatePacingWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): ContentDNA['pacing'] {
+    const weighted = { slow: 0, medium: 0, fast: 0, episodic: 0, serialized: 0 };
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      weighted.slow += dna.pacing.slow * weight;
+      weighted.medium += dna.pacing.medium * weight;
+      weighted.fast += dna.pacing.fast * weight;
+      weighted.episodic += dna.pacing.episodic * weight;
+      weighted.serialized += dna.pacing.serialized * weight;
+      totalWeight += weight;
+    });
+
+    return {
+      slow: weighted.slow / totalWeight,
+      medium: weighted.medium / totalWeight,
+      fast: weighted.fast / totalWeight,
+      episodic: weighted.episodic / totalWeight,
+      serialized: weighted.serialized / totalWeight,
+    };
+  }
+
+  private aggregateAestheticWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): ContentDNA['aesthetic'] {
+    const weighted = {
+      visuallyStunning: 0, gritty: 0, stylized: 0,
+      animated: 0, practicalEffects: 0, cgiHeavy: 0,
+    };
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      weighted.visuallyStunning += dna.aesthetic.visuallyStunning * weight;
+      weighted.gritty += dna.aesthetic.gritty * weight;
+      weighted.stylized += dna.aesthetic.stylized * weight;
+      weighted.animated += dna.aesthetic.animated * weight;
+      weighted.practicalEffects += dna.aesthetic.practicalEffects * weight;
+      weighted.cgiHeavy += dna.aesthetic.cgiHeavy * weight;
+      totalWeight += weight;
+    });
+
+    return {
+      visuallyStunning: weighted.visuallyStunning / totalWeight,
+      gritty: weighted.gritty / totalWeight,
+      stylized: weighted.stylized / totalWeight,
+      animated: weighted.animated / totalWeight,
+      practicalEffects: weighted.practicalEffects / totalWeight,
+      cgiHeavy: weighted.cgiHeavy / totalWeight,
+    };
+  }
+
+  private aggregateNarrativeWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): ContentDNA['narrative'] {
+    const weighted = {
+      nonLinear: 0, multiPerspective: 0, unreliableNarrator: 0,
+      twistEnding: 0, openEnded: 0, closedEnding: 0,
+    };
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      weighted.nonLinear += dna.narrative.nonLinear * weight;
+      weighted.multiPerspective += dna.narrative.multiPerspective * weight;
+      weighted.unreliableNarrator += dna.narrative.unreliableNarrator * weight;
+      weighted.twistEnding += dna.narrative.twistEnding * weight;
+      weighted.openEnded += dna.narrative.openEnded * weight;
+      weighted.closedEnding += dna.narrative.closedEnding * weight;
+      totalWeight += weight;
+    });
+
+    return {
+      nonLinear: weighted.nonLinear / totalWeight,
+      multiPerspective: weighted.multiPerspective / totalWeight,
+      unreliableNarrator: weighted.unreliableNarrator / totalWeight,
+      twistEnding: weighted.twistEnding / totalWeight,
+      openEnded: weighted.openEnded / totalWeight,
+      closedEnding: weighted.closedEnding / totalWeight,
+    };
+  }
+
+  private computeFavoriteDirectorsWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): Array<{ name: string; score: number }> {
+    const directorScores = new Map<string, number>();
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      dna.talent.directors.forEach(director => {
+        directorScores.set(director, (directorScores.get(director) || 0) + weight);
+      });
+      totalWeight += weight;
+    });
+
+    return Array.from(directorScores.entries())
+      .map(([name, score]) => ({ name, score: score / totalWeight }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteActorsWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): Array<{ name: string; score: number }> {
+    const actorScores = new Map<string, number>();
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      dna.talent.leadActors.forEach(actor => {
+        actorScores.set(actor, (actorScores.get(actor) || 0) + weight);
+      });
+      totalWeight += weight;
+    });
+
+    return Array.from(actorScores.entries())
+      .map(([name, score]) => ({ name, score: score / totalWeight }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteWritersWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): Array<{ name: string; score: number }> {
+    const writerScores = new Map<string, number>();
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      dna.talent.writers.forEach(writer => {
+        writerScores.set(writer, (writerScores.get(writer) || 0) + weight);
+      });
+      totalWeight += weight;
+    });
+
+    return Array.from(writerScores.entries())
+      .map(([name, score]) => ({ name, score: score / totalWeight }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 10);
+  }
+
+  private computeFavoriteDecadesWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): Array<{ decade: string; score: number }> {
+    const decadeScores = new Map<string, number>();
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      const era = dna.production.era;
+      let decade = 'Unknown';
+      if (era === 'contemporary') decade = '2020s';
+      else if (era === 'modern') decade = '2000s-2010s';
+      else if (era === 'classic') decade = 'Pre-2000';
+
+      decadeScores.set(decade, (decadeScores.get(decade) || 0) + weight);
+      totalWeight += weight;
+    });
+
+    return Array.from(decadeScores.entries())
+      .map(([decade, score]) => ({ decade, score: score / totalWeight }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  private computeFavoriteOriginsWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): Array<{ country: string; score: number }> {
+    const countryScores = new Map<string, number>();
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      dna.production.originCountry.forEach(country => {
+        countryScores.set(country, (countryScores.get(country) || 0) + weight);
+      });
+      totalWeight += weight;
+    });
+
+    return Array.from(countryScores.entries())
+      .map(([country, score]) => ({ country, score: score / totalWeight }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 5);
+  }
+
+  private computeViolenceToleranceWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): number {
+    let totalViolence = 0;
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      totalViolence += dna.content.violence * weight;
+      totalWeight += weight;
+    });
+
+    return totalViolence / totalWeight;
+  }
+
+  private computeComplexityPreferenceWeighted(profiles: Array<{ dna: ContentDNA; weight: number }>): number {
+    let totalComplexity = 0;
+    let totalWeight = 0;
+
+    profiles.forEach(({ dna, weight }) => {
+      const complexity = (dna.tone.cerebral + dna.narrative.nonLinear) / 2;
+      totalComplexity += complexity * weight;
+      totalWeight += weight;
+    });
+
+    return totalComplexity / totalWeight;
+  }
+
+  /**
+   * Template-based interest cluster detection
+   */
+  private detectInterestClustersTemplate(
+    watchlistItems: any[],
+    dnaMap: Map<number, ContentDNA>
+  ): UserTasteProfile['interestClusters'] {
+    const clusterTemplates = [
+      { name: 'Mind-Bending Sci-Fi', keyThemes: ['technology', 'identity'], keyTone: ['cerebral', 'tense'] },
+      { name: 'Emotional Family Drama', keyThemes: ['familyDynamics', 'loss'], keyTone: ['emotional'] },
+      { name: 'Dark Crime Thrillers', keyThemes: ['justice', 'betrayal'], keyTone: ['dark', 'tense'] },
+      { name: 'Epic Adventure', keyThemes: ['survival', 'goodVsEvil'], keyTone: ['escapist'] },
+      { name: 'Thoughtful Character Studies', keyThemes: ['identity', 'redemption'], keyTone: ['cerebral', 'emotional'] },
+      { name: 'Action Spectacles', keyThemes: ['power', 'survival'], keyTone: ['escapist'] },
+      { name: 'Quirky Comedies', keyThemes: ['friendship', 'identity'], keyTone: ['humorous'] },
+      { name: 'Animated Masterpieces', keyThemes: ['comingOfAge', 'friendship'], keyTone: ['emotional', 'escapist'] },
+    ];
+
+    const userClusters: UserTasteProfile['interestClusters'] = [];
+
+    for (const template of clusterTemplates) {
+      const matchingItems: number[] = [];
+      let totalScore = 0;
+
+      for (const item of watchlistItems) {
+        const dna = dnaMap.get(item.tmdb_id);
+        if (!dna) continue;
+
+        // Check if this content matches the cluster template
+        const themeScore = template.keyThemes.reduce((sum, theme) => {
+          return sum + (dna.themes[theme as keyof ContentDNA['themes']] || 0);
+        }, 0) / template.keyThemes.length;
+
+        const toneScore = template.keyTone.reduce((sum, tone) => {
+          return sum + (dna.tone[tone as keyof ContentDNA['tone']] || 0);
+        }, 0) / template.keyTone.length;
+
+        const matchScore = (themeScore + toneScore) / 2;
+
+        if (matchScore > 0.3) {
+          matchingItems.push(item.tmdb_id);
+          totalScore += matchScore;
+        }
+      }
+
+      if (matchingItems.length >= 3) {
+        userClusters.push({
+          name: template.name,
+          seedContent: matchingItems.slice(0, 10),
+          strength: totalScore / matchingItems.length,
+        });
+      }
+    }
+
+    return userClusters.sort((a, b) => b.strength - a.strength).slice(0, 5);
+  }
+
+  /**
+   * Enhanced taste signature with specific labels
+   */
+  private computeTasteSignatureEnhanced(
+    profiles: Array<{ dna: ContentDNA; weight: number }>,
+    watchlistItems: any[],
+    dnaMap: Map<number, ContentDNA>
+  ): string {
+    const tone = this.aggregateToneWeighted(profiles);
+    const themes = this.aggregateThemesWeighted(profiles);
+    const clusters = this.detectInterestClustersTemplate(watchlistItems, dnaMap);
+
+    const parts: string[] = [];
+
+    // Dominant tone with specific labels
+    const toneEntries = Object.entries(tone).sort((a, b) => b[1] - a[1]);
+    if (toneEntries[0][1] > 0.4) {
+      const toneLabels: Record<string, string> = {
+        dark: 'Dark',
+        humorous: 'Comedy',
+        tense: 'Thriller',
+        emotional: 'Emotional',
+        cerebral: 'Thoughtful',
+        escapist: 'Adventure',
+      };
+      parts.push(toneLabels[toneEntries[0][0]] || toneEntries[0][0]);
+    }
+
+    // Dominant theme with specific labels
+    const themeEntries = Object.entries(themes).sort((a, b) => b[1] - a[1]);
+    if (themeEntries[0][1] > 0.3) {
+      const themeLabels: Record<string, string> = {
+        technology: 'Sci-Fi',
+        familyDynamics: 'Family',
+        justice: 'Crime',
+        survival: 'Survival',
+        love: 'Romance',
+        identity: 'Character Study',
+        goodVsEvil: 'Hero Stories',
+        power: 'Power Dynamics',
+      };
+      const label = themeLabels[themeEntries[0][0]];
+      if (label) parts.push(label);
+    }
+
+    // Top cluster
+    if (clusters.length > 0) {
+      parts.push(`${clusters[0].name} Fan`);
+    }
+
+    return parts.filter(Boolean).join(' • ') || 'Eclectic Viewer';
+  }
+
+  /**
+   * Enhanced discovery opportunities with genre adjacency
+   */
+  private findDiscoveryOpportunitiesEnhanced(
+    watchlistItems: any[],
+    profiles: Array<{ dna: ContentDNA; weight: number }>
+  ): string[] {
+    const opportunities: string[] = [];
+    const tone = this.aggregateToneWeighted(profiles);
+    const themes = this.aggregateThemesWeighted(profiles);
+
+    // Find unexplored tone + theme combinations
+    const lowTones = Object.entries(tone)
+      .filter(([_, score]) => score < 0.2)
+      .map(([name]) => name);
+
+    if (lowTones.includes('humorous') && tone.dark > 0.5) {
+      opportunities.push('Dark Comedies - blend your love of dark content with humor');
+    }
+
+    if (lowTones.includes('cerebral') && tone.escapist > 0.5) {
+      opportunities.push('Thought-provoking Sci-Fi - add intellectual depth to your escapist favorites');
+    }
+
+    if (lowTones.includes('emotional') && tone.tense > 0.6) {
+      opportunities.push('Emotional Thrillers - combine tension with heartfelt storytelling');
+    }
+
+    // Find unexplored themes
+    const lowThemes = Object.entries(themes)
+      .filter(([_, score]) => score < 0.2)
+      .map(([name]) => name);
+
+    if (lowThemes.includes('comingOfAge')) {
+      opportunities.push('Coming-of-age stories - unexplored territory for you');
+    }
+
+    if (lowThemes.includes('nature')) {
+      opportunities.push('Nature documentaries and environmental stories');
+    }
+
+    if (lowThemes.includes('technology') && themes.power > 0.4) {
+      opportunities.push('Tech-driven narratives - explore power dynamics through technology');
+    }
+
+    // Era-based opportunities
+    const eras = profiles.map(({ dna }) => dna.production.era);
+    if (!eras.includes('classic')) {
+      opportunities.push('Classic cinema from the Golden Age');
+    }
+
+    return [...new Set(opportunities)].slice(0, 5);
   }
 }
 
