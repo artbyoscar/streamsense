@@ -58,18 +58,38 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
                 console.log(`[RecCache] Fetched ${allRecs.length} items`);
 
+                // Validate items have required data (poster and title)
+                const validItems = allRecs.filter(item => {
+                    const hasPoster = !!(item.posterPath || item.poster_path);
+                    const hasTitle = !!(item.title || item.name);
+
+                    if (!hasPoster || !hasTitle) {
+                        console.warn('[RecCache] Item missing required data:', {
+                            id: item.id,
+                            hasPoster,
+                            hasTitle,
+                            title: item.title || item.name || 'NO_TITLE',
+                        });
+                        return false;
+                    }
+                    return true;
+                });
+
+                console.log(`[RecCache] Validated: ${validItems.length}/${allRecs.length} items have required data`);
+
                 // Debug: Log sample of fetched items to verify data structure
-                if (allRecs.length > 0) {
+                if (validItems.length > 0) {
                     console.log('[RecCache] Sample item:', {
-                        id: allRecs[0].id,
-                        title: allRecs[0].title,
-                        media_type: allRecs[0].media_type,
-                        type: allRecs[0].type,
-                        genre_ids: allRecs[0].genre_ids,
-                        genres: allRecs[0].genres,
+                        id: validItems[0].id,
+                        title: validItems[0].title,
+                        posterPath: validItems[0].posterPath || validItems[0].poster_path,
+                        media_type: validItems[0].media_type,
+                        type: validItems[0].type,
+                        genre_ids: validItems[0].genre_ids,
+                        genres: validItems[0].genres,
                     });
                 } else {
-                    console.warn('[RecCache] WARNING: getSmartRecommendations returned 0 items!');
+                    console.warn('[RecCache] WARNING: No valid items after filtering!');
                 }
 
                 // Pre-organize by genre
@@ -79,7 +99,7 @@ export const useRecommendationCache = (userId: string | undefined) => {
                 for (const genre of genreNames) {
                     const targetIds = GENRE_NAME_TO_ID[genre];
 
-                    const genreItems = allRecs.filter(item => {
+                    const genreItems = validItems.filter(item => {
                         // Check genre IDs
                         // Handle both number arrays (genre_ids) and object arrays (genres)
                         const itemGenreIds: number[] = [];
@@ -96,7 +116,7 @@ export const useRecommendationCache = (userId: string | undefined) => {
                         }
 
                         // Debug log for first few items of first genre to verify structure
-                        if (genre === genreNames[0] && allRecs.indexOf(item) < 3) {
+                        if (genre === genreNames[0] && validItems.indexOf(item) < 3) {
                             console.log(`[RecCache] Item: ${item.title}, Genres:`, itemGenreIds);
                         }
 
@@ -120,18 +140,18 @@ export const useRecommendationCache = (userId: string | undefined) => {
                 }
 
                 // Pre-organize by media type
-                const movies = allRecs.filter(i => i.media_type === 'movie' || i.type === 'movie');
-                const tv = allRecs.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
+                const movies = validItems.filter(i => i.media_type === 'movie' || i.type === 'movie');
+                const tv = validItems.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
 
                 console.log('[RecCache] Cache structure built:', {
-                    totalItems: allRecs.length,
+                    totalItems: validItems.length,
                     movieCount: movies.length,
                     tvCount: tv.length,
                     genreCounts: Array.from(byGenre.entries()).map(([name, items]) => ({ name, count: items.length })),
                 });
 
                 setCache({
-                    all: allRecs,
+                    all: validItems,
                     byGenre,
                     byMediaType: { movie: movies, tv },
                     lastFetched: new Date(),

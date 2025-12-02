@@ -581,38 +581,65 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.horizontalScroll}
               >
-                {filteredRecommendations.filter(item => item && item.id).map(item => (
-                  <Animated.View
-                    key={`foryou-${item.id}-${item.type}`}
-                    layout={Layout.springify()}
-                    exiting={SlideOutRight}
-                  >
-                    <TouchableOpacity
-                      onPress={() => handleContentPress(item)}
-                      style={styles.posterCard}
+                {filteredRecommendations.filter(item => item && item.id).map((item, index) => {
+                  // Defensive data extraction with multiple fallbacks
+                  const posterPath = item.posterPath || item.poster_path || null;
+                  const title = item.title || item.name || item.originalTitle || 'Unknown Title';
+                  const mediaType = item.type || item.media_type || 'movie';
+                  const rating = item.rating || item.vote_average || 0;
+
+                  // Debug logging for first few items
+                  if (index < 2) {
+                    console.log('[Watchlist] For You item:', {
+                      id: item.id,
+                      title,
+                      posterPath,
+                      hasImage: !!posterPath,
+                      mediaType,
+                      rating,
+                    });
+                  }
+
+                  // Get poster URL with fallback
+                  const posterUrl = posterPath
+                    ? (getPosterUrl(posterPath, 'small') || null)
+                    : null;
+
+                  return (
+                    <Animated.View
+                      key={`foryou-${item.id}-${mediaType}`}
+                      layout={Layout.springify()}
+                      exiting={SlideOutRight}
                     >
-                      <Image
-                        source={{
-                          uri: item.posterPath
-                            ? (getPosterUrl(item.posterPath, 'small') ?? 'https://via.placeholder.com/120x180')
-                            : 'https://via.placeholder.com/120x180'
-                        }}
-                        style={[styles.poster, { backgroundColor: colors.card }]}
-                      />
-                      <Text
-                        numberOfLines={2}
-                        style={[styles.posterTitle, { color: colors.text }]}
+                      <TouchableOpacity
+                        onPress={() => handleContentPress(item)}
+                        style={styles.posterCard}
                       >
-                        {item?.title || 'Unknown'}
-                      </Text>
-                      <View style={styles.contentMeta}>
-                        <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
-                          {item.type === 'tv' ? '📺' : '🎬'} {item.rating?.toFixed(1) || 'N/A'}
+                        {posterUrl ? (
+                          <Image
+                            source={{ uri: posterUrl }}
+                            style={[styles.poster, { backgroundColor: colors.card }]}
+                          />
+                        ) : (
+                          <View style={[styles.poster, styles.posterPlaceholder, { backgroundColor: colors.border }]}>
+                            <MaterialCommunityIcons name="image-off" size={32} color={colors.textSecondary} />
+                          </View>
+                        )}
+                        <Text
+                          numberOfLines={2}
+                          style={[styles.posterTitle, { color: colors.text }]}
+                        >
+                          {title}
                         </Text>
-                      </View>
-                    </TouchableOpacity>
-                  </Animated.View>
-                ))}
+                        <View style={styles.contentMeta}>
+                          <Text style={[styles.contentMetaText, { color: colors.textSecondary }]}>
+                            {mediaType === 'tv' ? '📺' : '🎬'} {rating > 0 ? rating.toFixed(1) : 'N/A'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    </Animated.View>
+                  );
+                })}
               </ScrollView>
             ) : (
               <View style={[styles.onboardingCard, { backgroundColor: colors.card }]}>
