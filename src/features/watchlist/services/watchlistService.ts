@@ -7,6 +7,7 @@ import { supabase } from '@/config/supabase';
 import { getContentDetails } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
 import { refreshWatchlistCache } from '@/services/smartRecommendations';
+import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
 
 // ============================================================================
@@ -148,6 +149,18 @@ export async function addToWatchlist(
   refreshWatchlistCache(user.id).catch((error) => {
     console.error('[Watchlist] Error refreshing recommendation cache:', error);
   });
+
+  // Compute Content DNA for the recommendation system
+  if (watchlistItem.tmdb_id && watchlistItem.media_type) {
+    recommendationOrchestrator.computeContentDNA(
+      watchlistItem.tmdb_id,
+      watchlistItem.media_type as 'movie' | 'tv'
+    ).then(() => {
+      console.log('[Watchlist] Content DNA computed for:', watchlistItem.tmdb_id);
+    }).catch((error) => {
+      console.error('[Watchlist] Error computing content DNA:', error);
+    });
+  }
 
   return data;
 }

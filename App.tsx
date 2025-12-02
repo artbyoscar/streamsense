@@ -16,6 +16,7 @@ import { initializeExclusions } from './src/services/smartRecommendations';
 import { getPileOfShame } from './src/services/pileOfShame';
 import { tipsCache } from './src/services/tipsCache';
 import { supabase } from './src/config/supabase';
+import { recommendationOrchestrator } from './src/services/recommendationOrchestrator';
 
 // Suppress non-breaking Fragment index prop warnings
 // These come from third-party libraries and don't affect functionality
@@ -104,11 +105,18 @@ function AppContent() {
     });
   }, [initialize]);
 
-  // Initialize exclusions when user is authenticated
+  // Initialize exclusions and recommendation orchestrator when user is authenticated
   useEffect(() => {
     if (isAuthenticated && user?.id) {
       console.log('[App] Initializing exclusions for user:', user.id);
       initializeExclusions(user.id);
+
+      console.log('[App] Initializing recommendation orchestrator...');
+      recommendationOrchestrator.initialize().then(() => {
+        console.log('[App] Recommendation orchestrator initialized');
+      }).catch((error) => {
+        console.error('[App] Failed to initialize recommendation orchestrator:', error);
+      });
     }
   }, [isAuthenticated, user?.id]);
 

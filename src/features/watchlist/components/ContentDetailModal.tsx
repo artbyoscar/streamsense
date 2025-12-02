@@ -23,6 +23,7 @@ import { supabase } from '@/config/supabase';
 import { getBackdropUrl, getPosterUrl, getUSWatchProviders } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
 import { addToExclusions, removeFromExclusions } from '@/services/smartRecommendations';
+import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 import { COLORS } from '@/components';
 
@@ -259,6 +260,13 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_LOW');
             }
             // 2.5, 3, 3.5 = neutral, no tracking
+
+            // Update user taste profile after rating
+            recommendationOrchestrator.updateUserProfile(user.id).then(() => {
+              console.log('[ContentDetail] User profile updated after rating');
+            }).catch((error) => {
+              console.error('[ContentDetail] Error updating user profile:', error);
+            });
           }
         }
 
@@ -300,6 +308,15 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
               await trackGenreInteraction(user.id, genreIds, contentType, 'RATE_LOW');
             }
             // 2.5, 3, 3.5 = neutral, no tracking
+
+            // Update user taste profile after rating
+            if (rating > 0) {
+              recommendationOrchestrator.updateUserProfile(user.id).then(() => {
+                console.log('[ContentDetail] User profile updated after rating');
+              }).catch((error) => {
+                console.error('[ContentDetail] Error updating user profile:', error);
+              });
+            }
           }
         }
 
