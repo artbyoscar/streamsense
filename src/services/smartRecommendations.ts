@@ -33,12 +33,17 @@ export const initializeExclusions = async (userId: string) => {
 
     // Convert to numbers for exclusion checking (TMDB IDs are numbers)
     globalExcludeIds = new Set();
+    watchlistTmdbIds = new Set(); // Keep in sync
+
     ids.forEach(id => {
       const num = Number(id);
-      if (!isNaN(num)) globalExcludeIds.add(num);
+      if (!isNaN(num)) {
+        globalExcludeIds.add(num);
+        watchlistTmdbIds.add(num); // Ensure both sets are synchronized
+      }
     });
 
-    console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items`);
+    console.log(`[SmartRecs] Initialized exclusions: ${globalExcludeIds.size} items (watchlist: ${watchlistTmdbIds.size})`);
   } catch (error) {
     console.error('[SmartRecs] Error initializing exclusions:', error);
   }
@@ -147,10 +152,18 @@ const shouldExclude = (tmdbId: number, excludeSessionItems: boolean = true): boo
   // For infinite feeds (Discover), don't exclude session items - use pagination instead
   const alreadyShown = excludeSessionItems ? sessionShownIds.has(tmdbId) : false;
 
-  if (isGloballyExcluded || inWatchlist || alreadyShown) {
-    return true;
+  const excluded = isGloballyExcluded || inWatchlist || alreadyShown;
+
+  // Log exclusions for debugging (only for excluded items to reduce noise)
+  if (excluded) {
+    console.log(`[SmartRecs] Excluding ${tmdbId}:`, {
+      inGlobalExclusions: isGloballyExcluded,
+      inWatchlist,
+      alreadyShown,
+    });
   }
-  return false;
+
+  return excluded;
 };
 
 // Separate genre mappings for movies and TV
@@ -353,10 +366,17 @@ export const getSmartRecommendations = async (
   // ALWAYS refresh watchlist IDs to catch new additions
   const ids = await getWatchlistIds(userId);
   watchlistTmdbIds = new Set();
+  globalExcludeIds = new Set(); // Keep in sync with watchlistTmdbIds
+
   ids.forEach(id => {
     const num = Number(id);
-    if (!isNaN(num)) watchlistTmdbIds.add(num);
+    if (!isNaN(num)) {
+      watchlistTmdbIds.add(num);
+      globalExcludeIds.add(num); // Ensure both sets are synchronized
+    }
   });
+
+  console.log(`[SmartRecs] Watchlist exclusions updated: ${watchlistTmdbIds.size} items`);
 
   // SMART CACHE MANAGEMENT: Prevent session cache from growing too large
   // When cache exceeds 500 items, keep only the most recent 200
