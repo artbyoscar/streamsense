@@ -3,7 +3,7 @@
  * Allow users to log watch time for their subscriptions
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,10 +14,12 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { logWatchTime } from '../services/subscriptionsService';
+import { supabase } from '@/config/supabase';
 
 interface WatchTimeLoggerModalProps {
   visible: boolean;
@@ -36,6 +38,56 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
   const [hours, setHours] = useState('');
   const [contentWatched, setContentWatched] = useState('');
   const [saving, setSaving] = useState(false);
+  const [loadingCurrentHours, setLoadingCurrentHours] = useState(false);
+  const [currentMonthHours, setCurrentMonthHours] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+
+  // Fetch current month's watch time when modal opens
+  useEffect(() => {
+    if (visible && subscription?.id) {
+      fetchCurrentMonthHours();
+    }
+  }, [visible, subscription?.id]);
+
+  const fetchCurrentMonthHours = async () => {
+    if (!subscription?.id) return;
+
+    setLoadingCurrentHours(true);
+    try {
+      // Get current month's start and end dates
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      const { data, error } = await supabase
+        .from('watch_time_logs')
+        .select('hours, date')
+        .eq('subscription_id', subscription.id)
+        .gte('date', monthStart.toISOString())
+        .lte('date', monthEnd.toISOString())
+        .order('date', { ascending: false });
+
+      if (error) throw error;
+
+      const totalHours = data?.reduce((sum, log) => sum + (log.hours || 0), 0) || 0;
+      setCurrentMonthHours(totalHours);
+
+      // Set last updated timestamp
+      if (data && data.length > 0) {
+        setLastUpdated(data[0].date);
+      } else {
+        setLastUpdated(null);
+      }
+    } catch (error) {
+      console.error('[WatchTime] Error fetching current hours:', error);
+    } finally {
+      setLoadingCurrentHours(false);
+    }
+  };
+
+  const handleQuickAdd = (quickHours: number) => {
+    setHours(quickHours.toString());
+  };
 
   const handleSave = async () => {
     const hoursNum = parseFloat(hours);
@@ -69,13 +121,15 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
         contentDescription: contentWatched.trim() || undefined,
       });
 
+      const newTotal = currentMonthHours + hoursNum;
       Alert.alert(
         'Success',
-        `Logged ${hoursNum} hour${hoursNum === 1 ? '' : 's'} of watch time!`,
+        `Added ${hoursNum} hour${hoursNum === 1 ? '' : 's'}!\n\nNew total this month: ${newTotal.toFixed(1)} hours`,
         [{
           text: 'OK', onPress: () => {
             setHours('');
             setContentWatched('');
+            setCurrentMonthHours(newTotal); // Update local state
             onSave();
             onClose();
           }
@@ -136,11 +190,75 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
             </Text>
           </View>
 
+          {/* Billing Period Info */}
+          <View style={[styles.infoCard, { backgroundColor: colors.background }]}>
+            <Ionicons name="calendar" size={18} color={colors.primary} />
+            <View style={styles.infoContent}>
+              <Text style={[styles.infoText, { color: colors.text }]}>
+                Tracking for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </Text>
+              <Text style={[styles.infoSubtext, { color: colors.textSecondary }]}>
+                Your watch time resets each month
+              </Text>
+            </View>
+          </View>
+
+          {/* Current Month Total */}
+          {loadingCurrentHours ? (
+            <View style={styles.currentTotalLoading}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={[styles.currentTotalText, { color: colors.textSecondary }]}>
+                Loading current total...
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.currentTotalCard, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}>
+              <View style={styles.currentTotalRow}>
+                <Text style={[styles.currentTotalLabel, { color: colors.text }]}>
+                  Current Total:
+                </Text>
+                <Text style={[styles.currentTotalValue, { color: colors.primary }]}>
+                  {currentMonthHours.toFixed(1)} hours
+                </Text>
+              </View>
+              {lastUpdated && (
+                <Text style={[styles.lastUpdatedText, { color: colors.textSecondary }]}>
+                  Last updated: {new Date(lastUpdated).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                </Text>
+              )}
+            </View>
+          )}
+
           {/* Hours Input */}
           <View style={styles.inputGroup}>
             <Text style={[styles.inputLabel, { color: colors.text }]}>
-              Hours Watched <Text style={{ color: colors.error }}>*</Text>
+              Add Hours <Text style={{ color: colors.error }}>*</Text>
             </Text>
+
+            {/* Quick Add Buttons */}
+            <View style={styles.quickAddRow}>
+              {[1, 2, 4, 8].map((quickHours) => (
+                <TouchableOpacity
+                  key={quickHours}
+                  style={[
+                    styles.quickAddButton,
+                    {
+                      backgroundColor: hours === quickHours.toString() ? colors.primary : colors.background,
+                      borderColor: colors.border,
+                    }
+                  ]}
+                  onPress={() => handleQuickAdd(quickHours)}
+                >
+                  <Text style={[
+                    styles.quickAddText,
+                    { color: hours === quickHours.toString() ? '#FFFFFF' : colors.text }
+                  ]}>
+                    {quickHours}h
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <TextInput
               style={[
                 styles.input,
@@ -155,10 +273,9 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
               onChangeText={setHours}
               placeholder="e.g., 2.5"
               placeholderTextColor={colors.textSecondary}
-              autoFocus
             />
             <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-              Enter hours watched (minimum 0, maximum 24)
+              This will be added to your current total (max 24 hours per entry)
             </Text>
           </View>
 
@@ -199,14 +316,16 @@ export const WatchTimeLoggerModal: React.FC<WatchTimeLoggerModalProps> = ({
             <TouchableOpacity
               style={[styles.saveButton, { backgroundColor: colors.primary }]}
               onPress={handleSave}
-              disabled={saving}
+              disabled={saving || !hours}
             >
               {saving ? (
-                <Text style={styles.saveText}>Saving...</Text>
+                <Text style={styles.saveText}>Adding...</Text>
               ) : (
                 <>
-                  <Ionicons name="checkmark" size={20} color="#FFFFFF" />
-                  <Text style={styles.saveText}>Save</Text>
+                  <Ionicons name="add" size={20} color="#FFFFFF" />
+                  <Text style={styles.saveText}>
+                    {hours ? `Add ${hours} Hour${parseFloat(hours) === 1 ? '' : 's'}` : 'Add Hours'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -322,6 +441,78 @@ const styles = StyleSheet.create({
   saveText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  infoSubtext: {
+    fontSize: 12,
+  },
+  currentTotalLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 16,
+    justifyContent: 'center',
+  },
+  currentTotalText: {
+    fontSize: 14,
+  },
+  currentTotalCard: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+  },
+  currentTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  currentTotalLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  currentTotalValue: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  lastUpdatedText: {
+    fontSize: 11,
+    marginTop: 4,
+  },
+  quickAddRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  quickAddButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  quickAddText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 });
