@@ -783,10 +783,10 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1, // Takes remaining 45%
     padding: 16,
-    paddingBottom: 0, // Remove padding from container, move to scrollContent
+    paddingBottom: 16,
   },
   scrollContent: {
-    paddingBottom: 180, // Heavy padding to ensure text doesn't go behind buttons
+    paddingBottom: 8,
   },
   cardTitle: {
     fontSize: 22,
@@ -824,7 +824,7 @@ const styles = StyleSheet.create({
   },
   overviewScroll: {
     flex: 1,
-    maxHeight: 120, // Increased to show more overview text
+    maxHeight: 100,
   },
   cardOverview: {
     fontSize: 14,
