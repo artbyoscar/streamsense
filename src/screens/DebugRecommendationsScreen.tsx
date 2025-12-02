@@ -17,14 +17,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/providers/ThemeProvider';
-import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
-import { dnaComputationQueue } from '@/services/dnaComputationQueue';
-import { llmRecommendationService } from '@/services/llmRecommendations';
-import { supabase } from '@/config/supabase';
-import type { UserTasteProfile, ContentDNA } from '@/services/contentDNA';
-import type { RecommendationLane } from '@/services/recommendationLanes';
+import { useAuth } from '../hooks/useAuth';
+import { useTheme } from '../providers/ThemeProvider';
+import { recommendationOrchestrator } from '../services/recommendationOrchestrator';
+import { dnaComputationQueue } from '../services/dnaComputationQueue';
+import { llmRecommendationService } from '../services/llmRecommendations';
+import { supabase } from '../config/supabase';
+import type { UserTasteProfile, ContentDNA } from '../services/contentDNA';
+import type { RecommendationLane } from '../services/recommendationLanes';
 
 export const DebugRecommendationsScreen: React.FC = () => {
   const { user } = useAuth();
