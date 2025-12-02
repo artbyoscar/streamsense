@@ -849,7 +849,7 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
               </TouchableOpacity>
             </ScrollView>
           </>
-        )}
+        ) : null}
 
         {/* Worth Rewatching Section */}
         {loadingRewatch ? (
@@ -953,7 +953,7 @@ export const RecommendationsScreen: React.FC<RecommendationsScreenProps> = ({ is
               </Text>
             )}
           </>
-        )}
+        ) : null}
 
         {/* Value Analysis Section */}
         {valueScores.length > 0 && (
