@@ -17,6 +17,7 @@ import { getPileOfShame } from './src/services/pileOfShame';
 import { tipsCache } from './src/services/tipsCache';
 import { supabase } from './src/config/supabase';
 import { recommendationOrchestrator } from './src/services/recommendationOrchestrator';
+import { dnaComputationQueue } from './src/services/dnaComputationQueue';
 
 // Suppress non-breaking Fragment index prop warnings
 // These come from third-party libraries and don't affect functionality
@@ -116,6 +117,15 @@ function AppContent() {
         console.log('[App] Recommendation orchestrator initialized');
       }).catch((error) => {
         console.error('[App] Failed to initialize recommendation orchestrator:', error);
+      });
+
+      // Scan watchlist for missing DNA and queue for background processing
+      console.log('[App] Scanning watchlist for missing DNA...');
+      dnaComputationQueue.scanWatchlistForMissingDNA(user.id).then(() => {
+        const status = dnaComputationQueue.getStatus();
+        console.log('[App] DNA scan complete. Queue status:', status);
+      }).catch((error) => {
+        console.error('[App] Failed to scan watchlist for missing DNA:', error);
       });
     }
   }, [isAuthenticated, user?.id]);

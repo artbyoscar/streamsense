@@ -7,7 +7,7 @@ import { supabase } from '@/config/supabase';
 import { getContentDetails } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
 import { refreshWatchlistCache } from '@/services/smartRecommendations';
-import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
+import { dnaComputationQueue } from '@/services/dnaComputationQueue';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
 
 // ============================================================================
@@ -150,15 +150,13 @@ export async function addToWatchlist(
     console.error('[Watchlist] Error refreshing recommendation cache:', error);
   });
 
-  // Compute Content DNA for the recommendation system
+  // Add to DNA computation queue (background processing, non-blocking)
   if (watchlistItem.tmdb_id && watchlistItem.media_type) {
-    recommendationOrchestrator.computeContentDNA(
+    dnaComputationQueue.enqueue(
       watchlistItem.tmdb_id,
       watchlistItem.media_type as 'movie' | 'tv'
-    ).then(() => {
-      console.log('[Watchlist] Content DNA computed for:', watchlistItem.tmdb_id);
-    }).catch((error) => {
-      console.error('[Watchlist] Error computing content DNA:', error);
+    ).catch((error) => {
+      console.error('[Watchlist] Error adding to DNA queue:', error);
     });
   }
 
