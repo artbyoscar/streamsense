@@ -9,6 +9,11 @@ This document provides a comprehensive overview of the StreamSense recommendatio
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
+│             Layer 5: Interest Graph & Connections           │
+│           (Graph-based discovery & explanations)            │
+└─────────────────────────────────────────────────────────────┘
+                            ↓
+┌─────────────────────────────────────────────────────────────┐
 │                    Layer 4: LLM Reasoning                   │
 │         (Claude-powered deep personalization)               │
 └─────────────────────────────────────────────────────────────┘
@@ -296,6 +301,171 @@ const response = await llmRecommendationService.getMoodBasedRecommendations(
 
 ---
 
+## Layer 5: Interest Graph & Connections
+
+**File:** [`src/services/interestGraph.ts`](src/services/interestGraph.ts)
+
+### Purpose
+Map how user interests connect to enable powerful discovery through graph-based analysis.
+
+### Graph Structure
+
+**Nodes (Interest Types):**
+- Genres (e.g., "Sci-Fi", "Thriller")
+- Themes (e.g., "technology", "betrayal")
+- Tones (e.g., "dark", "cerebral")
+- Directors (e.g., "Christopher Nolan")
+- Actors (e.g., "Ryan Gosling")
+- Keywords (from TMDb)
+- Franchises (e.g., "Marvel Cinematic Universe")
+
+Each node has:
+- `userStrength`: 0-1 score for how much user likes this interest
+- `count`: Number of times it appears in watched content
+
+**Edges (Connections):**
+- `often_together`: Interests that frequently co-occur
+- `thematic_link`: Known thematic relationships
+- `talent_connection`: Director/actor relationships
+- `same_director`: Content from same director
+- `franchise`: Part of same franchise
+
+Each edge has:
+- `weight`: Connection strength (0-1)
+- `coOccurrenceCount`: How many times interests appeared together
+
+### Key Capabilities
+
+#### 1. Bridge Content Discovery
+Finds content that connects two different interests:
+```typescript
+const bridges = await interestGraphService.findBridgeContent(
+  'genre_878',    // Sci-Fi
+  'theme_identity' // Identity themes
+);
+// Returns: Mind-bending sci-fi that explores identity
+```
+
+#### 2. Interest Suggestions
+Suggests new interests based on graph connections:
+```typescript
+const suggestions = interestGraphService.suggestNewInterests([
+  'genre_53',  // Thriller
+  'tone_dark'  // Dark tone
+]);
+// Returns: "Crime" (connected to both Thriller and Dark)
+```
+
+#### 3. Recommendation Explanations
+Generates human-readable explanations:
+```typescript
+const explanation = interestGraphService.explainConnection(
+  content,
+  userProfile,
+  contentDNA
+);
+// Returns: "From Denis Villeneuve, a director you love • Strong technology themes you appreciate • Thought-provoking tone you prefer"
+```
+
+#### 4. Graph Visualization
+Export graph data for visualization:
+```typescript
+const graph = interestGraphService.exportGraph();
+// Returns: { nodes: [...], edges: [...] }
+// Can be used with D3.js, vis.js, etc.
+```
+
+### Pre-Defined Relationships
+
+The service includes 30+ known thematic relationships:
+
+**Genre Bridges:**
+- Sci-Fi ↔ Fantasy (0.7)
+- Action ↔ Thriller (0.8)
+- Drama ↔ Romance (0.6)
+- Crime ↔ Thriller (0.9)
+- Horror ↔ Thriller (0.8)
+
+**Theme Bridges:**
+- Technology ↔ Identity (0.7)
+- Power ↔ Betrayal (0.8)
+- Family Dynamics ↔ Coming of Age (0.7)
+- Survival ↔ Isolation (0.8)
+- Love ↔ Loss (0.7)
+
+**Tone ↔ Theme Bridges:**
+- Cerebral ↔ Identity (0.6)
+- Dark ↔ Betrayal (0.7)
+- Emotional ↔ Loss (0.7)
+- Tense ↔ Survival (0.8)
+
+### Use Cases
+
+**1. "Bridge Builder" Lane**
+Create a recommendation lane that bridges user's diverse interests:
+```typescript
+const userInterests = ['genre_878', 'tone_emotional'];
+const bridges = await interestGraphService.findBridgeContent(
+  userInterests[0],
+  userInterests[1],
+  15
+);
+```
+
+**2. Discovery Suggestions**
+Help users expand their taste:
+```typescript
+const currentInterests = profile.interestClusters.map(c => c.name);
+const newInterests = interestGraphService.suggestNewInterests(
+  currentInterests,
+  10
+);
+// Show as "You might also like: Crime thrillers (based on your love of Dark content and Suspenseful tone)"
+```
+
+**3. Enhanced Explanations**
+Make recommendations more transparent:
+```typescript
+for (const rec of recommendations) {
+  const dna = await contentDNAService.computeDNA(rec.id, rec.media_type);
+  const explanation = interestGraphService.explainConnection(
+    rec,
+    userProfile,
+    dna
+  );
+  rec.explanation = explanation;
+}
+```
+
+**4. Visual Interest Map**
+Show users their taste graph:
+```typescript
+await interestGraphService.buildUserGraph(userId);
+const summary = interestGraphService.getGraphSummary();
+
+console.log(`Your interests: ${summary.nodeCount} nodes, ${summary.edgeCount} connections`);
+console.log('Top interests:', summary.topInterests.map(n => n.name).join(', '));
+```
+
+### Integration with Other Layers
+
+Layer 5 enhances other layers:
+
+- **Layer 3 (Multi-Lane)**: Add bridge lanes and explanation text
+- **Layer 4 (LLM)**: Provide graph context to improve LLM reasoning
+- **Layer 2 (Taste Profile)**: Use graph to identify hidden pattern connections
+
+### Key Methods
+
+- `buildUserGraph(userId)` - Build interest graph from watched content
+- `findBridgeContent(fromInterest, toInterest, limit)` - Find connecting content
+- `suggestNewInterests(currentInterests, limit)` - Suggest expansion opportunities
+- `explainConnection(content, profile, dna)` - Generate recommendation explanation
+- `getGraphSummary()` - Get graph statistics
+- `exportGraph()` - Export for visualization
+
+---
+
 ## Future Enhancements
 
 ### Potential Layer 5: Reinforcement Learning
@@ -339,6 +509,7 @@ src/services/
 ├── contentDNA.ts              # Layer 1 & 2: DNA extraction + Taste profiles
 ├── recommendationLanes.ts     # Layer 3: Multi-lane engine
 ├── llmRecommendations.ts      # Layer 4: LLM-powered recommendations
+├── interestGraph.ts           # Layer 5: Interest graph & connections
 ├── tmdb.ts                    # TMDb API client
 ├── supabase.ts                # Supabase client
 └── genreAffinity.ts           # Legacy genre-based system
@@ -348,11 +519,12 @@ src/services/
 
 ## Summary
 
-StreamSense implements a sophisticated 4-layer recommendation system that rivals Netflix in complexity and personalization:
+StreamSense implements a sophisticated 5-layer recommendation system that rivals Netflix in complexity and personalization:
 
 1. **Layer 1 (DNA Extraction)** - Deep content understanding beyond genres
 2. **Layer 2 (Taste Profiles)** - Weighted user preference modeling
 3. **Layer 3 (Multi-Lane Engine)** - 12 different recommendation strategies
 4. **Layer 4 (LLM Reasoning)** - AI-powered deep personalization
+5. **Layer 5 (Interest Graph)** - Graph-based discovery and explanations
 
 The system is production-ready, fully typed, and integrates seamlessly with the existing StreamSense architecture.
