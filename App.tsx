@@ -17,6 +17,22 @@ import { getPileOfShame } from './src/services/pileOfShame';
 import { tipsCache } from './src/services/tipsCache';
 import { supabase } from './src/config/supabase';
 
+// Suppress non-breaking Fragment index prop warnings
+// These come from third-party libraries and don't affect functionality
+const originalConsoleError = console.error;
+console.error = (...args: any[]) => {
+  // Filter out Fragment index prop warnings
+  if (
+    typeof args[0] === 'string' &&
+    args[0].includes('Invalid prop') &&
+    args[0].includes('React.Fragment') &&
+    args[0].includes('index')
+  ) {
+    return; // Suppress this specific error
+  }
+  originalConsoleError.apply(console, args);
+};
+
 const queryClient = new QueryClient();
 
 // Auth context for switching between Login/Register
