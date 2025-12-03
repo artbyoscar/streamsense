@@ -29,6 +29,7 @@ const STREAMING_SERVICES = [
   'Apple TV+',
   'Paramount+',
   'Peacock',
+    'Crunchyroll',
   'Discovery+',
   'YouTube Premium',
   'Spotify',
@@ -558,3 +559,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
