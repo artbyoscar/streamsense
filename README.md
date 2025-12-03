@@ -8,7 +8,7 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ## 🎨 Design Philosophy
 
-StreamSense's UI draws inspiration from three industry leaders, combining the best patterns from each:
+StreamSense draws inspiration from three industry leaders, combining the best patterns from each:
 
 | Inspiration | What We Borrow | Where It Appears |
 |-------------|----------------|------------------|
@@ -32,6 +32,7 @@ StreamSense's UI draws inspiration from three industry leaders, combining the be
 ### Home Screen (Rocket Money Inspired) ✅ Implemented
 
 The dashboard communicates value at a glance with a hero spending card and quick insights.
+
 ```
 ┌────────────────────────────────────────────┐
 │ Good evening, there                   ⚙️  │
@@ -65,6 +66,7 @@ The dashboard communicates value at a glance with a hero spending card and quick
 ### Discover Screen (Tinder Inspired) ✅ Implemented
 
 Swipe-based content discovery with satisfying gestures and clear actions.
+
 ```
 ┌────────────────────────────────────────────┐
 │ Discover                                   │
@@ -94,6 +96,7 @@ Swipe-based content discovery with satisfying gestures and clear actions.
 ### Watchlist/For You Screen (Netflix Inspired) ✅ Implemented
 
 Multi-lane browsing with contextual recommendation labels.
+
 ```
 ┌────────────────────────────────────────────┐
 │ Watchlist                            🔍    │
@@ -122,9 +125,9 @@ Multi-lane browsing with contextual recommendation labels.
 └────────────────────────────────────────────┘
 ```
 
-**Status:** ✅ Core UI implemented, service badges in progress
+**Status:** ✅ Core UI implemented, service badges working
 
-### Tips & Insights Screen ✅ Implemented
+### Tips and Insights Screen ✅ Implemented
 
 **Status:** ✅ Working, needs content variety improvements
 
@@ -132,7 +135,7 @@ Multi-lane browsing with contextual recommendation labels.
 
 ## 🧠 Recommendation Intelligence Architecture
 
-StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon's approaches.
+StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon.
 
 ### Layer Overview
 
@@ -151,11 +154,11 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 |---------|--------|-------|
 | Genre Affinity Learning | ✅ Working | 22 genres tracked, temporal decay |
 | Smart Recommendations | ✅ Working | Personalized picks, exclusion logic |
-| **Provider Filtering** | ✅ Working | Only shows content from subscribed services |
+| Provider Filtering | ✅ Working | Only shows content from subscribed services |
 | Blindspot Discovery | ✅ Working | Hidden gems, classic gaps, unexplored genres |
 | Session Exclusion | ✅ Working | Prevents repeat recommendations |
 | Negative Filtering | ✅ Working | Skipped content excluded |
-| **Real Service Badges** | 🔧 In Progress | Fetches actual provider data per item |
+| Real Service Badges | ✅ Working | Fetches actual provider data per item |
 | SVD Matrix Factorization | ⚠️ Limited | Single-user generates 0 predictions |
 | Collaborative Filtering | ⚠️ Blocked | Needs multiple users |
 
@@ -163,113 +166,115 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ## 📊 Project Status
 
-### Overall Completion: **82%**
+### Overall Completion: **85%**
 
 | Category | Status | Completion | Notes |
 |----------|--------|------------|-------|
 | Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, EAS Build |
 | Authentication | ✅ Complete | 100% | Supabase Auth |
 | Subscription Management | ✅ Complete | 100% | Manage All modal, add/edit/delete |
-| Watchlist System | ✅ Complete | 95% | 275 items tracked |
+| Watchlist System | ✅ Complete | 95% | 284 items tracked |
 | Genre Affinity Learning | ✅ Complete | 100% | Real-time tracking |
-| **Provider Filtering** | ✅ Complete | 100% | Filters by subscribed services |
+| Provider Filtering | ✅ Complete | 100% | Filters by subscribed services |
+| Service Badges | ✅ Complete | 100% | Real provider data displayed |
 | Basic Recommendations | ✅ Complete | 90% | Genre-based active |
-| **Home Screen UI** | ✅ Implemented | 90% | Navigation fixed, Manage All working |
-| **Discover Screen UI** | ✅ Implemented | 80% | Swipe working, provider filtering active |
-| **Watchlist Screen UI** | ✅ Implemented | 70% | Core working, service badges in progress |
-| **Service Badges** | 🔧 In Progress | 60% | Architecture complete, integration testing |
-| Tips & Insights | ✅ Complete | 85% | Content variety needed |
+| Home Screen UI | ✅ Implemented | 90% | Navigation fixed, Manage All working |
+| Discover Screen UI | ✅ Implemented | 80% | Swipe working, provider filtering active |
+| Watchlist Screen UI | 🔧 Performance | 60% | Loading too slow (see bugs) |
+| Tips and Insights | ✅ Complete | 85% | Content variety needed |
 | Error Handling | ✅ Complete | 100% | Graceful fallbacks for missing tables |
 | Content DNA System | ⚠️ Blocked | 20% | Table not created, graceful fallback active |
 | Interest Graph | ⚠️ Blocked | 20% | Table not created, graceful fallback active |
-| SVD Factorization | ⚠️ Limited | 80% | Works but 0 predictions (single user) |
 | LLM Integration | ⏳ Planned | 0% | Claude Haiku |
 
 ---
 
-## 🔧 Known Issues
+## 🐛 Current Bug List (Session 10)
 
-### Critical
+### Priority 0: Critical Performance
 
-| Issue | Impact | Status |
-|-------|--------|--------|
-| ~~Netflix "N" badge on all content~~ | ~~Incorrect service attribution~~ | ✅ Being Fixed (Session 8) |
-| Genre filtering does nothing | Users cannot filter by genre | 🔧 Fix needed |
-| Unknown titles in watchlist | Missing TMDb metadata display | 🔧 Fix needed |
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 1 | Watchlist loads 30-40 seconds | 284 individual TMDb API calls during hydration | 🔧 Needs Fix |
+| 2 | Filter chips not clickable when scrolled | Z-index or position issue with sticky header | 🔧 Needs Fix |
+| 3 | Adding to list does not remove card | No exclusion/refresh after action in Discover | 🔧 Needs Fix |
 
-### High Priority
+### Priority 1: Broken Features
 
-| Issue | Impact | Status |
-|-------|--------|--------|
-| Genre filtering slow (5-10s) | Poor UX on For You tab | 🔧 Optimization needed |
-| No subscription limit for free tier | 4th subscription allowed | 🔧 Paywall logic needed |
-| Worth Discovering shows same content | Lack of variety | 🔧 Algorithm improvement needed |
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 4 | Action/Adventure filters show same content | Items belong to multiple genres, showing any-match instead of primary | 🔧 Needs Fix |
+| 5 | Crime filter shows The 100 | TMDb has it as Drama/Sci-Fi/Action, not Crime | 🔧 Needs Fix |
+| 6 | Drama filter shows Young Sheldon | Young Sheldon is Comedy (ID 35), genre matching logic incorrect | 🔧 Needs Fix |
+| 7 | Unknown Titles in watchlist | TMDb hydration failing, metadata not stored on add | 🔧 Needs Fix |
 
-### Medium Priority
+### Priority 2: Missing Features
 
-| Issue | Impact | Status |
-|-------|--------|--------|
-| Added items do not fade in Trending | No visual feedback | 🔧 Fix needed |
-| No rating when marking Watched | Missing feature in Discover | 🔧 Enhancement needed |
-| Half-star ratings | Feature request | ⏳ Future enhancement |
+| # | Issue | Status |
+|---|-------|--------|
+| 8 | Rating prompt after "Watched" swipe | ⏳ Enhancement |
+| 9 | Tips "Worth Discovering" showing stale content | ⏳ Enhancement |
+| 10 | Service filter for watchlist tabs | ⏳ Enhancement |
 
-### Recently Resolved ✅ (Sessions 7-8)
+### Recommended Fix Order
 
-| Issue | Resolution | Date |
-|-------|------------|------|
-| "Manage All" opens modal | Created SubscriptionsManageModal component | Dec 2 |
-| Can add/edit/delete subscriptions | Full CRUD in modal | Dec 2 |
-| Missing Crunchyroll option | Added to STREAMING_SERVICES array | Dec 2 |
-| Provider filtering not working | Verified working via logs | Dec 2 |
-| Hardcoded Netflix badge | Implementing real badge system | Dec 2 |
+1. **Fix #2** (filter chips z-index): Quick win, approximately 5 minutes
+2. **Fix #1** (watchlist speed): Store metadata on add, show immediately. Biggest impact, approximately 20 minutes
+3. **Fix #3** (card removal after action): Approximately 10 minutes
+4. **Fix #4-6** (genre filtering accuracy): Use primary genre matching, approximately 15 minutes
 
-### Previously Resolved ✅ (Session 6)
+---
 
-| Issue | Resolution | Date |
-|-------|------------|------|
-| `content_dna` table error (PGRST205) | Added graceful error handling | Dec 2 |
-| `interest_graph_edges` table error (PGRST205) | Added graceful error handling | Dec 2 |
-| Rewatch FK relationship error (PGRST200) | Feature temporarily disabled | Dec 2 |
-| "Manage All" button not navigating | Now opens modal | Dec 2 |
-| "Add Subscription" button not working | Wired to SubscriptionForm modal | Dec 2 |
-| UpcomingSection crash (null date) | Added null checks for parseISO | Dec 2 |
-| Red error banners on startup | All three database errors handled | Dec 2 |
+## ✅ Recently Resolved (Sessions 7-10)
+
+| Issue | Resolution | Session |
+|-------|------------|---------|
+| Service badges show wrong service | Implemented real badge system with TMDb provider data | Session 10 |
+| Provider filtering not active | Verified working via logs | Session 9 |
+| Manage All modal | Created SubscriptionsManageModal with full CRUD | Session 7 |
+| Missing Crunchyroll option | Added to STREAMING_SERVICES array | Session 7 |
+| `content_dna` table error (PGRST205) | Added graceful error handling | Session 6 |
+| `interest_graph_edges` table error (PGRST205) | Added graceful error handling | Session 6 |
+| Rewatch FK relationship error (PGRST200) | Feature temporarily disabled | Session 6 |
+| "Add Subscription" button not working | Wired to SubscriptionForm modal | Session 6 |
+| UpcomingSection crash (null date) | Added null checks for parseISO | Session 6 |
+| Red error banners on startup | All three database errors handled | Session 6 |
 
 ---
 
 ## ✅ What Works
 
-### Authentication & User Management
+### Authentication and User Management
 - Email/password authentication via Supabase
 - Secure session management with Row Level Security
 - User profile persistence
 
 ### Subscription Tracking
 - Manual subscription entry with service name, price, billing cycle
-- **Full CRUD via Manage All modal** (add, edit, delete)
+- Full CRUD via Manage All modal (add, edit, delete)
 - Total monthly cost calculation
 - Human-readable value scores ("Great Value", "Low Usage")
 - Annual projection
 - Service-level value indicators
-- **Crunchyroll support added**
+- Crunchyroll support
 
-### Provider Filtering ✅ NEW
+### Provider Filtering
 - Recommendations filtered by subscribed services
 - Verified via logs: `[SmartRecs] Filtering by user providers: [8, 283]`
 - Netflix (8), Crunchyroll (283), and all major services supported
-- Content only appears if available on user's subscriptions
+- Content only appears if available on user subscriptions
 
-### Service Badges System 🔧 IN PROGRESS
+### Service Badges System
 - SERVICE_BADGES configuration for 11 streaming services
 - PROVIDER_ID_TO_SERVICE mapping for TMDb provider IDs
-- getUserSubscriptionNames() fetches user's active services
+- getUserSubscriptionNames() fetches user active services
 - batchGetServiceBadges() processes items in batches with rate limiting
 - ContentCard accepts serviceBadge prop
 - RecommendationLane passes badges to cards
 - ForYouContent fetches badges for Trending lane
 
 ### Watchlist Management
-- 275 items tracked across all statuses
+- 284 items tracked across all statuses
 - Status management: Want to Watch, Watching, Watched
 - 5-star rating system
 - Decoupled architecture (API hydration)
@@ -284,7 +289,7 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ### Smart Recommendations
 - Personalized picks based on genre affinity
-- **Provider-aware filtering** (only subscribed services)
+- Provider-aware filtering (only subscribed services)
 - Session-based exclusion (300+ items in session cache)
 - Watchlist exclusion (246 items)
 - Negative filtering for skipped content
@@ -301,7 +306,7 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ### UI Implementation
 - Home screen with hero spending card (no red error banners)
-- **Manage All modal with subscription management**
+- Manage All modal with subscription management
 - Quick insights row (watched: 217, watch time: 325.5h, cost/hour: $0.10)
 - Services list with value indicators
 - Navigation buttons working
@@ -335,9 +340,10 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ---
 
-## 📈 Metrics from Testing (December 2, 2025 - Session 8)
+## 📈 Metrics from Testing (December 2-3, 2025)
+
 ```
-User Interactions:     275 watchlist items
+User Interactions:     284 watchlist items
 Genre Affinities:      22 genres tracked
 Top Genres:            Drama (460), Adventure (434), Action (343)
 Unexplored Genres:     Thriller, Horror, Romance
@@ -348,68 +354,67 @@ Subscriptions:         2 active (testing)
   - Netflix:           $15.49/mo (Provider ID: 8)
   - Crunchyroll:       $7.99/mo (Provider ID: 283)
 Provider Filtering:    ✅ Active - logs show filtering by [8, 283]
-Service Badges:        🔧 In progress - architecture complete
+Service Badges:        ✅ Working - real provider data displayed
 Blindspots Generated:  7 unique recommendations
 Session Cache:         300+ items shown (pruned to 200)
-Global Exclusions:     246 watchlist items excluded
+Global Exclusions:     248 watchlist items excluded
 ```
 
 ---
 
 ## 🚀 Development Pipeline
 
-### Immediate Priorities (Session 9)
+### Immediate Priorities (Session 11)
 
-1. **Complete Service Badges Implementation**
-   - [ ] Test ForYouContent badge fetching
-   - [ ] Verify correct badges appear (N for Netflix, CR for Crunchyroll)
-   - [ ] Add badges to other lanes if needed
-   - [ ] Performance optimization (caching)
+**Performance Fixes (P0)**
+- [ ] Store TMDb metadata in database on add (eliminate 284 API calls)
+- [ ] Fix filter chip z-index for sticky header interaction
+- [ ] Add exclusion set update and card animation after watchlist action
 
-2. **Fix Remaining Critical Issues**
-   - [ ] Fix genre filtering on Watchlist screen
-   - [ ] Fix unknown titles display (fetch missing TMDb data)
+**Genre Filtering Accuracy (P1)**
+- [ ] Implement primary genre matching instead of any-match
+- [ ] Verify genre ID accuracy against TMDb data
+- [ ] Add visual distinction for multi-genre items
 
-3. **Fix High Priority Issues**
-   - [ ] Optimize genre filtering speed (5-10s → instant)
-   - [ ] Add subscription limit for free tier (3 max)
-   - [ ] Improve Worth Discovering variety
+**Data Integrity (P1)**
+- [ ] Store title on add to database to prevent Unknown Titles
+- [ ] Add fallback handling for failed TMDb hydration
 
-### Phase 2: Database Tables (Next Week)
+### Phase 2: Feature Enhancements (Next Week)
 
-1. **Create Missing Tables in Supabase**
-   - [ ] `content_dna` - Content attribute storage
-   - [ ] `interest_graph_edges` - Interest relationships
-   - [ ] `user_taste_profiles` - Aggregated preferences
+**User Experience**
+- [ ] Rating prompt after "Watched" swipe in Discover
+- [ ] Service filter for watchlist tabs (All, Netflix, Crunchyroll, etc.)
+- [ ] Force refresh logic for Tips "Worth Discovering"
 
-2. **Implement Services**
-   - [ ] Content DNA computation
-   - [ ] User taste profile aggregation
-   - [ ] Interest graph population
+**Database Tables**
+- [ ] Create `content_dna` table in Supabase
+- [ ] Create `interest_graph_edges` table
+- [ ] Create `user_taste_profiles` table
 
-### Phase 3: Enhanced Recommendations
+### Phase 3: Advanced Recommendations
 
-1. **Multi-Lane System**
-   - [ ] "Because You Watched" lane
-   - [ ] Talent Spotlight lanes
-   - [ ] Interest Cluster lanes
+**Multi-Lane System**
+- [ ] "Because You Watched" lane
+- [ ] Talent Spotlight lanes
+- [ ] Interest Cluster lanes
 
-2. **Worth Discovering Improvements**
-   - [ ] Filter by subscribed services
-   - [ ] More variety in recommendations
-   - [ ] Fresh content on each load
+**Worth Discovering Improvements**
+- [ ] Filter by subscribed services
+- [ ] More variety in recommendations
+- [ ] Fresh content on each load
 
-### Phase 4: Polish & Launch
+### Phase 4: Polish and Launch
 
-1. **UI Refinements**
-   - [ ] Animation polish
-   - [ ] Empty state designs
-   - [ ] Error state handling
+**UI Refinements**
+- [ ] Animation polish
+- [ ] Empty state designs
+- [ ] Error state handling
 
-2. **Launch Preparation**
-   - [ ] Waitlist integration
-   - [ ] Analytics setup
-   - [ ] App store assets
+**Launch Preparation**
+- [ ] Waitlist integration
+- [ ] Analytics setup
+- [ ] App store assets
 
 ---
 
@@ -421,60 +426,68 @@ Global Exclusions:     246 watchlist items excluded
 | Critical Bug Fixes (DB Errors) | Week 2 | ✅ Complete |
 | Subscription Management Modal | Week 2 | ✅ Complete |
 | Provider Filtering | Week 2 | ✅ Complete |
-| Service Badges System | Week 2-3 | 🔧 In Progress |
-| Database Tables Creation | Week 3 | ⏳ Pending |
-| Content DNA + Taste Profiles | Week 3-4 | ⏳ Pending |
-| Performance Optimization | Week 4 | ⏳ Pending |
-| Multi-Lane UI Integration | Week 4-5 | ⏳ Pending |
-| LLM Integration | Week 5-6 | ⏳ Pending |
-| Polish & Testing | Week 6-7 | ⏳ Pending |
-| Waitlist Launch | Week 7-8 | ⏳ Pending |
-| Alpha Release | Week 9-10 | ⏳ Pending |
+| Service Badges System | Week 2-3 | ✅ Complete |
+| Performance Optimization | Week 3 | 🔧 In Progress |
+| Genre Filtering Accuracy | Week 3 | 🔧 In Progress |
+| Database Tables Creation | Week 3-4 | ⏳ Pending |
+| Content DNA + Taste Profiles | Week 4-5 | ⏳ Pending |
+| Multi-Lane UI Integration | Week 5-6 | ⏳ Pending |
+| LLM Integration | Week 6-7 | ⏳ Pending |
+| Polish and Testing | Week 7-8 | ⏳ Pending |
+| Waitlist Launch | Week 8-9 | ⏳ Pending |
+| Alpha Release | Week 10-11 | ⏳ Pending |
 
 ---
 
-## 📝 Recent Updates
+## 📝 Session History
+
+### Session 10 (December 3, 2025) - Performance Analysis
+
+**Achievements:**
+- Verified service badges displaying correctly with real provider data
+- Identified critical performance bottleneck: 284 individual TMDb API calls
+- Documented genre filtering accuracy issues
+- Identified filter chip z-index issue preventing interaction when scrolled
+- Created consolidated bug list with priority tiers
+
+**Root Cause Analysis:**
+- Watchlist load time (30-40s) caused by `getWatchlist` calling TMDb API for each of 284 items
+- `content_id` formatted as `"movie-1724"` not matching UUID format expected by content table join
+- Genre filtering showing any-match instead of primary genre
+
+### Session 9 (December 2, 2025) - Bug Triage
+
+**Achievements:**
+- Completed service badges implementation testing
+- Verified ForYouContent badge fetching
+- Documented genre filtering performance issues (5-10 second delays)
+- Identified Want to Watch tab showing empty despite items existing
 
 ### Session 8 (December 2, 2025) - Service Badges Implementation
 
 **Achievements:**
 - Verified provider filtering working via console logs
-  - Netflix only: `[SmartRecs] Filtering by user providers: [8]`
-  - Netflix + Crunchyroll: `[SmartRecs] Filtering by user providers: [8, 283]`
-  - Crunchyroll only: `[SmartRecs] Filtering by user providers: [283]`
 - Identified hardcoded Netflix badge issue in ContentCard
-- Temporarily removed misleading badges from Trending lane
-- Implemented real service badge system:
-  - Created SERVICE_BADGES config for 11 streaming services
-  - Created PROVIDER_ID_TO_SERVICE mapping for TMDb IDs
-  - Added getUserSubscriptionNames() function
-  - Added getContentServiceBadge() for single items
-  - Added batchGetServiceBadges() with rate limiting (5 items/batch, 100ms delay)
-  - Updated ContentCard to accept serviceBadge prop
-  - Updated RecommendationLane to pass serviceBadges map
-  - Updated ForYouContent to fetch badges for Trending lane
+- Implemented real service badge system with 11 streaming services
+- Created SERVICE_BADGES and PROVIDER_ID_TO_SERVICE mappings
+- Updated ContentCard, RecommendationLane, and ForYouContent components
 
 **Files Modified:**
-- `src/services/watchProviders.ts` - Added SERVICE_BADGES, PROVIDER_ID_TO_SERVICE, badge fetching functions
+- `src/services/watchProviders.ts` - Badge configuration and fetching functions
 - `src/features/subscriptions/components/SubscriptionForm.tsx` - Added Crunchyroll
-- `src/features/watchlist/components/ContentCard.tsx` - Added serviceBadge prop
-- `src/features/watchlist/components/RecommendationLane.tsx` - Added serviceBadges prop
-- `src/features/watchlist/components/ForYouContent.tsx` - Added badge fetching logic
+- `src/features/watchlist/components/ContentCard.tsx` - serviceBadge prop
+- `src/features/watchlist/components/RecommendationLane.tsx` - serviceBadges prop
+- `src/features/watchlist/components/ForYouContent.tsx` - Badge fetching logic
 
-### Session 7 (December 2, 2025) - Manage All & Provider Verification
+### Session 7 (December 2, 2025) - Manage All and Provider Verification
 
 **Achievements:**
 - Created SubscriptionsManageModal component with full CRUD
 - Fixed NavigationContext corruption issues
 - Added Crunchyroll to subscription options
 - Verified provider filtering works correctly
-- Modal shows total monthly spend, subscription list, edit/delete buttons
 
-**Files Modified:**
-- `src/features/subscriptions/components/SubscriptionsManageModal.tsx` - New component
-- `src/features/dashboard/components/ServicesSection.tsx` - Added modal trigger
-
-### Session 6 (December 2, 2025) - Database Error Fixes & Navigation
+### Session 6 (December 2, 2025) - Database Error Fixes and Navigation
 
 **Achievements:**
 - Fixed all three critical database errors with graceful error handling
@@ -494,86 +507,12 @@ Global Exclusions:     246 watchlist items excluded
 | Cross-Service Search | ❌ | ✅ | ❌ | ✅ |
 | Personalized Recs | ❌ | ❌ | ✅ | ✅ |
 | Cost Optimization | ✅ | ❌ | ❌ | ✅ |
-| **Provider Filtering** | ❌ | ✅ | ❌ | ✅ |
-| **Real Service Badges** | ❌ | ✅ | ❌ | 🔧 |
+| Provider Filtering | ❌ | ✅ | ❌ | ✅ |
+| Real Service Badges | ❌ | ✅ | ❌ | ✅ |
 | Swipe Discovery | ❌ | ❌ | ❌ | ✅ |
 
 **No competitor effectively bridges financial tracking with entertainment intelligence.**
 
 ---
 
-*Last updated: December 2, 2025 - Session 8*
-
-
-Excellent news on the service badges! Here is the consolidated bug list:
-
----
-
-## 🐛 StreamSense Bug List - Session 9
-
-### Phase 1: Genre Filtering Performance (Critical)
-**Issue:** Genre filters are broken or extremely slow
-- Action/Adventure filters do nothing
-- Animation takes ~10 seconds
-- Comedy requires switching away and back
-- Crime shows nothing
-- Documentary takes 10 seconds then UI freezes for 20 seconds
-
-**Root Cause Hypothesis:** Cache miss triggers fresh API calls; filtering logic may be inefficient
-**Estimated Time:** 20-30 minutes
-
----
-
-### Phase 2: Want to Watch Shows Nothing
-**Issue:** Want to Watch tab displays empty even with items in watchlist
-**Scope:** Check query filtering, status mapping, or rendering logic
-**Estimated Time:** 10-15 minutes
-
----
-
-### Phase 3: Unknown Titles in Watching
-**Issue:** "Unknown Title" appearing for items in Watching section
-**Root Cause:** TMDb metadata missing or not hydrated
-**Scope:** 
-- Query database for items with null/empty titles
-- Check if TMDb IDs are valid
-- Add fallback handling or re-fetch metadata
-**Estimated Time:** 15-20 minutes
-
----
-
-### Phase 4: Subscription Service Filter for Watchlist
-**Issue:** No way to filter watchlist by streaming service
-**Feature Request:**
-- Add filter chips: All | Netflix | Crunchyroll | etc.
-- "All" shows diversified mix from all subscribed services
-- Individual service shows only that service's content
-**Estimated Time:** 25-30 minutes
-
----
-
-### Phase 5: Discover Watched Rating Prompt
-**Issue:** Swiping "Watched" does not prompt for rating
-**Scope:** Add rating modal trigger after watch action
-**Estimated Time:** 10-15 minutes
-
----
-
-### Phase 6: Tips "Worth Discovering" Staleness
-**Issue:** Same recommendations appearing repeatedly across sessions
-**Root Cause:** Cache not invalidating properly
-**Scope:** Force refresh logic or session-based exclusion persistence
-**Estimated Time:** 15-20 minutes
-
----
-
-### ✅ Resolved This Session
-| Issue | Status |
-|-------|--------|
-| Service badges show wrong service | ✅ Fixed - Real badges now working |
-| Provider filtering not active | ✅ Verified working |
-| Manage All modal | ✅ Working with full CRUD |
-
----
-
-**Which phase would you like to tackle first?** I recommend starting with **Phase 1 (Genre Filtering)** since it is causing the worst user experience issues, or **Phase 2 (Want to Watch)** since that is core functionality that is completely broken.
+*Last updated: December 3, 2025 - Session 10*
