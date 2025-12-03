@@ -34,7 +34,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  // Fetch everything once on mount
   useEffect(() => {
     if (!userId) {
       setIsLoading(false);
@@ -48,17 +47,15 @@ export const useRecommendationCache = (userId: string | undefined) => {
       try {
         console.log('[RecCache] Starting cache pre-fetch...');
 
-        // Fetch a large batch upfront
         const allRecs = await getSmartRecommendations({
           userId,
-          limit: 150, // Increased for better genre coverage
+          limit: 150,
           mediaType: 'mixed',
           forceRefresh: false,
         });
 
         console.log('[RecCache] Fetched ' + allRecs.length + ' items');
 
-        // Validate items have required data
         const validItems = allRecs.filter(item => {
           const hasPoster = !!(item.posterPath || item.poster_path);
           const hasTitle = !!(item.title || item.name);
@@ -67,7 +64,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Validated: ' + validItems.length + '/' + allRecs.length + ' items');
 
-        // Pre-organize by genre
         const byGenre = new Map<string, UnifiedContent[]>();
         const genreNames = Object.keys(GENRE_NAME_TO_ID);
 
@@ -75,14 +71,12 @@ export const useRecommendationCache = (userId: string | undefined) => {
           const targetIds = GENRE_NAME_TO_ID[genre];
 
           const genreItems = validItems.filter(item => {
-            // Special handling for Anime vs Animation
             if (genre === 'Anime') {
               return isAnime(item);
             } else if (genre === 'Animation') {
               return isWesternAnimation(item);
             }
 
-            // Standard genre filtering
             const itemGenreIds: number[] = [];
             if (item.genre_ids && Array.isArray(item.genre_ids)) {
               itemGenreIds.push(...item.genre_ids);
@@ -101,7 +95,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
           console.log('[RecCache] Genre ' + genre + ': ' + genreItems.length + ' items');
         }
 
-        // Pre-organize by media type
         const movies = validItems.filter(i => i.media_type === 'movie' || i.type === 'movie');
         const tv = validItems.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
 
@@ -124,7 +117,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
     loadAll();
   }, [userId]);
 
-  // INSTANT filtering from cache - no API calls
   const getFiltered = useCallback((mediaType: 'all' | 'movie' | 'tv', genre: string): UnifiedContent[] => {
     if (!cache) {
       console.log('[RecCache] getFiltered: cache not ready');
@@ -135,13 +127,10 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
     let results: UnifiedContent[];
 
-    // Start with appropriate base set
     if (genre !== 'All') {
-      // Genre filter: start with genre items
       results = cache.byGenre.get(genre) || [];
       console.log('[RecCache] Genre ' + genre + ' base: ' + results.length + ' items');
 
-      // Then filter by media type if needed
       if (mediaType !== 'all') {
         results = results.filter(item => {
           const itemType = item.media_type || item.type;
@@ -150,7 +139,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
         console.log('[RecCache] After media filter: ' + results.length + ' items');
       }
     } else {
-      // No genre filter
       if (mediaType !== 'all') {
         results = cache.byMediaType[mediaType] || [];
       } else {
@@ -173,7 +161,7 @@ export const useRecommendationCache = (userId: string | undefined) => {
     isLoading, 
     error, 
     getFiltered,
-    getFilteredRecommendations: getFiltered, // Alias for compatibility
+    getFilteredRecommendations: getFiltered,
     refreshCache 
   };
 };
