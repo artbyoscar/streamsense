@@ -39,7 +39,8 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
 export const getRawWatchlist = async (userId: string) => {
   const startTime = Date.now();
 
-  const { data, error } = await supabase
+  // Try to query WITH content JOIN (for new schema with foreign keys)
+  let { data, error } = await supabase
     .from('watchlist_items')
     .select(`
       *,
@@ -59,6 +60,22 @@ export const getRawWatchlist = async (userId: string) => {
     `)
     .eq('user_id', userId)
     .order('added_at', { ascending: false });
+
+  // FALLBACK: If content JOIN fails (PGRST200 or PGRST116), query without JOIN
+  if (error && (error.code === 'PGRST200' || error.code === 'PGRST116' || error.message?.includes('relationship'))) {
+    console.warn('[WatchlistData] ⚠️  Content table JOIN failed, falling back to simple query:', error.code);
+    console.log('[WatchlistData] This is normal if migrations haven\'t been run or using legacy schema');
+
+    // Query without content table JOIN
+    const fallbackResult = await supabase
+      .from('watchlist_items')
+      .select('*')
+      .eq('user_id', userId)
+      .order('added_at', { ascending: false });
+
+    data = fallbackResult.data;
+    error = fallbackResult.error;
+  }
 
   if (error) {
     console.error('[WatchlistData] Error fetching watchlist:', error);

@@ -226,47 +226,57 @@ export async function addToWatchlist(
     return existing;
   }
 
-  // Fetch TMDb metadata
-  console.log('[Watchlist] Fetching metadata for', mediaType, tmdbId);
-  const tmdbData = await getContentDetails(tmdbId, mediaType);
+  // Try to fetch and store TMDb metadata (new schema approach)
+  let finalContentId = contentId; // Default to passed contentId (legacy format)
 
-  // Insert/update content table with metadata (upsert on tmdb_id)
-  const { data: contentData, error: contentError } = await supabase
-    .from('content')
-    .upsert(
-      {
-        tmdb_id: tmdbId,
-        title: tmdbData.title,
-        type: mediaType,
-        overview: tmdbData.overview || null,
-        poster_url: tmdbData.posterPath || null,
-        backdrop_url: tmdbData.backdropPath || null,
-        genres: tmdbData.genres?.map((g) => g.name) || [],
-        release_date: tmdbData.releaseDate || null,
-        vote_average: tmdbData.rating || null,
-        popularity: tmdbData.popularity || null,
-      },
-      {
-        onConflict: 'tmdb_id',
-        ignoreDuplicates: false,
-      }
-    )
-    .select()
-    .single();
+  try {
+    console.log('[Watchlist] Fetching metadata for', mediaType, tmdbId);
+    const tmdbData = await getContentDetails(tmdbId, mediaType);
 
-  if (contentError) {
-    console.error('Error upserting content:', contentError);
-    throw contentError;
+    // Try to insert/update content table with metadata (requires new schema)
+    const { data: contentData, error: contentError } = await supabase
+      .from('content')
+      .upsert(
+        {
+          tmdb_id: tmdbId,
+          title: tmdbData.title,
+          type: mediaType,
+          overview: tmdbData.overview || null,
+          poster_url: tmdbData.posterPath || null,
+          backdrop_url: tmdbData.backdropPath || null,
+          genres: tmdbData.genres?.map((g) => g.name) || [],
+          release_date: tmdbData.releaseDate || null,
+          vote_average: tmdbData.rating || null,
+          popularity: tmdbData.popularity || null,
+        },
+        {
+          onConflict: 'tmdb_id',
+          ignoreDuplicates: false,
+        }
+      )
+      .select()
+      .single();
+
+    if (contentError) {
+      // Content table doesn't exist or upsert failed - fall back to legacy approach
+      console.warn('[Watchlist] ⚠️  Content table upsert failed, using legacy content_id:', contentError.code);
+      console.log('[Watchlist] Falling back to string content_id format');
+      finalContentId = contentId; // Use legacy string format "movie-1724"
+    } else if (contentData) {
+      console.log('[Watchlist] ✅ Stored metadata for', contentData.title, '(UUID:', contentData.id + ')');
+      finalContentId = contentData.id; // Use UUID from content table
+    }
+  } catch (e) {
+    console.warn('[Watchlist] ⚠️  Metadata storage failed, using legacy content_id:', e);
+    finalContentId = contentId; // Use legacy string format
   }
 
-  console.log('[Watchlist] Stored metadata for', contentData.title, '(UUID:', contentData.id + ')');
-
-  // Insert into watchlist_items with proper content UUID foreign key
+  // Insert into watchlist_items with either UUID (new) or string (legacy) content_id
   const { data, error } = await supabase
     .from('watchlist_items')
     .insert({
       user_id: user.id,
-      content_id: contentData.id, // Use UUID from content table
+      content_id: finalContentId, // Either UUID or legacy string "movie-1724"
       status,
       priority: 'medium',
       notify_on_available: false,
