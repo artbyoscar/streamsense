@@ -10,6 +10,7 @@ import { CheckCircle, AlertCircle, AlertTriangle, ChevronRight } from 'lucide-re
 import { useSubscriptionsData } from '@/features/subscriptions/hooks/useSubscriptions';
 import { useValueScores } from '../hooks/useDashboardStats';
 import type { UserSubscription } from '@/types';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 
 interface ServiceItemProps {
   subscription: UserSubscription;
@@ -88,6 +89,15 @@ const ServiceItem: React.FC<ServiceItemProps> = ({ subscription, valueStatus, on
 
 export const ServicesSection: React.FC = () => {
   const { activeSubscriptions } = useSubscriptionsData();
+  const { setActiveTab, navigateToScreen } = useCustomNavigation();
+
+  const handleManageAll = () => {
+    setActiveTab('Settings');
+  };
+
+  const handleAddSubscription = () => {
+    navigateToScreen('SubscriptionForm');
+  };
   const valueScores = useValueScores();
 
   const handleServicePress = (subscription: UserSubscription) => {
@@ -104,7 +114,7 @@ export const ServicesSection: React.FC = () => {
       {/* Section Header */}
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>Your Services</Text>
-        <Pressable>
+        <Pressable onPress={handleManageAll}>
           <Text style={styles.seeAll}>Manage All</Text>
         </Pressable>
       </View>
@@ -127,7 +137,7 @@ export const ServicesSection: React.FC = () => {
       </View>
 
       {/* Add Service Button */}
-      <Pressable style={styles.addServiceButton}>
+      <Pressable style={styles.addServiceButton} onPress={handleAddSubscription}>
         <Text style={styles.addServiceText}>+ Add Subscription</Text>
       </Pressable>
     </View>
@@ -247,3 +257,7 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
+
+
+
+

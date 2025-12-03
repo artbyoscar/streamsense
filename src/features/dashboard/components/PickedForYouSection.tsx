@@ -7,6 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { Sparkles, Star, TrendingUp } from 'lucide-react-native';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { useRecommendationLanes } from '../../recommendations/hooks/useRecommendations';
 
 interface PickedForYouCardProps {
@@ -82,9 +83,10 @@ export const PickedForYouSection: React.FC = () => {
     console.log('Picked for you:', item.title);
   };
 
+  const { setActiveTab } = useCustomNavigation();
+
   const handleViewAll = () => {
-    // TODO: Navigate to "For You" tab
-    console.log('Navigate to For You tab');
+    setActiveTab('Watchlist');
   };
 
   if (isLoading || pickedForYou.length === 0) {
@@ -254,3 +256,5 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
+
+
