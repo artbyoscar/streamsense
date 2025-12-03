@@ -32,7 +32,7 @@ import { X, Heart, Play, CheckCircle2, Info, Star, Sparkles, RefreshCw } from 'l
 // Relative imports matching your project structure
 import { useAuth } from '../../../hooks/useAuth';
 import { supabase } from '../../../config/supabase';
-import { getSmartRecommendations } from '../../../services/smartRecommendations';
+import { getSmartRecommendations, addToExclusions } from '../../../services/smartRecommendations';
 import { trackGenreInteraction } from '../../../services/genreAffinity';
 import { addToWatchlist } from '../../watchlist/services/watchlistService';
 import type { UnifiedContent } from '../../../types';
@@ -111,13 +111,21 @@ export const SwipeScreen: React.FC = () => {
   }, [translateX, translateY]);
 
   const moveToNext = useCallback(() => {
-    if (currentIndex < items.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-      resetCard();
-    } else {
-      // End of deck
-      setCurrentIndex(items.length);
+    // Remove the current card from the deck
+    setItems(prev => {
+      const newItems = [...prev];
+      newItems.splice(currentIndex, 1);
+      return newItems;
+    });
+
+    // Keep currentIndex at same position (which now shows next card)
+    // But if we removed the last card, reset to 0
+    if (currentIndex >= items.length - 1) {
+      setCurrentIndex(0);
     }
+
+    // Reset card position for next card
+    resetCard();
   }, [currentIndex, items.length, resetCard]);
 
   const handleLike = useCallback(async () => {
@@ -138,19 +146,28 @@ export const SwipeScreen: React.FC = () => {
         genreIds
       );
 
-      console.log('[Discover] Added to watchlist:', currentItem.title);
+      // Add to exclusions so it won't appear again
+      addToExclusions(currentItem.id);
+
+      console.log(`[Discover] ✅ Added "${currentItem.title}" to watchlist, removed from deck`);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error adding to watchlist:', error);
-      moveToNext(); // Still move on even if error
+      // Still add to exclusions and move on even if error
+      addToExclusions(currentItem.id);
+      moveToNext();
     }
   }, [user, currentItem, moveToNext]);
 
   const handleSkip = useCallback(() => {
     if (!currentItem) return;
-    
+
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    console.log('[Discover] Skipped:', currentItem.title);
+
+    // Add to exclusions so it won't appear again
+    addToExclusions(currentItem.id);
+
+    console.log(`[Discover] ⏭️ Skipped "${currentItem.title}", removed from deck`);
     moveToNext();
   }, [currentItem, moveToNext]);
 
@@ -160,27 +177,27 @@ export const SwipeScreen: React.FC = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      await supabase.from('watchlist_items').insert({
-        user_id: user.id,
-        tmdb_id: currentItem.id,
-        media_type: currentItem.type,
-        status: 'watching',
-      });
-
+      // Add to watchlist with "watching" status (stores metadata in content table)
+      const contentId = `${currentItem.type}-${currentItem.id}`;
       const genreIds = currentItem.genres?.map(g => g.id) || [];
-      if (genreIds.length > 0) {
-        await trackGenreInteraction(
-          user.id,
-          genreIds,
-          currentItem.type,
-          'START_WATCHING'
-        );
-      }
 
-      console.log('[Discover] Marked as watching:', currentItem.title);
+      await addToWatchlist(
+        contentId,
+        currentItem.id,
+        currentItem.type,
+        'watching',
+        genreIds
+      );
+
+      // Add to exclusions so it won't appear again
+      addToExclusions(currentItem.id);
+
+      console.log(`[Discover] ▶️ Marked "${currentItem.title}" as watching, removed from deck`);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error marking as watching:', error);
+      // Still add to exclusions and move on even if error
+      addToExclusions(currentItem.id);
       moveToNext();
     }
   }, [user, currentItem, moveToNext]);
@@ -191,29 +208,27 @@ export const SwipeScreen: React.FC = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      await supabase.from('watchlist_items').insert({
-        user_id: user.id,
-        tmdb_id: currentItem.id,
-        media_type: currentItem.type,
-        status: 'watched',
-        watched: true,
-        watched_at: new Date().toISOString(),
-      });
-
+      // Add to watchlist with "watched" status (stores metadata in content table)
+      const contentId = `${currentItem.type}-${currentItem.id}`;
       const genreIds = currentItem.genres?.map(g => g.id) || [];
-      if (genreIds.length > 0) {
-        await trackGenreInteraction(
-          user.id,
-          genreIds,
-          currentItem.type,
-          'COMPLETE_WATCHING'
-        );
-      }
 
-      console.log('[Discover] Marked as watched:', currentItem.title);
+      await addToWatchlist(
+        contentId,
+        currentItem.id,
+        currentItem.type,
+        'watched',
+        genreIds
+      );
+
+      // Add to exclusions so it won't appear again
+      addToExclusions(currentItem.id);
+
+      console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched, removed from deck`);
       moveToNext();
     } catch (error) {
       console.error('[Discover] Error marking as watched:', error);
+      // Still add to exclusions and move on even if error
+      addToExclusions(currentItem.id);
       moveToNext();
     }
   }, [user, currentItem, moveToNext]);
@@ -345,10 +360,10 @@ export const SwipeScreen: React.FC = () => {
   }
 
   // ============================================================================
-  // END OF DECK
+  // END OF DECK (check if no items left after removals)
   // ============================================================================
 
-  if (currentIndex >= items.length) {
+  if (!isLoading && (items.length === 0 || !currentItem)) {
     return (
       <View style={styles.container}>
         <View style={styles.emptyState}>
@@ -359,8 +374,19 @@ export const SwipeScreen: React.FC = () => {
           </Text>
           <TouchableOpacity style={styles.refreshButton} onPress={handleRefresh}>
             <RefreshCw size={20} color="#a78bfa" />
-            <Text style={styles.refreshText}>Start Over</Text>
+            <Text style={styles.refreshText}>Find More</Text>
           </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // Guard against undefined currentItem
+  if (!currentItem) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#a78bfa" />
         </View>
       </View>
     );
