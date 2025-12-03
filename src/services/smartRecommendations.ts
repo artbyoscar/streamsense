@@ -31,6 +31,14 @@ let globalExcludeIds: Set<number> = new Set();
  * Call this when user logs in or app starts
  */
 export const initializeExclusions = async (userId: string) => {
+  // Guard against undefined/null userId
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.warn('[SmartRecs] ⚠️  initializeExclusions called with invalid userId:', userId);
+    globalExcludeIds = new Set();
+    watchlistTmdbIds = new Set();
+    return;
+  }
+
   try {
     const ids = await getWatchlistIds(userId);
 

@@ -13,30 +13,57 @@ const parseContentId = (contentId: string): { tmdbId: number | null; mediaType: 
 
 // 1. A safe way to get JUST the IDs (for exclusions/filtering)
 export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
-  const { data, error } = await supabase
-    .from('watchlist_items')
-    .select('content_id')
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('[WatchlistData] Error fetching IDs:', error);
+  // Guard against undefined/null userId
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.warn('[WatchlistData] ⚠️  getWatchlistIds called with invalid userId:', userId);
     return new Set();
   }
 
-  const idSet = new Set<string>();
-  data.forEach(item => {
-    if (item.content_id) {
-      idSet.add(item.content_id);
-      const { tmdbId } = parseContentId(item.content_id);
-      if (tmdbId) idSet.add(tmdbId.toString());
-    }
-  });
+  try {
+    const { data, error } = await supabase
+      .from('watchlist_items')
+      .select('content_id')
+      .eq('user_id', userId);
 
-  return idSet;
+    if (error) {
+      console.error('[WatchlistData] Error fetching IDs:', error.code, error.message);
+      return new Set();
+    }
+
+    if (!data || data.length === 0) {
+      return new Set();
+    }
+
+    const idSet = new Set<string>();
+    data.forEach(item => {
+      // Only add valid content_ids
+      if (item.content_id && item.content_id !== 'undefined' && item.content_id !== 'null') {
+        idSet.add(item.content_id);
+
+        // Try to parse and add tmdb_id as well
+        const { tmdbId } = parseContentId(item.content_id);
+        if (tmdbId) {
+          idSet.add(tmdbId.toString());
+        }
+      }
+    });
+
+    console.log('[WatchlistData] ✅ Found', idSet.size, 'watchlist IDs for user');
+    return idSet;
+  } catch (e) {
+    console.error('[WatchlistData] Unexpected error in getWatchlistIds:', e);
+    return new Set();
+  }
 };
 
 // 2. Get watchlist items with stored metadata from content table
 export const getRawWatchlist = async (userId: string) => {
+  // Guard against undefined/null userId
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.warn('[WatchlistData] ⚠️  getRawWatchlist called with invalid userId:', userId);
+    return [];
+  }
+
   const startTime = Date.now();
 
   // Try to query WITH content JOIN (for new schema with foreign keys)
@@ -131,22 +158,37 @@ export const getRawWatchlist = async (userId: string) => {
 
 // 3. Get watchlist count by status
 export const getWatchlistCountByStatus = async (userId: string) => {
-  const { data, error } = await supabase
-    .from('watchlist_items')
-    .select('status')
-    .eq('user_id', userId);
-
-  if (error) {
-    console.error('[WatchlistData] Error fetching counts:', error);
+  // Guard against undefined/null userId
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.warn('[WatchlistData] ⚠️  getWatchlistCountByStatus called with invalid userId:', userId);
     return { want_to_watch: 0, watching: 0, watched: 0 };
   }
 
-  const counts = { want_to_watch: 0, watching: 0, watched: 0 };
-  data.forEach(item => {
-    if (item.status in counts) {
-      counts[item.status as keyof typeof counts]++;
-    }
-  });
+  try {
+    const { data, error } = await supabase
+      .from('watchlist_items')
+      .select('status')
+      .eq('user_id', userId);
 
-  return counts;
+    if (error) {
+      console.error('[WatchlistData] Error fetching counts:', error.code, error.message);
+      return { want_to_watch: 0, watching: 0, watched: 0 };
+    }
+
+    if (!data || data.length === 0) {
+      return { want_to_watch: 0, watching: 0, watched: 0 };
+    }
+
+    const counts = { want_to_watch: 0, watching: 0, watched: 0 };
+    data.forEach(item => {
+      if (item.status && item.status in counts) {
+        counts[item.status as keyof typeof counts]++;
+      }
+    });
+
+    return counts;
+  } catch (e) {
+    console.error('[WatchlistData] Unexpected error in getWatchlistCountByStatus:', e);
+    return { want_to_watch: 0, watching: 0, watched: 0 };
+  }
 };
