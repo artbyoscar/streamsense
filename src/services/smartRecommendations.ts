@@ -8,6 +8,7 @@ import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } f
 import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
 import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
+import { getUserProviderIds } from './watchProviders';
 import { getSVDRecommendations, type Prediction } from './matrixFactorization';
 
 // Persistent session cache
@@ -438,6 +439,15 @@ export const getSmartRecommendations = async (
     // Detect user behavior pattern and get adaptive strategy
     const { pattern, strategy } = await getAdaptiveRecommendationParams(userId);
 
+    // Get user's streaming service provider IDs for filtering
+    const userProviderIds = await getUserProviderIds(userId);
+    const providerQuery = userProviderIds.length > 0 ? userProviderIds.join('|') : null;
+    if (providerQuery) {
+      console.log('[SmartRecs] Filtering by user providers:', userProviderIds);
+    } else {
+      console.log('[SmartRecs] No subscriptions found - showing all content');
+    }
+
     console.log('[SmartRecs] User behavior:', {
       mode: pattern.mode,
       avgItemsPerSession: pattern.averageItemsPerSession,
@@ -546,8 +556,9 @@ export const getSmartRecommendations = async (
       // FALLBACK MECHANISM: Try multiple pages if current page returns 0 results
       while (movies.length < 5 && attempts < maxAttempts) {
         const movieResponse = await tmdbApi.get('/discover/movie', {
-          params: {
-            with_genres: movieGenreQuery,  // Use | for OR query instead of , for AND
+            params: {
+              with_genres: movieGenreQuery,
+              ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),  // Use | for OR query instead of , for AND
             page: page + attempts,
             sort_by: 'popularity.desc',
             'vote_count.gte': minVoteCount,
@@ -613,8 +624,9 @@ export const getSmartRecommendations = async (
       // FALLBACK MECHANISM: Try multiple pages if current page returns 0 results
       while (tvShows.length < 5 && attempts < maxAttempts) {
         const tvResponse = await tmdbApi.get('/discover/tv', {
-          params: {
-            with_genres: genreQuery,  // Use | for OR query instead of , for AND
+            params: {
+              with_genres: genreQuery,
+              ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),  // Use | for OR query instead of , for AND
             page: page + attempts,
             sort_by: 'popularity.desc',
             'vote_count.gte': minVoteCount,
@@ -1061,3 +1073,7 @@ export const getGenreRecommendations = async ({
     return [];
   }
 };
+
+
+
+
