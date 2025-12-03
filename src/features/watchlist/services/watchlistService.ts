@@ -220,10 +220,34 @@ export async function addToWatchlist(
     throw new Error('User not authenticated');
   }
 
-  // Check if already exists (handle both legacy string IDs and new UUID IDs)
-  const existing = await fetchWatchlistItemByContentId(contentId);
-  if (existing) {
-    return existing;
+  // Check if already exists by tmdb_id (more reliable than content_id)
+  // This handles both legacy string IDs and new UUID IDs
+  try {
+    const { data: existingByTmdb, error: checkError } = await supabase
+      .from('watchlist_items')
+      .select(`
+        *,
+        content!inner (
+          tmdb_id,
+          type
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('content.tmdb_id', tmdbId)
+      .eq('content.type', mediaType)
+      .maybeSingle();
+
+    if (!checkError && existingByTmdb) {
+      console.log('[Watchlist] ✅ Item already exists in watchlist, returning existing');
+      return existingByTmdb;
+    }
+  } catch (e) {
+    // If JOIN fails (content table doesn't exist), fall back to content_id check
+    const existing = await fetchWatchlistItemByContentId(contentId);
+    if (existing) {
+      console.log('[Watchlist] ✅ Item already exists (legacy check), returning existing');
+      return existing;
+    }
   }
 
   // Try to fetch and store TMDb metadata (new schema approach)
@@ -271,23 +295,32 @@ export async function addToWatchlist(
     finalContentId = contentId; // Use legacy string format
   }
 
-  // Insert into watchlist_items with either UUID (new) or string (legacy) content_id
+  // Upsert into watchlist_items (handles duplicates gracefully)
+  // Using upsert instead of insert prevents 23505 duplicate key errors
   const { data, error } = await supabase
     .from('watchlist_items')
-    .insert({
-      user_id: user.id,
-      content_id: finalContentId, // Either UUID or legacy string "movie-1724"
-      status,
-      priority: 'medium',
-      notify_on_available: false,
-    })
+    .upsert(
+      {
+        user_id: user.id,
+        content_id: finalContentId, // Either UUID or legacy string "movie-1724"
+        status,
+        priority: 'medium',
+        notify_on_available: false,
+      },
+      {
+        onConflict: 'user_id,content_id', // Update if user_id + content_id already exists
+        ignoreDuplicates: false, // false = update on conflict instead of ignoring
+      }
+    )
     .select()
     .single();
 
   if (error) {
-    console.error('Error adding to watchlist:', error);
+    console.error('[Watchlist] Error upserting to watchlist:', error.code, error.message);
     throw error;
   }
+
+  console.log('[Watchlist] ✅ Successfully added/updated item in watchlist');
 
   // Track genre interaction for recommendations
   if (genres && genres.length > 0) {
