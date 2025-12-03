@@ -13,6 +13,7 @@ import { SettingsScreen } from '@/features/settings';
 import { RecommendationsScreen } from '@/features/recommendations';
 import { SwipeScreen } from '@/features/discover/screens/SwipeScreen';
 import { SubscriptionForm } from '@/features/subscriptions/components/SubscriptionForm';
+import { SubscriptionsManageModal } from '@/features/subscriptions/components/SubscriptionsManageModal';
 import { ContentSearchModal } from '@/features/watchlist/components/ContentSearchModal';
 import { ContentDetailModal } from '@/features/watchlist/components/ContentDetailModal';
 import { PlaidConnectionScreen } from '@/features/onboarding/screens/PlaidConnectionScreen';
@@ -41,7 +42,9 @@ const Navigator: React.FC = () => {
     selectedSubscriptionId,
       setSelectedSubscriptionId,
       selectedSubscription,
-      setSelectedSubscription,
+    setSelectedSubscription,
+    showSubscriptionsManage,
+    setShowSubscriptionsManage,
     triggerRefresh,
   } = useCustomNavigation();
   const { colors, isDark } = useTheme();
@@ -120,9 +123,29 @@ const Navigator: React.FC = () => {
                 setSelectedSubscriptionId(null);
                 setSelectedSubscription(null);
             }}
-            subscriptionId={selectedSubscriptionId}
-              subscription={selectedSubscription}
+            subscriptionId={selectedSubscriptionId}            subscription={selectedSubscription}
             />
+        </SafeAreaView>
+      </Modal>
+
+      {/* Subscriptions Manage Modal */}
+      <Modal visible={showSubscriptionsManage} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={[styles.modalContainer, { backgroundColor: colors.background }]} edges={['top']}>
+          <SubscriptionsManageModal
+            onClose={() => setShowSubscriptionsManage(false)}
+            onEditSubscription={(subscription) => {
+              setShowSubscriptionsManage(false);
+              setSelectedSubscriptionId(subscription.id);
+              setSelectedSubscription(subscription);
+              setShowSubscriptionForm(true);
+            }}
+            onAddSubscription={() => {
+              setShowSubscriptionsManage(false);
+              setSelectedSubscriptionId(null);
+              setSelectedSubscription(null);
+              setShowSubscriptionForm(true);
+            }}
+          />
         </SafeAreaView>
       </Modal>
 
@@ -227,6 +250,9 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+
+
 
 
 

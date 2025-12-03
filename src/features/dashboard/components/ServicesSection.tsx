@@ -89,10 +89,10 @@ const ServiceItem: React.FC<ServiceItemProps> = ({ subscription, valueStatus, on
 
 export const ServicesSection: React.FC = () => {
   const { activeSubscriptions } = useSubscriptionsData();
-  const { setActiveTab, navigateToScreen } = useCustomNavigation();
+  const { setActiveTab, navigateToScreen, setShowSubscriptionsManage } = useCustomNavigation();
 
   const handleManageAll = () => {
-    setActiveTab('Settings');
+    setShowSubscriptionsManage(true);
   };
 
   const handleAddSubscription = () => {
@@ -257,6 +257,8 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
+
+
 
 
 

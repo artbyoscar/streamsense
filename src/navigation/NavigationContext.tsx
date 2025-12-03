@@ -28,41 +28,45 @@ interface NavigationContextType {
   setSelectedSubscriptionId: (id: string | null) => void;
   selectedSubscription: any | null;
   setSelectedSubscription: (subscription: any | null) => void;
+  showSubscriptionsManage: boolean;
+  setShowSubscriptionsManage: (show: boolean) => void;
   refreshKey: number;
   triggerRefresh: () => void;
 }
 
-const NavigationContext = createContext<NavigationContextType | null>(null);
+const defaultContext: NavigationContextType = {
+  activeTab: 'Home',
+  setActiveTab: () => console.log('[Navigation] Would set tab'),
+  navigateToScreen: () => console.log('[Navigation] Would navigate'),
+  showSubscriptionForm: false,
+  setShowSubscriptionForm: () => console.log('[Navigation] Would show subscription form'),
+  showContentSearch: false,
+  setShowContentSearch: () => console.log('[Navigation] Would show content search'),
+  showContentDetail: false,
+  setShowContentDetail: () => console.log('[Navigation] Would show content detail'),
+  showPlaidConnection: false,
+  setShowPlaidConnection: () => console.log('[Navigation] Would show plaid connection'),
+  showDebugRecommendations: false,
+  setShowDebugRecommendations: () => console.log('[Navigation] Would show debug recommendations'),
+  selectedContent: null,
+  setSelectedContent: () => console.log('[Navigation] Would set content'),
+  selectedSubscriptionId: null,
+  setSelectedSubscriptionId: () => console.log('[Navigation] Would set subscription id'),
+  selectedSubscription: null,
+  setSelectedSubscription: () => console.log('[Navigation] Would set subscription'),
+  showSubscriptionsManage: false,
+  setShowSubscriptionsManage: () => console.log('[Navigation] Would show subscriptions manage'),
+  refreshKey: 0,
+  triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
+};
+
+const NavigationContext = createContext<NavigationContextType>(defaultContext);
 
 export const useCustomNavigation = () => {
   const context = useContext(NavigationContext);
   if (!context) {
-    console.log('[Navigation] Context not available, using fallback');
-    return {
-      activeTab: 'Home' as TabName,
-      setActiveTab: (tab: TabName) => console.log('[Navigation] Would navigate to:', tab),
-      navigateToScreen: (screen: string) => console.log('[Navigation] Would open:', screen),
-      showSubscriptionForm: false,
-      setShowSubscriptionForm: (show: boolean) => console.log('[Navigation] Would show subscription form:', show),
-      showContentSearch: false,
-      setShowContentSearch: (show: boolean) => console.log('[Navigation] Would show content search:', show),
-      showContentDetail: false,
-      setShowContentDetail: (show: boolean) => console.log('[Navigation] Would show content detail:', show),
-      showPlaidConnection: false,
-      setShowPlaidConnection: (show: boolean) => console.log('[Navigation] Would show plaid connection:', show),
-      showDebugRecommendations: false,
-      setShowDebugRecommendations: (show: boolean) => console.log('[Navigation] Would show debug recommendations:', show),
-      selectedContent: null,
-      setSelectedContent: (content: UnifiedContent | null) => console.log('[Navigation] Would select content:', content),
-      selectedSubscriptionId: null,
-      setSelectedSubscriptionId: (id: string | null) =>
-console.log('[Navigation] Would select subscription:', id),
-      selectedSubscription: null,
-      setSelectedSubscription: (subscription: any | null) =>
-console.log('[Navigation] Would set subscription:', subscription),
-      refreshKey: 0,
-      triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
-    };
+    console.warn('[Navigation] useCustomNavigation must be used within NavigationProvider');
+    return defaultContext;
   }
   return context;
 };
@@ -77,6 +81,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedContent, setSelectedContent] = useState<UnifiedContent | null>(null);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<string | null>(null);
   const [selectedSubscription, setSelectedSubscription] = useState<any | null>(null);
+  const [showSubscriptionsManage, setShowSubscriptionsManage] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const triggerRefresh = () => {
@@ -84,19 +89,16 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   };
 
   const navigateToScreen = (screen: string, params?: any) => {
-    // Handle modal screens or sub-screens here
     console.log('[Navigation] Navigate to screen:', screen, params);
-    // For now, map screen names to tabs
     if (screen === 'SubscriptionForm') {
       console.log('[Navigation] Opening SubscriptionForm modal', params);
-      // Capture subscriptionId from params if provided
       if (params?.subscriptionId) {
-          setSelectedSubscriptionId(params.subscriptionId);
-          setSelectedSubscription(params.subscription || null);
-        } else {
-          setSelectedSubscriptionId(null);
-          setSelectedSubscription(null);
-        }
+        setSelectedSubscriptionId(params.subscriptionId);
+        setSelectedSubscription(params.subscription || null);
+      } else {
+        setSelectedSubscriptionId(null);
+        setSelectedSubscription(null);
+      }
       setShowSubscriptionForm(true);
     } else if (screen === 'ContentSearch') {
       console.log('[Navigation] Opening ContentSearch modal');
@@ -141,6 +143,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setSelectedSubscriptionId,
         selectedSubscription,
         setSelectedSubscription,
+        showSubscriptionsManage,
+        setShowSubscriptionsManage,
         refreshKey,
         triggerRefresh,
       }}
@@ -149,9 +153,3 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     </NavigationContext.Provider>
   );
 };
-
-
-
-
-
-
