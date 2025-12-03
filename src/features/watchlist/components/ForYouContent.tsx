@@ -77,6 +77,13 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   // Hero item is the first item
   const heroItem = recommendations[0];
 
+  // Log hero changes for debugging
+  useEffect(() => {
+    if (heroItem) {
+      console.log('[ForYou] 🎬 Hero updated:', heroItem.title || heroItem.name, '(ID:', heroItem.id || heroItem.tmdb_id, ')');
+    }
+  }, [heroItem?.id, heroItem?.tmdb_id]);
+
   // Create lanes from recommendations
   const lanes = [
     {
@@ -117,6 +124,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       {/* Hero Spotlight */}
       {heroItem && (
         <HeroSpotlight
+          key={heroItem.id || heroItem.tmdb_id || heroItem.title}
           item={heroItem}
           onAddToList={() => onAddToList(heroItem)}
           onViewDetails={() => onItemPress(heroItem)}
