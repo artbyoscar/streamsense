@@ -15,7 +15,6 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
   const idSet = new Set<string>();
   data.forEach(item => {
     if (item.content_id) idSet.add(item.content_id);
-    // Also add tmdb_id if available
     const content = item.content as any;
     if (content?.tmdb_id) idSet.add(content.tmdb_id.toString());
   });
@@ -46,7 +45,6 @@ export const getRawWatchlist = async (userId: string) => {
 
   if (error) {
     console.error('[WatchlistData] Error fetching watchlist:', error);
-    // Fallback to raw fetch without join
     const { data: rawData, error: rawError } = await supabase
       .from('watchlist_items')
       .select('*')
@@ -56,12 +54,10 @@ export const getRawWatchlist = async (userId: string) => {
     return rawData || [];
   }
 
-  // Flatten the content into the item for easier access
   const flattenedItems = (data || []).map(item => {
     const content = item.content as any;
     return {
       ...item,
-      // Add content fields at top level for compatibility
       tmdb_id: content?.tmdb_id,
       media_type: content?.type,
       title: content?.title,
