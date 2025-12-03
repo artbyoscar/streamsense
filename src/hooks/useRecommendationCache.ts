@@ -4,11 +4,13 @@ import { UnifiedContent } from '@/types';
 import { isAnime, isWesternAnimation } from '@/utils/genreUtils';
 
 // Map genre names to TMDb IDs - must match GenreFilterChips names exactly
+// NOTE: TV shows have combined genres (10759 = Action & Adventure, 10765 = Sci-Fi & Fantasy)
+// We treat these as matching BOTH individual genres to handle TV content properly
 const GENRE_NAME_TO_ID: Record<string, number[]> = {
   'Drama': [18],
-  'Adventure': [12, 10759],
-  'Action': [28, 10759],
-  'Sci-Fi': [878, 10765],
+  'Adventure': [12, 10759], // Movies: 12, TV: 10759 (Action & Adventure)
+  'Action': [28, 10759],    // Movies: 28, TV: 10759 (Action & Adventure)
+  'Sci-Fi': [878, 10765],   // Movies: 878, TV: 10765 (Sci-Fi & Fantasy)
   'Animation': [16],
   'Anime': [16],
   'Comedy': [35],
@@ -18,7 +20,7 @@ const GENRE_NAME_TO_ID: Record<string, number[]> = {
   'Documentary': [99],
   'Crime': [80],
   'Mystery': [9648],
-  'Fantasy': [14, 10765],
+  'Fantasy': [14, 10765],   // Movies: 14, TV: 10765 (Sci-Fi & Fantasy)
   'Family': [10751],
 };
 

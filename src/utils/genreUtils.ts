@@ -3,6 +3,41 @@
  * Helper functions for genre detection and filtering
  */
 
+import { TMDbGenre } from '@/types';
+
+// Complete TMDb genre ID to name mapping
+export const GENRE_ID_TO_NAME: Record<number, string> = {
+  // Movie genres
+  28: 'Action',
+  12: 'Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  14: 'Fantasy',
+  36: 'History',
+  27: 'Horror',
+  10402: 'Music',
+  9648: 'Mystery',
+  10749: 'Romance',
+  878: 'Science Fiction',
+  10770: 'TV Movie',
+  53: 'Thriller',
+  10752: 'War',
+  37: 'Western',
+  // TV genres
+  10759: 'Action & Adventure',
+  10762: 'Kids',
+  10763: 'News',
+  10764: 'Reality',
+  10765: 'Sci-Fi & Fantasy',
+  10766: 'Soap',
+  10767: 'Talk',
+  10768: 'War & Politics',
+};
+
 /**
  * Detects if content is Japanese anime
  * Checks multiple signals: language, origin country, and animation genre
@@ -81,4 +116,17 @@ export const getItemGenreIds = (item: any): number[] => {
   }
 
   return genreIds;
+};
+
+/**
+ * Convert genre IDs to TMDbGenre objects
+ * Maps genre IDs to their proper {id, name} format
+ */
+export const convertGenreIdsToObjects = (genreIds: number[]): TMDbGenre[] => {
+  return genreIds
+    .map(id => ({
+      id,
+      name: GENRE_ID_TO_NAME[id] || 'Unknown',
+    }))
+    .filter(g => g.name !== 'Unknown'); // Filter out unknown genres
 };

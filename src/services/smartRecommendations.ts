@@ -10,6 +10,7 @@ import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
 import { getUserProviderIds } from './watchProviders';
 import { getSVDRecommendations, type Prediction } from './matrixFactorization';
+import { convertGenreIdsToObjects } from '@/utils/genreUtils';
 
 // Persistent session cache
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
@@ -905,6 +906,10 @@ export const getExclusionStats = () => ({
  * TV shows use 'name' field, movies use 'title' field
  */
 const normalizeContentItem = (item: any, mediaType: 'movie' | 'tv') => {
+  // Convert genre_ids array to proper TMDbGenre objects with {id, name} structure
+  const genreIds = item.genre_ids || [];
+  const genreObjects = convertGenreIdsToObjects(genreIds);
+
   return {
     id: item.id,
     type: mediaType,
@@ -928,8 +933,8 @@ const normalizeContentItem = (item: any, mediaType: 'movie' | 'tv') => {
     rating: item.vote_average || 0,
     // Include other useful fields
     overview: item.overview || '',
-    genre_ids: item.genre_ids || [],
-    genres: item.genre_ids || [], // UnifiedContent expects genres as TMDbGenre[], but this is number[]. This might be an issue.
+    genre_ids: genreIds, // Keep for backward compatibility
+    genres: genreObjects, // ✅ FIXED: Now properly converted to TMDbGenre[] with {id, name} structure
     original_language: item.original_language,
     language: item.original_language,
     popularity: item.popularity,
