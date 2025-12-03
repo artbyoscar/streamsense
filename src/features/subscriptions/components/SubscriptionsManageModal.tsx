@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Plus, Trash2, Edit3, X } from 'lucide-react-native';
 import { useSubscriptionsData, useDeleteSubscription } from '@/features/subscriptions/hooks/useSubscriptions';
-import { useTheme } from '@/theme';
+import { useTheme } from '@/providers/ThemeProvider';
 import type { UserSubscription } from '@/types';
 
 interface Props {
@@ -82,8 +82,8 @@ export const SubscriptionsManageModal: React.FC<Props> = ({
               {item.service_name}
             </Text>
             <Text style={[styles.servicePrice, { color: colors.textSecondary }]}>
-              \/mo
-              {item.billing_cycle !== 'monthly' &&  (\)}
+              ${monthlyPrice.toFixed(2)}/mo
+              {item.billing_cycle !== 'monthly' && ` (${item.billing_cycle})`}
             </Text>
           </View>
         </View>
@@ -119,7 +119,7 @@ export const SubscriptionsManageModal: React.FC<Props> = ({
           Total Monthly Spend
         </Text>
         <Text style={[styles.summaryAmount, { color: colors.text }]}>
-          \
+          ${getTotalMonthly().toFixed(2)}
         </Text>
         <Text style={[styles.summaryCount, { color: colors.textSecondary }]}>
           {subscriptions.length} service{subscriptions.length !== 1 ? 's' : ''}
