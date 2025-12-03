@@ -64,6 +64,7 @@ const styles = StyleSheet.create({
   genreChipsContainer: {
     backgroundColor: '#0f0f0f',
     paddingVertical: 12,
+    zIndex: 10,
   },
   genreChips: {
     paddingHorizontal: 16,
