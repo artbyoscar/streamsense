@@ -130,3 +130,47 @@ export const convertGenreIdsToObjects = (genreIds: number[]): TMDbGenre[] => {
     }))
     .filter(g => g.name !== 'Unknown'); // Filter out unknown genres
 };
+
+/**
+ * Genre equivalents mapping for TV vs Movie IDs
+ * Maps movie genre IDs to their TV equivalents and vice versa
+ * Useful for matching content across media types
+ */
+export const GENRE_EQUIVALENTS: Record<number, number[]> = {
+  // Action: Movie 28 <-> TV 10759 (Action & Adventure)
+  28: [28, 10759],
+  10759: [28, 10759],
+
+  // Adventure: Movie 12 <-> TV 10759 (Action & Adventure)
+  12: [12, 10759],
+
+  // Sci-Fi: Movie 878 <-> TV 10765 (Sci-Fi & Fantasy)
+  878: [878, 10765],
+  10765: [878, 10765],
+
+  // Fantasy: Movie 14 <-> TV 10765 (Sci-Fi & Fantasy)
+  14: [14, 10765],
+
+  // All other genres map to themselves (no equivalents)
+  18: [18],   // Drama
+  35: [35],   // Comedy
+  80: [80],   // Crime
+  99: [99],   // Documentary
+  27: [27],   // Horror
+  10402: [10402], // Music
+  9648: [9648],   // Mystery
+  10749: [10749], // Romance
+  53: [53],   // Thriller
+  10752: [10752], // War
+  37: [37],   // Western
+  16: [16],   // Animation
+  10751: [10751], // Family
+  36: [36],   // History
+  10770: [10770], // TV Movie
+  10762: [10762], // Kids
+  10763: [10763], // News
+  10764: [10764], // Reality
+  10766: [10766], // Soap
+  10767: [10767], // Talk
+  10768: [10768], // War & Politics
+};

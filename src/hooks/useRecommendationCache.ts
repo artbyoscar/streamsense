@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useCallback } from 'react';
 import { getSmartRecommendations } from '@/services/smartRecommendations';
 import { UnifiedContent } from '@/types';
-import { isAnime, isWesternAnimation } from '@/utils/genreUtils';
+import { isAnime, isWesternAnimation, GENRE_EQUIVALENTS } from '@/utils/genreUtils';
 
 // Map genre names to TMDb IDs - must match GenreFilterChips names exactly
 // NOTE: TV shows have combined genres (10759 = Action & Adventure, 10765 = Sci-Fi & Fantasy)
@@ -109,12 +109,14 @@ export const useRecommendationCache = (userId: string | undefined) => {
           const targetIds = GENRE_NAME_TO_ID[genre];
 
           const genreItems = validItems.filter(item => {
+            // Special handling for Anime and Animation
             if (genre === 'Anime') {
               return isAnime(item);
             } else if (genre === 'Animation') {
               return isWesternAnimation(item);
             }
 
+            // Get all genre IDs for the item
             const itemGenreIds: number[] = [];
             if (item.genre_ids && Array.isArray(item.genre_ids)) {
               itemGenreIds.push(...item.genre_ids);
@@ -126,7 +128,30 @@ export const useRecommendationCache = (userId: string | undefined) => {
               });
             }
 
-            return itemGenreIds.some((id: number) => targetIds.includes(id));
+            // STRICT FILTERING: Genre must be in top 2 positions (primary or secondary)
+            const primaryGenre = itemGenreIds[0];
+            const secondaryGenre = itemGenreIds[1];
+
+            // Check if either primary or secondary genre matches (using equivalents)
+            for (const targetId of targetIds) {
+              const equivalents = GENRE_EQUIVALENTS[targetId] || [targetId];
+
+              // Check primary genre
+              if (primaryGenre && equivalents.includes(primaryGenre)) {
+                console.log(`[RecCache] ✅ "${item.title || item.name}" matched ${genre} (primary: ${primaryGenre})`);
+                return true;
+              }
+
+              // Check secondary genre
+              if (secondaryGenre && equivalents.includes(secondaryGenre)) {
+                console.log(`[RecCache] ✅ "${item.title || item.name}" matched ${genre} (secondary: ${secondaryGenre})`);
+                return true;
+              }
+            }
+
+            // No match found in primary or secondary
+            console.log(`[RecCache] ❌ "${item.title || item.name}" excluded from ${genre} (genres: [${itemGenreIds.slice(0, 3).join(', ')}])`);
+            return false;
           });
 
           byGenre.set(genre, genreItems);
@@ -157,34 +182,46 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
   const getFiltered = useCallback((mediaType: 'all' | 'movie' | 'tv', genre: string): UnifiedContent[] => {
     if (!cache) {
-      console.log('[RecCache] getFiltered: cache not ready');
+      console.log('[RecCache] ⚠️  getFiltered: cache not ready');
       return [];
     }
 
-    console.log('[RecCache] getFiltered: mediaType=' + mediaType + ', genre=' + genre);
+    console.log('[RecCache] 🔍 getFiltered called: mediaType=' + mediaType + ', genre=' + genre);
 
     let results: UnifiedContent[];
 
     if (genre !== 'All') {
       results = cache.byGenre.get(genre) || [];
-      console.log('[RecCache] Genre ' + genre + ' base: ' + results.length + ' items');
+      console.log('[RecCache] 📊 Genre "' + genre + '" base: ' + results.length + ' items');
+
+      // Log sample titles for debugging
+      if (results.length > 0 && results.length <= 5) {
+        const titles = results.map(r => r.title || r.name).join(', ');
+        console.log('[RecCache] 📝 Sample titles: ' + titles);
+      } else if (results.length > 5) {
+        const titles = results.slice(0, 3).map(r => r.title || r.name).join(', ');
+        console.log('[RecCache] 📝 First 3 titles: ' + titles + ' (+ ' + (results.length - 3) + ' more)');
+      }
 
       if (mediaType !== 'all') {
+        const beforeFilter = results.length;
         results = results.filter(item => {
           const itemType = item.media_type || item.type;
           return itemType === mediaType || (mediaType === 'tv' && itemType === 'series');
         });
-        console.log('[RecCache] After media filter: ' + results.length + ' items');
+        console.log('[RecCache] 🎬 After media type filter (' + mediaType + '): ' + results.length + ' items (filtered out ' + (beforeFilter - results.length) + ')');
       }
     } else {
       if (mediaType !== 'all') {
         results = cache.byMediaType[mediaType] || [];
+        console.log('[RecCache] 📺 All content for mediaType=' + mediaType + ': ' + results.length + ' items');
       } else {
         results = cache.all;
+        console.log('[RecCache] 🌐 All content (no filters): ' + results.length + ' items');
       }
-      console.log('[RecCache] All/' + mediaType + ': ' + results.length + ' items');
     }
 
+    console.log('[RecCache] ✅ Returning ' + results.length + ' filtered items');
     return results;
   }, [cache]);
 
