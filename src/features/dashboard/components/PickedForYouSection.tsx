@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { Sparkles, Star, TrendingUp } from 'lucide-react-native';
-import { useRecommendationLanes } from '@/features/recommendations/hooks/useRecommendations';
+import { useRecommendationLanes } from '../../recommendations/hooks/useRecommendations';
 
 interface PickedForYouCardProps {
   title: string;
