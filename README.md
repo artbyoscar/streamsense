@@ -503,3 +503,77 @@ Global Exclusions:     246 watchlist items excluded
 ---
 
 *Last updated: December 2, 2025 - Session 8*
+
+
+Excellent news on the service badges! Here is the consolidated bug list:
+
+---
+
+## 🐛 StreamSense Bug List - Session 9
+
+### Phase 1: Genre Filtering Performance (Critical)
+**Issue:** Genre filters are broken or extremely slow
+- Action/Adventure filters do nothing
+- Animation takes ~10 seconds
+- Comedy requires switching away and back
+- Crime shows nothing
+- Documentary takes 10 seconds then UI freezes for 20 seconds
+
+**Root Cause Hypothesis:** Cache miss triggers fresh API calls; filtering logic may be inefficient
+**Estimated Time:** 20-30 minutes
+
+---
+
+### Phase 2: Want to Watch Shows Nothing
+**Issue:** Want to Watch tab displays empty even with items in watchlist
+**Scope:** Check query filtering, status mapping, or rendering logic
+**Estimated Time:** 10-15 minutes
+
+---
+
+### Phase 3: Unknown Titles in Watching
+**Issue:** "Unknown Title" appearing for items in Watching section
+**Root Cause:** TMDb metadata missing or not hydrated
+**Scope:** 
+- Query database for items with null/empty titles
+- Check if TMDb IDs are valid
+- Add fallback handling or re-fetch metadata
+**Estimated Time:** 15-20 minutes
+
+---
+
+### Phase 4: Subscription Service Filter for Watchlist
+**Issue:** No way to filter watchlist by streaming service
+**Feature Request:**
+- Add filter chips: All | Netflix | Crunchyroll | etc.
+- "All" shows diversified mix from all subscribed services
+- Individual service shows only that service's content
+**Estimated Time:** 25-30 minutes
+
+---
+
+### Phase 5: Discover Watched Rating Prompt
+**Issue:** Swiping "Watched" does not prompt for rating
+**Scope:** Add rating modal trigger after watch action
+**Estimated Time:** 10-15 minutes
+
+---
+
+### Phase 6: Tips "Worth Discovering" Staleness
+**Issue:** Same recommendations appearing repeatedly across sessions
+**Root Cause:** Cache not invalidating properly
+**Scope:** Force refresh logic or session-based exclusion persistence
+**Estimated Time:** 15-20 minutes
+
+---
+
+### ✅ Resolved This Session
+| Issue | Status |
+|-------|--------|
+| Service badges show wrong service | ✅ Fixed - Real badges now working |
+| Provider filtering not active | ✅ Verified working |
+| Manage All modal | ✅ Working with full CRUD |
+
+---
+
+**Which phase would you like to tackle first?** I recommend starting with **Phase 1 (Genre Filtering)** since it is causing the worst user experience issues, or **Phase 2 (Want to Watch)** since that is core functionality that is completely broken.
