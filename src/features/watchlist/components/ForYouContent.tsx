@@ -58,9 +58,8 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     {
       id: 'trending',
       title: 'Trending on Your Services',
-      subtitle: null,
+      subtitle: 'Popular now on your subscriptions',
       items: recommendations.slice(11, 21),
-      showServiceBadge: true,
     },
     {
       id: 'hidden_gems',
@@ -145,3 +144,4 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 });
+
