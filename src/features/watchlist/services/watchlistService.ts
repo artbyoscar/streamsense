@@ -15,7 +15,7 @@ const contentCache = new Map<string, any>();
 const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
 const cacheTimestamps = new Map<string, number>();
 
-// Batch fetch with concurrency control
+// Batch fetch with concurrency control (only for legacy items without stored metadata)
 async function batchHydrate(
   items: any[],
   concurrency: number = 10
@@ -23,45 +23,56 @@ async function batchHydrate(
   const startTime = Date.now();
   const results: any[] = [];
   const itemsToFetch: any[] = [];
-  
-  // Check cache first
+
+  // Separate items into those with stored metadata and those needing fetch
   for (const item of items) {
-    if (!item.tmdb_id || !item.media_type) {
-      results.push({ ...item, _index: items.indexOf(item) });
+    const index = items.indexOf(item);
+
+    // Skip if item already has stored metadata
+    if (item._hasStoredMetadata) {
+      results.push({ ...item, _index: index });
       continue;
     }
-    
+
+    // Skip if no tmdb_id or media_type
+    if (!item.tmdb_id || !item.media_type) {
+      results.push({ ...item, _index: index });
+      continue;
+    }
+
+    // Check in-memory cache
     const cacheKey = item.media_type + '-' + item.tmdb_id;
     const cached = contentCache.get(cacheKey);
     const timestamp = cacheTimestamps.get(cacheKey) || 0;
-    
+
     if (cached && Date.now() - timestamp < CACHE_TTL) {
-      results.push({ 
-        ...item, 
+      results.push({
+        ...item,
         ...cached,
-        _index: items.indexOf(item),
-        _fromCache: true 
+        _index: index,
+        _fromCache: true
       });
     } else {
-      itemsToFetch.push({ ...item, _index: items.indexOf(item) });
+      itemsToFetch.push({ ...item, _index: index });
     }
   }
-  
-  console.log('[Watchlist] Cache hits: ' + (items.length - itemsToFetch.length) + '/' + items.length);
-  
+
+  const itemsWithStoredMetadata = items.filter(i => i._hasStoredMetadata).length;
+  console.log('[Watchlist] Items with stored metadata: ' + itemsWithStoredMetadata + ', cache hits: ' + (results.length - itemsWithStoredMetadata) + ', need fetch: ' + itemsToFetch.length);
+
   if (itemsToFetch.length === 0) {
-    console.log('[Watchlist] All items from cache in ' + (Date.now() - startTime) + 'ms');
-    return results.sort((a, b) => a._index - b._index).map(({ _index, _fromCache, ...rest }) => rest);
+    console.log('[Watchlist] No API calls needed - all items from DB or cache in ' + (Date.now() - startTime) + 'ms');
+    return results.sort((a, b) => a._index - b._index).map(({ _index, _fromCache, _hasStoredMetadata, ...rest }) => rest);
   }
-  
-  // Batch fetch remaining items with concurrency control
+
+  // Batch fetch remaining legacy items with concurrency control
   const fetchBatch = async (batch: any[]) => {
     return Promise.all(
       batch.map(async (item) => {
         try {
           const details = await getContentDetails(item.tmdb_id, item.media_type);
           const cacheKey = item.media_type + '-' + item.tmdb_id;
-          
+
           const enriched = {
             poster_url: details.posterPath,
             poster_path: details.posterPath,
@@ -73,11 +84,11 @@ async function batchHydrate(
             vote_average: details.rating,
             genres: details.genres,
           };
-          
+
           // Cache the result
           contentCache.set(cacheKey, enriched);
           cacheTimestamps.set(cacheKey, Date.now());
-          
+
           return {
             ...item,
             ...enriched,
@@ -93,31 +104,31 @@ async function batchHydrate(
             }
           };
         } catch (e) {
-          console.warn('[Watchlist] Failed to hydrate ' + item.content_id);
+          console.warn('[Watchlist] Failed to hydrate legacy item ' + item.content_id);
           return item;
         }
       })
     );
   };
-  
+
   // Process in batches
   for (let i = 0; i < itemsToFetch.length; i += concurrency) {
     const batch = itemsToFetch.slice(i, i + concurrency);
     const batchResults = await fetchBatch(batch);
     results.push(...batchResults);
-    
+
     // Small delay between batches to avoid rate limiting
     if (i + concurrency < itemsToFetch.length) {
       await new Promise(resolve => setTimeout(resolve, 50));
     }
   }
-  
-  console.log('[Watchlist] Hydrated ' + itemsToFetch.length + ' items in ' + (Date.now() - startTime) + 'ms');
-  
+
+  console.log('[Watchlist] Hydrated ' + itemsToFetch.length + ' legacy items in ' + (Date.now() - startTime) + 'ms');
+
   // Sort back to original order and clean up internal fields
   return results
     .sort((a, b) => (a._index || 0) - (b._index || 0))
-    .map(({ _index, _fromCache, ...rest }) => rest);
+    .map(({ _index, _fromCache, _hasStoredMetadata, ...rest }) => rest);
 }
 
 // ============================================================================
@@ -126,20 +137,27 @@ async function batchHydrate(
 
 export const getWatchlist = async (userId: string) => {
   const startTime = Date.now();
-  
+
   try {
-    // 1. Get raw items with parsed tmdb_id and media_type
+    // 1. Get raw items with stored metadata from DB (JOIN with content table)
     const rawItems = await getRawWatchlist(userId);
-    
+
     if (rawItems.length === 0) {
       return [];
     }
-    
-    // 2. Batch hydrate with concurrency control
+
+    // 2. Batch hydrate only legacy items without stored metadata
     const enrichedItems = await batchHydrate(rawItems, 15);
-    
-    console.log('[Watchlist] Total load time: ' + (Date.now() - startTime) + 'ms for ' + enrichedItems.length + ' items');
-    
+
+    const totalTime = Date.now() - startTime;
+    const itemsWithStoredMetadata = rawItems.filter(i => i._hasStoredMetadata).length;
+    const legacyItems = rawItems.length - itemsWithStoredMetadata;
+
+    console.log(
+      '[Watchlist] ✅ Total load time: ' + totalTime + 'ms for ' + enrichedItems.length + ' items ' +
+      '(' + itemsWithStoredMetadata + ' from DB, ' + legacyItems + ' legacy items)'
+    );
+
     return enrichedItems;
   } catch (error) {
     console.error('[Watchlist] Sync failed:', error);
@@ -202,17 +220,53 @@ export async function addToWatchlist(
     throw new Error('User not authenticated');
   }
 
-  // Check if already exists
+  // Check if already exists (handle both legacy string IDs and new UUID IDs)
   const existing = await fetchWatchlistItemByContentId(contentId);
   if (existing) {
     return existing;
   }
 
+  // Fetch TMDb metadata
+  console.log('[Watchlist] Fetching metadata for', mediaType, tmdbId);
+  const tmdbData = await getContentDetails(tmdbId, mediaType);
+
+  // Insert/update content table with metadata (upsert on tmdb_id)
+  const { data: contentData, error: contentError } = await supabase
+    .from('content')
+    .upsert(
+      {
+        tmdb_id: tmdbId,
+        title: tmdbData.title,
+        type: mediaType,
+        overview: tmdbData.overview || null,
+        poster_url: tmdbData.posterPath || null,
+        backdrop_url: tmdbData.backdropPath || null,
+        genres: tmdbData.genres?.map((g) => g.name) || [],
+        release_date: tmdbData.releaseDate || null,
+        vote_average: tmdbData.rating || null,
+        popularity: tmdbData.popularity || null,
+      },
+      {
+        onConflict: 'tmdb_id',
+        ignoreDuplicates: false,
+      }
+    )
+    .select()
+    .single();
+
+  if (contentError) {
+    console.error('Error upserting content:', contentError);
+    throw contentError;
+  }
+
+  console.log('[Watchlist] Stored metadata for', contentData.title, '(UUID:', contentData.id + ')');
+
+  // Insert into watchlist_items with proper content UUID foreign key
   const { data, error } = await supabase
     .from('watchlist_items')
     .insert({
       user_id: user.id,
-      content_id: contentId,
+      content_id: contentData.id, // Use UUID from content table
       status,
       priority: 'medium',
       notify_on_available: false,

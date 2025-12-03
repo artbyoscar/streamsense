@@ -35,13 +35,28 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
   return idSet;
 };
 
-// 2. Get watchlist items with parsed content_id
+// 2. Get watchlist items with stored metadata from content table
 export const getRawWatchlist = async (userId: string) => {
   const startTime = Date.now();
-  
+
   const { data, error } = await supabase
     .from('watchlist_items')
-    .select('*')
+    .select(`
+      *,
+      content (
+        id,
+        tmdb_id,
+        title,
+        type,
+        overview,
+        poster_url,
+        backdrop_url,
+        genres,
+        release_date,
+        vote_average,
+        popularity
+      )
+    `)
     .eq('user_id', userId)
     .order('added_at', { ascending: false });
 
@@ -55,15 +70,44 @@ export const getRawWatchlist = async (userId: string) => {
   }
 
   const parsedItems = data.map(item => {
-    const { tmdbId, mediaType } = parseContentId(item.content_id);
-    return {
-      ...item,
-      tmdb_id: tmdbId,
-      media_type: mediaType,
-    };
+    // Handle both new items (with content object) and legacy items (string content_id)
+    if (item.content && typeof item.content === 'object') {
+      // New items with stored metadata
+      return {
+        ...item,
+        tmdb_id: item.content.tmdb_id,
+        media_type: item.content.type,
+        title: item.content.title,
+        poster_url: item.content.poster_url,
+        poster_path: item.content.poster_url,
+        posterPath: item.content.poster_url,
+        backdrop_path: item.content.backdrop_url,
+        overview: item.content.overview,
+        vote_average: item.content.vote_average,
+        genres: item.content.genres || [],
+        release_date: item.content.release_date,
+        popularity: item.content.popularity,
+        _hasStoredMetadata: true,
+      };
+    } else {
+      // Legacy items with string content_id (e.g., "movie-1724")
+      const { tmdbId, mediaType } = parseContentId(item.content_id);
+      return {
+        ...item,
+        tmdb_id: tmdbId,
+        media_type: mediaType,
+        _hasStoredMetadata: false,
+      };
+    }
   });
 
-  console.log('[WatchlistData] Fetched ' + parsedItems.length + ' items in ' + (Date.now() - startTime) + 'ms');
+  const itemsWithMetadata = parsedItems.filter(i => i._hasStoredMetadata).length;
+  const itemsNeedingFetch = parsedItems.length - itemsWithMetadata;
+
+  console.log(
+    '[WatchlistData] Fetched ' + parsedItems.length + ' items in ' + (Date.now() - startTime) + 'ms ' +
+    '(' + itemsWithMetadata + ' with stored metadata, ' + itemsNeedingFetch + ' need API fetch)'
+  );
 
   return parsedItems;
 };

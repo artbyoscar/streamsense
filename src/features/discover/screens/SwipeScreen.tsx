@@ -34,6 +34,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { supabase } from '../../../config/supabase';
 import { getSmartRecommendations } from '../../../services/smartRecommendations';
 import { trackGenreInteraction } from '../../../services/genreAffinity';
+import { addToWatchlist } from '../../watchlist/services/watchlistService';
 import type { UnifiedContent } from '../../../types';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -125,24 +126,17 @@ export const SwipeScreen: React.FC = () => {
     try {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // Add to watchlist
-      await supabase.from('watchlist_items').insert({
-        user_id: user.id,
-        tmdb_id: currentItem.id,
-        media_type: currentItem.type,
-        status: 'want_to_watch',
-      });
-
-      // Track interaction - extract genre IDs from genres array
+      // Add to watchlist using service (stores metadata in content table)
+      const contentId = `${currentItem.type}-${currentItem.id}`;
       const genreIds = currentItem.genres?.map(g => g.id) || [];
-      if (genreIds.length > 0) {
-        await trackGenreInteraction(
-          user.id,
-          genreIds,
-          currentItem.type,
-          'ADD_TO_WATCHLIST'
-        );
-      }
+
+      await addToWatchlist(
+        contentId,
+        currentItem.id,
+        currentItem.type,
+        'want_to_watch',
+        genreIds
+      );
 
       console.log('[Discover] Added to watchlist:', currentItem.title);
       moveToNext();
