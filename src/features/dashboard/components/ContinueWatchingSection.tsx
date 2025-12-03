@@ -7,7 +7,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
 import { Play } from 'lucide-react-native';
-import { useWatchlistStore } from '@/features/watchlist/store/watchlistStore';
+import { useWatchlistStore } from '../../watchlist/store/watchlistStore';
 
 interface ContinueWatchingCardProps {
   title: string;
@@ -65,7 +65,7 @@ export const ContinueWatchingSection: React.FC = () => {
 
   // Filter for in-progress items (simulated with random progress for now)
   // In production, this would come from watch history/progress tracking
-  const continueWatchingItems = items
+  const continueWatchingItems = (items || [])
     .filter(item => item.status === 'watching')
     .slice(0, 8)
     .map(item => ({
