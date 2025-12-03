@@ -27,7 +27,6 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
   data.forEach(item => {
     if (item.content_id) {
       idSet.add(item.content_id);
-      // Also add tmdb_id for exclusion matching
       const { tmdbId } = parseContentId(item.content_id);
       if (tmdbId) idSet.add(tmdbId.toString());
     }
@@ -55,7 +54,6 @@ export const getRawWatchlist = async (userId: string) => {
     return [];
   }
 
-  // Parse content_id to get tmdb_id and media_type
   const parsedItems = data.map(item => {
     const { tmdbId, mediaType } = parseContentId(item.content_id);
     return {
