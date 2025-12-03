@@ -8,7 +8,7 @@ import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
 import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watchProviders';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import type { UnifiedContent } from '@/types';
 
 interface ForYouContentProps {
@@ -172,4 +172,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
 
