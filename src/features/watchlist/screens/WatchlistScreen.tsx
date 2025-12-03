@@ -105,10 +105,28 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     try {
       const data = await getWatchlist(user.id);
 
+      console.log('[Watchlist] 📊 Fetched watchlist data:', data?.length || 0, 'items');
+
+      // Debug: Show all unique status values in the data
+      if (data && data.length > 0) {
+        const statusValues = [...new Set(data.map((item: any) => item.status))];
+        console.log('[Watchlist] Unique status values found:', statusValues);
+        console.log('[Watchlist] Sample items:', data.slice(0, 3).map((item: any) => ({
+          id: item.id,
+          status: item.status,
+          title: item.content?.title || item.title || 'Unknown'
+        })));
+      }
+
       // Group by status
       const watchingItems = data?.filter((item: any) => item.status === 'watching') || [];
       const wantToWatchItems = data?.filter((item: any) => item.status === 'want_to_watch') || [];
       const watchedItems = data?.filter((item: any) => item.status === 'watched') || [];
+
+      console.log('[Watchlist] Filtered results:');
+      console.log('  - Watching:', watchingItems.length, 'items');
+      console.log('  - Want to Watch:', wantToWatchItems.length, 'items');
+      console.log('  - Watched:', watchedItems.length, 'items');
 
       setWatching(watchingItems);
       setWantToWatch(wantToWatchItems);

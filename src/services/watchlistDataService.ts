@@ -153,6 +153,22 @@ export const getRawWatchlist = async (userId: string) => {
     '(' + itemsWithMetadata + ' with stored metadata, ' + itemsNeedingFetch + ' need API fetch)'
   );
 
+  // Debug: Log status values
+  if (parsedItems.length > 0) {
+    const statusCounts = parsedItems.reduce((acc: any, item: any) => {
+      const status = item.status || 'undefined';
+      acc[status] = (acc[status] || 0) + 1;
+      return acc;
+    }, {});
+    console.log('[WatchlistData] Status distribution:', statusCounts);
+    console.log('[WatchlistData] Sample item:', {
+      id: parsedItems[0].id,
+      status: parsedItems[0].status,
+      content_id: parsedItems[0].content_id,
+      hasContent: !!parsedItems[0].content
+    });
+  }
+
   return parsedItems;
 };
 
