@@ -28,7 +28,7 @@ export const SubscriptionsManageModal: React.FC<Props> = ({
   onAddSubscription,
 }) => {
   const { colors } = useTheme();
-  const { data: subscriptions = [], refetch } = useSubscriptionsData();
+  const { activeSubscriptions: subscriptions = [], refetch } = useSubscriptionsData();
   const deleteSubscription = useDeleteSubscription();
 
   const handleDelete = (subscription: UserSubscription) => {
@@ -261,4 +261,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
+
 
