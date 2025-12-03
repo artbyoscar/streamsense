@@ -1,10 +1,21 @@
 ﻿import { supabase } from './supabase';
 
+// Parse content_id like "movie-1724" into tmdb_id and media_type
+const parseContentId = (contentId: string): { tmdbId: number | null; mediaType: string | null } => {
+  if (!contentId) return { tmdbId: null, mediaType: null };
+  
+  const match = contentId.match(/^(movie|tv)-(\d+)$/);
+  if (match) {
+    return { tmdbId: parseInt(match[2], 10), mediaType: match[1] };
+  }
+  return { tmdbId: null, mediaType: null };
+};
+
 // 1. A safe way to get JUST the IDs (for exclusions/filtering)
 export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
   const { data, error } = await supabase
     .from('watchlist_items')
-    .select('tmdb_id, content_id')
+    .select('content_id')
     .eq('user_id', userId);
 
   if (error) {
@@ -14,83 +25,49 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
 
   const idSet = new Set<string>();
   data.forEach(item => {
-    if (item.tmdb_id) idSet.add(item.tmdb_id.toString());
-    if (item.content_id) idSet.add(item.content_id);
+    if (item.content_id) {
+      idSet.add(item.content_id);
+      // Also add tmdb_id for exclusion matching
+      const { tmdbId } = parseContentId(item.content_id);
+      if (tmdbId) idSet.add(tmdbId.toString());
+    }
   });
 
   return idSet;
 };
 
-// 2. Get watchlist items - fetch raw then hydrate from content table
+// 2. Get watchlist items with parsed content_id
 export const getRawWatchlist = async (userId: string) => {
-  // Step 1: Get watchlist items
-  const { data: watchlistItems, error: watchlistError } = await supabase
+  const startTime = Date.now();
+  
+  const { data, error } = await supabase
     .from('watchlist_items')
     .select('*')
     .eq('user_id', userId)
     .order('added_at', { ascending: false });
 
-  if (watchlistError) {
-    console.error('[WatchlistData] Error fetching watchlist:', watchlistError);
-    throw watchlistError;
+  if (error) {
+    console.error('[WatchlistData] Error fetching watchlist:', error);
+    throw error;
   }
 
-  if (!watchlistItems || watchlistItems.length === 0) {
+  if (!data || data.length === 0) {
     return [];
   }
 
-  // Step 2: Get content IDs
-  const contentIds = watchlistItems
-    .map(item => item.content_id)
-    .filter(Boolean);
-
-  if (contentIds.length === 0) {
-    console.log('[WatchlistData] No content IDs to hydrate');
-    return watchlistItems;
-  }
-
-  // Step 3: Fetch content data in batch
-  const { data: contentData, error: contentError } = await supabase
-    .from('content')
-    .select('id, tmdb_id, title, type, poster_url, backdrop_url, overview, vote_average, genres')
-    .in('id', contentIds);
-
-  if (contentError) {
-    console.warn('[WatchlistData] Error fetching content:', contentError);
-    // Return raw items if content fetch fails
-    return watchlistItems;
-  }
-
-  // Step 4: Create lookup map
-  const contentMap = new Map();
-  (contentData || []).forEach(content => {
-    contentMap.set(content.id, content);
+  // Parse content_id to get tmdb_id and media_type
+  const parsedItems = data.map(item => {
+    const { tmdbId, mediaType } = parseContentId(item.content_id);
+    return {
+      ...item,
+      tmdb_id: tmdbId,
+      media_type: mediaType,
+    };
   });
 
-  // Step 5: Merge content into watchlist items
-  const hydratedItems = watchlistItems.map(item => {
-    const content = contentMap.get(item.content_id);
-    if (content) {
-      return {
-        ...item,
-        tmdb_id: content.tmdb_id,
-        media_type: content.type,
-        title: content.title,
-        poster_url: content.poster_url,
-        poster_path: content.poster_url,
-        backdrop_url: content.backdrop_url,
-        overview: content.overview,
-        vote_average: content.vote_average,
-        genres: content.genres,
-        content: content,
-      };
-    }
-    return item;
-  });
+  console.log('[WatchlistData] Fetched ' + parsedItems.length + ' items in ' + (Date.now() - startTime) + 'ms');
 
-  console.log('[WatchlistData] Hydrated ' + hydratedItems.length + ' items (' + contentMap.size + ' with content)');
-
-  return hydratedItems;
+  return parsedItems;
 };
 
 // 3. Get watchlist count by status
