@@ -1,51 +1,86 @@
-/**
+﻿/**
  * Watchlist Service
- * API calls for watchlist management
+ * API calls for watchlist management with optimized batch fetching
  */
-
 import { supabase } from '@/config/supabase';
 import { getContentDetails } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
 import { refreshWatchlistCache } from '@/services/smartRecommendations';
 import { dnaComputationQueue } from '@/services/dnaComputationQueue';
 import type { WatchlistItem, WatchlistItemInsert, WatchlistItemUpdate } from '@/types';
-
-// ============================================================================
-// FETCH WATCHLIST
-// ============================================================================
-
-/**
- * Fetch all watchlist items for the current user
- */
-/**
- * Fetch all watchlist items for the current user
- */
 import { getRawWatchlist } from '@/services/watchlistDataService';
 
-export const getWatchlist = async (userId: string) => {
-  try {
-    // 1. Get raw items safely
-    const rawItems = await getRawWatchlist(userId);
+// In-memory cache for hydrated content
+const contentCache = new Map<string, any>();
+const CACHE_TTL = 1000 * 60 * 30; // 30 minutes
+const cacheTimestamps = new Map<string, number>();
 
-    // 2. Hydrate with API data (Manual Join)
-    const enrichedItems = await Promise.all(
-      rawItems.map(async (item) => {
-        if (!item.tmdb_id || !item.media_type) return item;
+// Batch fetch with concurrency control
+async function batchHydrate(
+  items: any[],
+  concurrency: number = 10
+): Promise<any[]> {
+  const startTime = Date.now();
+  const results: any[] = [];
+  const itemsToFetch: any[] = [];
+  
+  // Check cache first
+  for (const item of items) {
+    if (!item.tmdb_id || !item.media_type) {
+      results.push({ ...item, _index: items.indexOf(item) });
+      continue;
+    }
+    
+    const cacheKey = item.media_type + '-' + item.tmdb_id;
+    const cached = contentCache.get(cacheKey);
+    const timestamp = cacheTimestamps.get(cacheKey) || 0;
+    
+    if (cached && Date.now() - timestamp < CACHE_TTL) {
+      results.push({ 
+        ...item, 
+        ...cached,
+        _index: items.indexOf(item),
+        _fromCache: true 
+      });
+    } else {
+      itemsToFetch.push({ ...item, _index: items.indexOf(item) });
+    }
+  }
+  
+  console.log('[Watchlist] Cache hits: ' + (items.length - itemsToFetch.length) + '/' + items.length);
+  
+  if (itemsToFetch.length === 0) {
+    console.log('[Watchlist] All items from cache in ' + (Date.now() - startTime) + 'ms');
+    return results.sort((a, b) => a._index - b._index).map(({ _index, _fromCache, ...rest }) => rest);
+  }
+  
+  // Batch fetch remaining items with concurrency control
+  const fetchBatch = async (batch: any[]) => {
+    return Promise.all(
+      batch.map(async (item) => {
         try {
           const details = await getContentDetails(item.tmdb_id, item.media_type);
-          // Merge API details with DB data
-          // We also construct a 'content' object to maintain compatibility with some UI components
-          // that might expect nested content (though we should move to flat structure eventually)
-          return {
-            ...item,
-            ...details,
-            ...item,
-            // Ensure we have fields expected by UI
+          const cacheKey = item.media_type + '-' + item.tmdb_id;
+          
+          const enriched = {
             poster_url: details.posterPath,
             poster_path: details.posterPath,
+            posterPath: details.posterPath,
             backdrop_path: details.backdropPath,
+            title: details.title,
+            name: details.title,
+            overview: details.overview,
             vote_average: details.rating,
-            // Backwards compatibility for UI that expects nested content
+            genres: details.genres,
+          };
+          
+          // Cache the result
+          contentCache.set(cacheKey, enriched);
+          cacheTimestamps.set(cacheKey, Date.now());
+          
+          return {
+            ...item,
+            ...enriched,
             content: {
               id: item.content_id,
               tmdb_id: item.tmdb_id,
@@ -58,11 +93,53 @@ export const getWatchlist = async (userId: string) => {
             }
           };
         } catch (e) {
-          console.warn(`[Watchlist] Failed to hydrate item ${item.id}`, e);
+          console.warn('[Watchlist] Failed to hydrate ' + item.content_id);
           return item;
         }
       })
     );
+  };
+  
+  // Process in batches
+  for (let i = 0; i < itemsToFetch.length; i += concurrency) {
+    const batch = itemsToFetch.slice(i, i + concurrency);
+    const batchResults = await fetchBatch(batch);
+    results.push(...batchResults);
+    
+    // Small delay between batches to avoid rate limiting
+    if (i + concurrency < itemsToFetch.length) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+  }
+  
+  console.log('[Watchlist] Hydrated ' + itemsToFetch.length + ' items in ' + (Date.now() - startTime) + 'ms');
+  
+  // Sort back to original order and clean up internal fields
+  return results
+    .sort((a, b) => (a._index || 0) - (b._index || 0))
+    .map(({ _index, _fromCache, ...rest }) => rest);
+}
+
+// ============================================================================
+// FETCH WATCHLIST
+// ============================================================================
+
+export const getWatchlist = async (userId: string) => {
+  const startTime = Date.now();
+  
+  try {
+    // 1. Get raw items with parsed tmdb_id and media_type
+    const rawItems = await getRawWatchlist(userId);
+    
+    if (rawItems.length === 0) {
+      return [];
+    }
+    
+    // 2. Batch hydrate with concurrency control
+    const enrichedItems = await batchHydrate(rawItems, 15);
+    
+    console.log('[Watchlist] Total load time: ' + (Date.now() - startTime) + 'ms for ' + enrichedItems.length + ' items');
+    
     return enrichedItems;
   } catch (error) {
     console.error('[Watchlist] Sync failed:', error);
@@ -88,77 +165,84 @@ export async function fetchWatchlistItemByContentId(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     throw new Error('User not authenticated');
   }
 
   const { data, error } = await supabase
     .from('watchlist_items')
-    .select(`
-      *,
-      content:content(*)
-    `)
+    .select('*')
     .eq('user_id', user.id)
     .eq('content_id', contentId)
-    .single();
+    .maybeSingle();
 
-  if (error && error.code !== 'PGRST116') {
-    // PGRST116 is "not found" error, which is expected
-    throw new Error(error.message);
+  if (error) {
+    console.error('Error fetching watchlist item:', error);
+    throw error;
   }
 
-  return data || null;
+  return data;
 }
 
 // ============================================================================
 // ADD TO WATCHLIST
 // ============================================================================
 
-/**
- * Add item to watchlist
- */
 export async function addToWatchlist(
-  watchlistItem: WatchlistItemInsert
+  contentId: string,
+  tmdbId: number,
+  mediaType: 'movie' | 'tv',
+  status: 'want_to_watch' | 'watching' | 'watched' = 'want_to_watch',
+  genres?: number[]
 ): Promise<WatchlistItem> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     throw new Error('User not authenticated');
+  }
+
+  // Check if already exists
+  const existing = await fetchWatchlistItemByContentId(contentId);
+  if (existing) {
+    return existing;
   }
 
   const { data, error } = await supabase
     .from('watchlist_items')
     .insert({
-      ...watchlistItem,
       user_id: user.id,
+      content_id: contentId,
+      status,
+      priority: 'medium',
+      notify_on_available: false,
     })
-    .select(`
-      *,
-      content:content(*)
-    `)
+    .select()
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    console.error('Error adding to watchlist:', error);
+    throw error;
   }
 
-  // Refresh the recommendation cache so this item is excluded immediately
-  refreshWatchlistCache(user.id).catch((error) => {
-    console.error('[Watchlist] Error refreshing recommendation cache:', error);
-  });
-
-  // Add to DNA computation queue (background processing, non-blocking)
-  if (watchlistItem.tmdb_id && watchlistItem.media_type) {
-    dnaComputationQueue.enqueue(
-      watchlistItem.tmdb_id,
-      watchlistItem.media_type as 'movie' | 'tv'
-    ).catch((error) => {
-      console.error('[Watchlist] Error adding to DNA queue:', error);
-    });
+  // Track genre interaction for recommendations
+  if (genres && genres.length > 0) {
+    try {
+      await trackGenreInteraction(user.id, genres, 'add_to_watchlist');
+    } catch (e) {
+      console.warn('Failed to track genre interaction:', e);
+    }
   }
+
+  // Queue DNA computation
+  try {
+    dnaComputationQueue.addToQueue(tmdbId, mediaType);
+  } catch (e) {
+    console.warn('Failed to queue DNA computation:', e);
+  }
+
+  // Refresh watchlist cache
+  refreshWatchlistCache();
 
   return data;
 }
@@ -167,25 +251,28 @@ export async function addToWatchlist(
 // UPDATE WATCHLIST ITEM
 // ============================================================================
 
-/**
- * Update watchlist item
- */
 export async function updateWatchlistItem(
-  id: string,
-  updates: WatchlistItemUpdate
+  contentId: string,
+  updates: Partial<WatchlistItemUpdate>
 ): Promise<WatchlistItem> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
   const { data, error } = await supabase
     .from('watchlist_items')
     .update(updates)
-    .eq('id', id)
-    .select(`
-      *,
-      content:content(*)
-    `)
+    .eq('user_id', user.id)
+    .eq('content_id', contentId)
+    .select()
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    console.error('Error updating watchlist item:', error);
+    throw error;
   }
 
   return data;
@@ -195,65 +282,59 @@ export async function updateWatchlistItem(
 // REMOVE FROM WATCHLIST
 // ============================================================================
 
-/**
- * Remove item from watchlist
- */
-export async function removeFromWatchlist(id: string): Promise<void> {
+export async function removeFromWatchlist(contentId: string): Promise<void> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-
   if (!user) {
     throw new Error('User not authenticated');
   }
 
-  // Fetch watchlist item with content to get genres before deleting
-  const { data: watchlistItem } = await supabase
+  const { error } = await supabase
     .from('watchlist_items')
-    .select(`
-      *,
-      content:content(*)
-    `)
-    .eq('id', id)
-    .single();
-
-  // Delete the watchlist item
-  const { error } = await supabase.from('watchlist_items').delete().eq('id', id);
+    .delete()
+    .eq('user_id', user.id)
+    .eq('content_id', contentId);
 
   if (error) {
-    throw new Error(error.message);
+    console.error('Error removing from watchlist:', error);
+    throw error;
   }
 
-  // Track genre affinity for removal
-  if (watchlistItem?.content?.genres) {
-    const content = watchlistItem.content as any;
-    const genreIds = Array.isArray(content.genres)
-      ? content.genres.filter((g: any) => typeof g === 'number')
-      : [];
-
-    if (genreIds.length > 0) {
-      trackGenreInteraction(
-        user.id,
-        genreIds,
-        content.type || 'movie',
-        'REMOVE_FROM_WATCHLIST'
-      ).catch((error) => {
-        console.error('[Watchlist] Error tracking genre affinity on removal:', error);
-      });
-    }
-  }
+  // Refresh watchlist cache
+  refreshWatchlistCache();
 }
 
 // ============================================================================
-// MARK AS WATCHED
+// BATCH OPERATIONS
 // ============================================================================
 
-/**
- * Mark watchlist item as watched
- */
-export async function markAsWatched(id: string): Promise<WatchlistItem> {
-  return updateWatchlistItem(id, {
-    watched: true,
-    watched_at: new Date().toISOString(),
-  });
+export async function batchUpdateStatus(
+  contentIds: string[],
+  status: 'want_to_watch' | 'watching' | 'watched'
+): Promise<void> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  const { error } = await supabase
+    .from('watchlist_items')
+    .update({ status })
+    .eq('user_id', user.id)
+    .in('content_id', contentIds);
+
+  if (error) {
+    console.error('Error batch updating status:', error);
+    throw error;
+  }
+}
+
+// Clear content cache (useful for testing or manual refresh)
+export function clearContentCache(): void {
+  contentCache.clear();
+  cacheTimestamps.clear();
+  console.log('[Watchlist] Content cache cleared');
 }
