@@ -8,7 +8,7 @@ const GENRE_NAME_TO_ID: Record<string, number[]> = {
   'Drama': [18],
   'Adventure': [12, 10759],
   'Action': [28, 10759],
-  'Sci-Fi': [878, 10765],  // Fixed: was "Science Fiction"
+  'Sci-Fi': [878, 10765],
   'Animation': [16],
   'Anime': [16],
   'Comedy': [35],
@@ -47,7 +47,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
       try {
         console.log('[RecCache] Starting diverse cache pre-fetch...');
 
-        // Fetch main recommendations
         const mainRecs = await getSmartRecommendations({
           userId,
           limit: 100,
@@ -57,7 +56,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Main fetch: ' + mainRecs.length + ' items');
 
-        // Fetch underrepresented genres separately
         const underrepresentedGenres = [
           { name: 'Horror', ids: [27] },
           { name: 'Documentary', ids: [99] },
@@ -84,7 +82,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
           }
         }
 
-        // Combine and deduplicate
         const allRecs = [...mainRecs, ...additionalRecs];
         const seenIds = new Set<number>();
         const uniqueRecs = allRecs.filter(item => {
@@ -95,7 +92,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Total unique: ' + uniqueRecs.length + ' items');
 
-        // Validate items have required data
         const validItems = uniqueRecs.filter(item => {
           const hasPoster = !!(item.posterPath || item.poster_path);
           const hasTitle = !!(item.title || item.name);
@@ -104,7 +100,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Validated: ' + validItems.length + ' items');
 
-        // Pre-organize by genre
         const byGenre = new Map<string, UnifiedContent[]>();
         const genreNames = Object.keys(GENRE_NAME_TO_ID);
 
@@ -136,7 +131,6 @@ export const useRecommendationCache = (userId: string | undefined) => {
           console.log('[RecCache] Genre ' + genre + ': ' + genreItems.length + ' items');
         }
 
-        // Pre-organize by media type
         const movies = validItems.filter(i => i.media_type === 'movie' || i.type === 'movie');
         const tv = validItems.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
 
