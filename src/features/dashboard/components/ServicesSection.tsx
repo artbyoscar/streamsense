@@ -101,8 +101,8 @@ export const ServicesSection: React.FC = () => {
   const valueScores = useValueScores();
 
   const handleServicePress = (subscription: UserSubscription) => {
-    // TODO: Navigate to subscription details
-    console.log('Service pressed:', subscription.service_name);
+    // Open subscription form in edit mode
+    navigateToScreen('SubscriptionForm', { subscriptionId: subscription.id, subscription: subscription });
   };
 
   if (activeSubscriptions.length === 0) {
@@ -257,6 +257,8 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
+
+
 
 
 

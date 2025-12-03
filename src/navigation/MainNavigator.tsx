@@ -39,7 +39,9 @@ const Navigator: React.FC = () => {
     selectedContent,
     setSelectedContent,
     selectedSubscriptionId,
-    setSelectedSubscriptionId,
+      setSelectedSubscriptionId,
+      selectedSubscription,
+      setSelectedSubscription,
     triggerRefresh,
   } = useCustomNavigation();
   const { colors, isDark } = useTheme();
@@ -100,7 +102,8 @@ const Navigator: React.FC = () => {
             </Text>
             <TouchableOpacity onPress={() => {
               setShowSubscriptionForm(false);
-              setSelectedSubscriptionId(null);
+                setSelectedSubscriptionId(null);
+                setSelectedSubscription(null);
             }}>
               <MaterialCommunityIcons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -109,14 +112,17 @@ const Navigator: React.FC = () => {
             onSuccess={() => {
               triggerRefresh();
               setShowSubscriptionForm(false);
-              setSelectedSubscriptionId(null);
+                setSelectedSubscriptionId(null);
+                setSelectedSubscription(null);
             }}
             onCancel={() => {
               setShowSubscriptionForm(false);
-              setSelectedSubscriptionId(null);
+                setSelectedSubscriptionId(null);
+                setSelectedSubscription(null);
             }}
             subscriptionId={selectedSubscriptionId}
-          />
+              subscription={selectedSubscription}
+            />
         </SafeAreaView>
       </Modal>
 
@@ -221,3 +227,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
+
+
+
