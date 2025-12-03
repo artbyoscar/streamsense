@@ -29,62 +29,57 @@ StreamSense's UI draws inspiration from three industry leaders, combining the be
 
 ## 📱 Screen Designs
 
-### Home Screen (Rocket Money Inspired)
+### Home Screen (Rocket Money Inspired) ✅ Implemented
 
 The dashboard communicates value at a glance with a hero spending card and quick insights.
 
 ```
 ┌────────────────────────────────────────────┐
-│ 🎬 StreamSense                        ⚙️  │
+│ Good afternoon, there                 ⚙️  │
+│ Tuesday, December 2                        │
 ├────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────┐ │
 │ │ MONTHLY STREAMING      ✓ Great Value  │ │
 │ │         $22.98                         │ │
-│ │ ↗ $3 less than last month   [chart]   │ │
+│ │ $1.84 more than last month            │ │
 │ │ 📅 $276/year across 2 services        │ │
 │ └────────────────────────────────────────┘ │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│ │ 12       │ │ 24h      │ │ $0.96    │    │
-│ │ Watched  │ │Watch Time│ │Cost/Hour │    │
+│ │ 216      │ │ 324h     │ │ $0.07    │    │
+│ │ WATCHED  │ │WATCH TIME│ │COST/HOUR │    │
 │ └──────────┘ └──────────┘ └──────────┘    │
-│ Coming Up                        See All > │
-│ [Bills + New Releases horizontal scroll]   │
-│ Your Services                          +   │
-│ [Service cards with value indicators]      │
-│ Continue Watching                          │
-│ [Content cards with progress bars]         │
-│ Picked For You              ✨ Discover    │
-│ [Recommendation preview with match %]      │
+│ Your Services                    Manage All│
+│ ┌────────────────────────────────────────┐ │
+│ │ A  Amazon Prime Video    $10.99/mo  > │ │
+│ │    ✓ Great Value                      │ │
+│ ├────────────────────────────────────────┤ │
+│ │ H  Hulu                  $11.99/mo  > │ │
+│ │    ⚠ Low Usage                        │ │
+│ └────────────────────────────────────────┘ │
 └────────────────────────────────────────────┘
 ```
 
-**Key Components:**
-- Hero Spending Card with value status badge (Great Value / Review Needed / Low Usage)
-- Quick Insights Row (3 glanceable metrics: watched count, watch time, cost per hour)
-- Upcoming Section (bills and new releases mixed, sorted by date)
-- Services List with value dot indicators (green/amber/red)
-- Continue Watching with progress bars
-- Picked For You preview with match percentages and Discover CTA
+**Status:** ✅ Core UI implemented, some buttons need navigation wiring
 
-### Discover Screen (Tinder Inspired)
+### Discover Screen (Tinder Inspired) ✅ Implemented
 
 Swipe-based content discovery with satisfying gestures and clear actions.
 
 ```
 ┌────────────────────────────────────────────┐
-│ Discover                         1 of 40   │
+│ Discover                                   │
 │ Quick swipe to build your watchlist        │
 ├────────────────────────────────────────────┤
 │                                            │
 │        ┌──────────────────────┐            │
-│        │  [94%]          [i]  │            │
+│        │  [85%]               │            │
 │        │                      │            │
 │        │    POSTER IMAGE      │            │
 │        │    (swipeable)       │            │
 │        │                      │            │
 │        │  ░░░ GRADIENT ░░░░░  │            │
-│        │  The Wild Robot      │            │
-│        │  ★ 8.3 • 2024 • Movie│            │
+│        │  Fargo               │            │
+│        │  ★ 8.3 • TV Series   │            │
 │        └──────────────────────┘            │
 │                                            │
 │           ( ✕ )         ( ♥ )              │
@@ -94,218 +89,159 @@ Swipe-based content discovery with satisfying gestures and clear actions.
 └────────────────────────────────────────────┘
 ```
 
-**Key Features:**
-- Full-bleed poster imagery (85% width, 0.67 aspect ratio)
-- Gradient overlay for text legibility
-- Swipe gestures with rotation animation (±15° on drag)
-- Visual feedback indicators ("WANT TO WATCH" green / "NOT INTERESTED" red)
-- Large primary action buttons (72px diameter)
-- Secondary action pills (Watching/Watched)
-- Haptic feedback on all interactions
-- Match percentage badge (top-left)
-- Info button for detail sheet (top-right)
-- Position counter ("1 of 40")
+**Status:** ✅ Swipe gestures working, genre tracking needs fix
 
-### Watchlist/For You Screen (Netflix Inspired)
+### Watchlist/For You Screen (Netflix Inspired) ✅ Implemented
 
 Multi-lane browsing with contextual recommendation labels.
 
 ```
 ┌────────────────────────────────────────────┐
 │ Watchlist                            🔍    │
-│ ✨ Dark Thriller Enthusiast • Sci-Fi Fan  │
+│ ✨ Drama, Adventure, Action lover         │
 ├────────────────────────────────────────────┤
 │ [For You][Want to Watch][Watching][Watched]│
 ├────────────────────────────────────────────┤
-│ [All][Action][Drama][Sci-Fi][Comedy]...    │
+│ [All][Action][Adventure][Animation]...     │
 ├────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────┐ │
 │ │     HERO SPOTLIGHT (backdrop)          │ │
-│ │     94% Match                          │ │
-│ │     Movie Title                        │ │
-│ │     ★ 8.5 • 2024 • Movie              │ │
-│ │     [Hulu] Included in subscription    │ │
+│ │     85% Match                          │ │
+│ │     Troll                              │ │
+│ │     ★ 6.6 • 2022 • Movie              │ │
+│ │     [Netflix] Included in subscription │ │
 │ │     [+ My List]  [ℹ Details]           │ │
 │ └────────────────────────────────────────┘ │
 │                                            │
-│ Because You Watched Inception    See All > │
-│ Similar tone and themes                    │
-│ [poster][poster][poster][poster]...        │
-│                                            │
-│ Mind-Bending Sci-Fi              See All > │
-│ Your personalized picks                    │
-│ [poster][poster][poster][poster]...        │
-│                                            │
-│ Hidden Gems                      See All > │
-│ Under-the-radar picks for you              │
-│ [poster][poster][poster][poster]...        │
-│                                            │
-│ Trending on Your Services        See All > │
+│ Top Picks For You                See All > │
+│ Personalized based on your taste           │
 │ [poster][poster][poster][poster]...        │
 └────────────────────────────────────────────┘
 ```
 
-**Key Features:**
-- Taste signature displayed in header (computed from viewing history)
-- Tab bar with icons (For You / Want to Watch / Watching / Watched)
-- Sticky genre filter chips (horizontal scroll)
-- Hero spotlight with backdrop, match percentage, service badge
-- Multiple recommendation lanes with distinct strategies
-- Lane headers with title, subtitle, and "See All" action
-- Service badges on content cards (N, H, D+, P, etc.)
-- Match percentage badges on recommendations
-- Progress bars on "Watching" items
-- Empty states with actionable CTAs
+**Status:** ✅ Core UI implemented, genre filtering needs fix
+
+### Tips & Insights Screen ✅ Implemented
+
+```
+┌────────────────────────────────────────────┐
+│ Tips & Insights                            │
+│ Personalized recommendations based on      │
+│ your viewing preferences                   │
+├────────────────────────────────────────────┤
+│ ┌────────────────────────────────────────┐ │
+│ │ Your Spending                          │ │
+│ │ $22.98    $275.76    2                 │ │
+│ │ per month  per year   services         │ │
+│ └────────────────────────────────────────┘ │
+│                                            │
+│ 💎 Worth Discovering                       │
+│ Expand your horizons - you might be        │
+│ sleeping on these highly-rated titles      │
+│                                            │
+│ ┌─────────────┐ ┌─────────────┐            │
+│ │ HIDDEN GEM  │ │ CLASSIC GAP │            │
+│ │ [poster]    │ │ [poster]    │            │
+│ │ Once Upon a │ │ Lock, Stock │            │
+│ │ Time in the │ │ and Two...  │            │
+│ │ West        │ │             │            │
+│ └─────────────┘ └─────────────┘            │
+└────────────────────────────────────────────┘
+```
+
+**Status:** ✅ Working, loads in 15-20 seconds (optimization needed)
 
 ---
 
 ## 🧠 Recommendation Intelligence Architecture
 
-StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon's approaches. This is not a single algorithm but an ensemble of specialized systems, each capturing different aspects of user taste.
+StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon's approaches.
 
 ### Layer Overview
 
 | Layer | Purpose | Status |
 |-------|---------|--------|
-| **Content DNA** | Deep content attributes beyond genres (tone, themes, pacing, aesthetics) | 🔧 Implementing |
-| **User Taste Profile** | Aggregated preferences learned from viewing behavior | 🔧 Implementing |
-| **Multi-Lane Recommendations** | Parallel recommendation strategies (10+ distinct lanes) | 🔧 Implementing |
-| **Interest Graph** | Maps connections between interests for bridge recommendations | 🔧 Implementing |
-| **LLM Personalization** | Claude Haiku integration for natural language recommendations | ⏳ Planned |
-| **Contextual Intelligence** | Time-of-day, mood, and session-aware adjustments | ⏳ Planned |
+| **Content DNA** | Deep content attributes beyond genres | ⚠️ Schema ready, table not created |
+| **User Taste Profile** | Aggregated preferences from behavior | ⚠️ Schema ready, table not created |
+| **Multi-Lane Recommendations** | Parallel recommendation strategies | 🔧 Partially implemented |
+| **Interest Graph** | Maps connections between interests | ⚠️ Schema ready, table not created |
+| **LLM Personalization** | Claude Haiku integration | ⏳ Planned |
+| **Contextual Intelligence** | Time-of-day, mood awareness | ⏳ Planned |
 
-### Content DNA System
+### Current Recommendation Features
 
-Goes beyond crude genre classifications to capture 40+ content dimensions:
-
-```
-TONE: dark, humorous, tense, emotional, cerebral, escapist
-THEMES: redemption, revenge, family, identity, survival, technology, betrayal...
-PACING: slow, medium, fast, episodic, serialized
-AESTHETICS: visually stunning, gritty, stylized
-NARRATIVE: nonlinear, twist ending, unreliable narrator
-TALENT: directors, writers, composers, lead actors
-```
-
-### Recommendation Lanes
-
-Each lane represents a distinct recommendation strategy:
-
-| Lane | Strategy | Example |
-|------|----------|---------|
-| Because You Watched | DNA-based similarity to recent content | "Because You Watched Inception" |
-| Interest Clusters | Content matching identified taste clusters | "Mind-Bending Sci-Fi" |
-| Talent Spotlight | Works by favorite directors/actors | "More from Christopher Nolan" |
-| Theme Deep Dive | Content strong in preferred themes | "Stories of Identity" |
-| Hidden Gems | Under-discovered high-quality matches | "Hidden Gems For You" |
-| Trending For You | Popular content filtered to taste | "Trending on Your Services" |
-| Exploration | Deliberate variety introduction | "Expand Your Horizons" |
-| Classic Essentials | Timeless films matching profile | "Classics You Have Not Seen" |
-| New Releases | Recent content matching preferences | "New on [Service Name]" |
-| Adjacent Interests | Bridge to unexplored territories | "You Might Also Like" |
-
-### User Taste Profile
-
-Comprehensive taste understanding including:
-
-- Aggregated tone/theme/pacing preferences from watched content
-- Favorite directors, actors, decades, origin countries
-- Exploration appetite score (comfort zone vs adventurous)
-- Violence tolerance and complexity preference
-- Interest clusters with seed content
-- Computed taste signature (e.g., "Dark Thriller Enthusiast • Mind-Bending Sci-Fi Fan")
-- Discovery opportunities (adjacent genres not yet explored)
-
-### Interest Graph
-
-Maps relationships between user interests for intelligent discovery:
-
-- Genre-to-genre connections (Sci-Fi ↔ Fantasy, Crime ↔ Thriller)
-- Theme-to-theme relationships (Technology ↔ Identity, Power ↔ Betrayal)
-- Genre-to-theme bridges (Sci-Fi → Technology themes)
-- Enables "bridge" recommendations connecting disparate interests
-
----
-
-## 🎨 UI Component Library
-
-### New Components (In Development)
-
-| Component | Purpose | Screen |
-|-----------|---------|--------|
-| `HeroSpendCard` | Giant spending metric with value status | Home |
-| `QuickInsights` | 3-widget metric row | Home |
-| `UpcomingSection` | Horizontal scroll of bills + releases | Home |
-| `ServicesSection` | Service list with value dots | Home |
-| `SwipeCard` | Animated poster card with gestures | Discover |
-| `SwipeIndicator` | Visual feedback on swipe direction | Discover |
-| `ActionButtons` | Skip/Like circular buttons | Discover |
-| `TabBar` | Segmented tab navigation | Watchlist |
-| `GenreFilterChips` | Horizontal scrolling genre pills | Watchlist |
-| `HeroSpotlight` | Large featured recommendation | Watchlist |
-| `RecommendationLane` | Horizontal content row with header | Watchlist |
-| `ContentCard` | Poster with badges (match %, service) | Multiple |
-| `ServiceBadge` | Colored indicator for streaming service | Multiple |
-
-### Color Palette
-
-```
-Background:        #0f0f0f (near black)
-Card Background:   #1a1a1a
-Primary Accent:    #a78bfa (purple)
-Success/Good:      #22c55e (green)
-Warning:           #f59e0b (amber)
-Error/Poor:        #ef4444 (red)
-Rating:            #fbbf24 (gold)
-Text Primary:      #ffffff
-Text Secondary:    #888888
-Text Muted:        #666666
-Border Subtle:     rgba(255,255,255,0.05)
-Border Light:      rgba(255,255,255,0.08)
-```
-
-### Service Brand Colors
-
-```typescript
-const SERVICE_COLORS = {
-  'Netflix': '#E50914',
-  'Hulu': '#1CE783',
-  'Disney+': '#113CCF',
-  'Prime Video': '#00A8E1',
-  'HBO Max': '#B026FF',
-  'Apple TV+': '#000000',
-  'Peacock': '#000000',
-  'Paramount+': '#0064FF',
-};
-```
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Genre Affinity Learning | ✅ Working | 22 genres tracked, temporal decay |
+| Smart Recommendations | ✅ Working | Personalized picks, exclusion logic |
+| Blindspot Discovery | ✅ Working | Hidden gems, classic gaps, unexplored genres |
+| Session Exclusion | ✅ Working | Prevents repeat recommendations |
+| Negative Filtering | ✅ Working | Skipped content excluded |
+| SVD Matrix Factorization | ⚠️ Limited | Single-user generates 0 predictions |
+| Collaborative Filtering | ⚠️ Blocked | Needs multiple users |
 
 ---
 
 ## 📊 Project Status
 
-### Overall Completion: **85%**
+### Overall Completion: **78%**
 
 | Category | Status | Completion | Notes |
 |----------|--------|------------|-------|
-| Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, Custom Navigation |
-| Authentication | ✅ Complete | 100% | Supabase Auth (Email/Password) |
-| Subscription Management | ✅ Complete | 98% | 0-hour logging, value scores |
-| Watchlist System | ✅ Complete | 95% | Decoupled architecture |
-| Genre Affinity Learning | ✅ Complete | 100% | Real-time preference tracking |
-| Basic Recommendations | ✅ Complete | 90% | Genre-based, blindspots active |
-| **Content DNA System** | 🔧 Implementing | 40% | Schema ready, services building |
-| **User Taste Profiles** | 🔧 Implementing | 30% | Schema ready, aggregation pending |
-| **Multi-Lane System** | 🔧 Implementing | 25% | Architecture defined |
-| **Interest Graph** | 🔧 Implementing | 20% | Global edges defined |
-| SVD Matrix Factorization | ⚠️ Blocked | 80% | FK error needs refactor |
-| Value Score Analytics | ✅ Complete | 100% | Human-readable labels |
-| **Home Screen UI** | 🔧 Redesigning | 30% | Rocket Money inspired, specs complete |
-| **Discover Screen UI** | 🔧 Redesigning | 40% | Tinder inspired, specs complete |
-| **Watchlist Screen UI** | 🔧 Redesigning | 25% | Netflix inspired, specs complete |
-| Tips & Insights | ✅ Complete | 90% | Churn predictions active |
-| Worth Discovering | ✅ Complete | 90% | Variety improvements pending |
-| LLM Integration | ⏳ Planned | 0% | Claude Haiku integration |
-| Contextual Intelligence | ⏳ Planned | 0% | Temporal patterns |
+| Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, EAS Build |
+| Authentication | ✅ Complete | 100% | Supabase Auth |
+| Subscription Management | ✅ Complete | 98% | Value scores working |
+| Watchlist System | ✅ Complete | 95% | 269 items tracked |
+| Genre Affinity Learning | ✅ Complete | 100% | Real-time tracking |
+| Basic Recommendations | ✅ Complete | 90% | Genre-based active |
+| **Home Screen UI** | ✅ Implemented | 75% | Core working, buttons need wiring |
+| **Discover Screen UI** | ✅ Implemented | 70% | Swipe working, genre tracking fix needed |
+| **Watchlist Screen UI** | ✅ Implemented | 60% | Core working, filtering broken |
+| Tips & Insights | ✅ Complete | 85% | Load time optimization needed |
+| Content DNA System | ⚠️ Blocked | 20% | Table not created in Supabase |
+| Interest Graph | ⚠️ Blocked | 20% | Table not created in Supabase |
+| SVD Factorization | ⚠️ Limited | 80% | Works but 0 predictions (single user) |
+| LLM Integration | ⏳ Planned | 0% | Claude Haiku |
+
+---
+
+## 🔧 Known Issues
+
+### Critical (Red Error Banners)
+
+| Issue | Error Code | Impact | Fix Status |
+|-------|------------|--------|------------|
+| `content_dna` table missing | PGRST205 | DNA features blocked | Needs table creation OR graceful handling |
+| `interest_graph_edges` missing | PGRST205 | Graph features blocked | Needs table creation OR graceful handling |
+| Rewatch FK relationship | PGRST200 | Rewatch suggestions fail | Query needs refactor |
+
+### High Priority
+
+| Issue | Impact | Status |
+|-------|--------|--------|
+| Genre filtering not working | Users cannot filter by genre | Fix identified |
+| Genre tracking `undefined` | Affinity scores not updating correctly | Fix identified |
+| Buttons not navigating | Explore All, Manage All, etc. | Handlers need wiring |
+| Unknown titles in watchlist | Some items show "U" placeholder | Missing TMDb metadata |
+
+### Medium Priority
+
+| Issue | Impact | Status |
+|-------|--------|--------|
+| 15-20 second load times | Poor UX on Home/Tips | Optimization needed |
+| SVD 0 predictions | Matrix factorization ineffective | Single-user limitation |
+| Worth Discovering not subscription-filtered | Shows content from unsubscribed services | Enhancement needed |
+
+### Recently Resolved ✅
+
+| Issue | Resolution | Date |
+|-------|------------|------|
+| Import path errors (`@/` aliases) | Changed to relative paths | Dec 2 |
+| Missing packages | Installed expo-linear-gradient, lucide-react-native | Dec 2 |
+| Reanimated v4 API changes | Updated gesture handlers | Dec 2 |
+| Type mismatches (snake_case vs camelCase) | Fixed property names | Dec 2 |
+| ContinueWatchingSection null error | Added null safety check | Dec 2 |
+| Native module build required | Created new EAS development build | Dec 2 |
 
 ---
 
@@ -318,237 +254,46 @@ const SERVICE_COLORS = {
 
 ### Subscription Tracking
 - Manual subscription entry with service name, price, billing cycle
-- 0-hour logging support for unused services
-- Total monthly cost calculation
-- Human-readable value scores ("Low Usage", "Good Value")
-- Service recommendations based on genre preferences
+- Total monthly cost calculation ($22.98 tracked)
+- Human-readable value scores ("Great Value", "Low Usage")
+- Annual projection ($276/year across 2 services)
+- Service-level value indicators
 
 ### Watchlist Management
-- Decoupled architecture (Fetch IDs → Hydrate via API)
-- Add content with status: Want to Watch, Watching, Watched
+- 269 items tracked across all statuses
+- Status management: Want to Watch, Watching, Watched
 - 5-star rating system
-- Filter by media type (All, Movies, TV Shows)
-- Filter by genre with smart fetching for empty filters
+- Decoupled architecture (API hydration)
 - Content persists across sessions
-- 246+ items tracked in testing
 
 ### Genre Affinity Learning
-- Tracks user interactions: add, rate, watch, skip
-- Temporal decay (recent preferences weighted 1.5x)
 - 22 genre affinities tracked
-- Influences all recommendation algorithms
-- Real-time updates on every interaction
+- Top genres: Drama (458), Adventure (434), Action (343)
+- Temporal decay (recent preferences weighted higher)
+- Discovery mode detection (0.81 exploration score)
+- Average 12.8 items per session
 
-### Smart Recommendations ("For You")
+### Smart Recommendations
 - Personalized picks based on genre affinity
-- Deep cuts from favorite genre combinations
-- Discovery mode for users exploring widely
-- Session-based exclusion to prevent repeats
-- Watchlist exclusion (never recommend what user has)
-- Negative filtering for previously skipped content
-- Fatigue scoring to prevent over-recommendation
+- Session-based exclusion (280+ items in session cache)
+- Watchlist exclusion (246 items)
+- Negative filtering for skipped content
+- Fatigue scoring active
 
 ### Worth Discovering (Blindspots)
-- Unexplored genres (highly-rated in untried genres)
 - Hidden gems (high rating, low vote count)
-- Adjacent interests (fans of X also love Y)
-- Service exclusives (content on user subscriptions)
-- Classic gaps (acclaimed films user has not seen)
-- Deduplication across categories
+- Classic gaps (acclaimed films not seen)
+- Unexplored genres (Thriller, Horror, Romance identified)
+- Service exclusives
+- 8 blindspots generated per load
 
-### Tips & Insights Page
-- Monthly spending overview
-- Value score per service (Excellent/Good/Poor/Unknown)
-- Service recommendations (what to add/keep/consider)
-- Churn predictions (usage-based suggestions)
-- Achievement system (7+ achievements)
-- Worth Discovering carousel with preloading
-
-### Technical Infrastructure
-- Expo SDK 54 with React Native
-- TypeScript throughout
-- Supabase backend with Row Level Security
-- TMDb API integration for content metadata
-- Custom state-based tab navigation (Android compatible)
-- Dark mode implementation
-- Comprehensive logging system
-
----
-
-## 🔧 Known Issues
-
-### High Priority
-
-| Issue | Impact | Status |
-|-------|--------|--------|
-| SVD FK Relationship Error | Blocks matrix factorization | Refactor needed |
-| React.Fragment Warnings | Console spam (12-20 per load) | Source unknown |
-| Genre Filter (Anime vs Animation) | Incorrect classification | Fix designed |
-
-### Medium Priority
-
-| Issue | Impact | Status |
-|-------|--------|--------|
-| Rewatch Feature | Missing updated_at column | Migration needed |
-| Half-Star Ratings | No 3.5 star support | Planned |
-| Worth Discovering Variety | Same content appearing | Randomization needed |
-
-### Recently Resolved
-
-| Issue | Resolution |
-|-------|------------|
-| App Crash on Load | Decoupled DB joins |
-| Empty Watchlist | API hydration instead of SQL join |
-| Discover Buttons Overlap | ContentContainerStyle padding |
-| Value Score Confusion | Human-readable labels |
-| 0-Hour Logging | Fixed validation logic |
-
----
-
-## 🚀 Development Pipeline
-
-### Phase 1: Recommendation Intelligence Foundation (Complete)
-
-1. **Content DNA Service**
-   - [x] Database schema for content_dna table
-   - [ ] DNA computation from TMDb metadata
-   - [ ] Caching layer for computed DNA
-   - [ ] Background computation queue
-
-2. **User Taste Profile**
-   - [x] Database schema for taste profiles
-   - [ ] Profile aggregation from watched content
-   - [ ] Incremental updates on interactions
-   - [ ] Taste signature generation
-
-3. **Interest Clustering**
-   - [x] Database schema for clusters
-   - [ ] Cluster detection algorithm
-   - [ ] Seed content identification
-
-### Phase 2: UI Redesign (Current Sprint)
-
-1. **Home Screen (Rocket Money Style)**
-   - [x] Design specifications complete
-   - [ ] Hero spending card with value status
-   - [ ] Quick insights row (3 metrics)
-   - [ ] Upcoming section (bills + releases)
-   - [ ] Services list with value indicators
-   - [ ] Continue Watching section
-   - [ ] Picked For You preview
-
-2. **Discover Screen (Tinder Style)**
-   - [x] Design specifications complete
-   - [ ] Full-bleed poster cards
-   - [ ] Swipe gesture handling (react-native-reanimated)
-   - [ ] Rotation animation on drag
-   - [ ] Visual swipe indicators
-   - [ ] Primary action buttons (Skip/Like)
-   - [ ] Secondary action pills (Watching/Watched)
-   - [ ] Haptic feedback integration
-
-3. **Watchlist Screen (Netflix Style)**
-   - [x] Design specifications complete
-   - [ ] Tab bar (For You / Want to Watch / Watching / Watched)
-   - [ ] Genre filter chips (sticky)
-   - [ ] Hero spotlight component
-   - [ ] Recommendation lane component
-   - [ ] Content card with service badges
-   - [ ] Progress bars for watching items
-   - [ ] Empty states with CTAs
-
-### Phase 3: Multi-Lane System (Week 3-4)
-
-1. **Recommendation Lanes Service**
-   - [ ] Lane generation orchestrator
-   - [ ] Parallel strategy execution
-   - [ ] Priority-based ordering
-
-2. **Individual Lanes**
-   - [ ] "Because You Watched" (DNA similarity)
-   - [ ] Hidden Gems (under-discovered matches)
-   - [ ] Interest Cluster lanes
-   - [ ] Talent Spotlight lanes
-   - [ ] Exploration lanes
-
-### Phase 4: Intelligence Layer (Week 4-5)
-
-1. **Interest Graph**
-   - [x] Global edge definitions
-   - [ ] User-specific edge learning
-   - [ ] Bridge recommendation algorithm
-
-2. **Exploration Engine**
-   - [ ] Adjacent interest detection
-   - [ ] Controlled variety introduction
-   - [ ] Filter bubble prevention
-
-### Phase 5: LLM Integration (Week 5-6)
-
-1. **Claude Haiku Service**
-   - [ ] Supabase Edge Function for API calls
-   - [ ] Response parsing and validation
-   - [ ] TMDb lookup for recommendations
-
-2. **Natural Language Features**
-   - [ ] "I want something like X but more Y"
-   - [ ] Mood-based requests
-   - [ ] Explanation generation
-
-### Phase 6: Contextual Intelligence (Week 6-7)
-
-1. **Temporal Patterns**
-   - [ ] Track viewing times
-   - [ ] Learn time-slot preferences
-   - [ ] Weekend vs weekday patterns
-
-2. **Context-Aware Ranking**
-   - [ ] Time-of-day adjustments
-   - [ ] Available time consideration
-   - [ ] Session continuity
-
----
-
-## 🗄️ Database Schema
-
-### Core Tables
-
-| Table | Purpose |
-|-------|---------|
-| `watchlist_items` | User's saved content with status/ratings |
-| `subscriptions` | User's streaming service subscriptions |
-| `genre_affinity` | Learned genre preferences per user |
-| `implicit_signals` | Behavioral tracking (impressions, skips) |
-
-### Recommendation Intelligence Tables
-
-| Table | Purpose |
-|-------|---------|
-| `content_dna` | Cached DNA computation for content |
-| `user_taste_profiles` | Aggregated user preferences |
-| `user_interest_clusters` | Identified taste clusters per user |
-| `interest_graph_edges` | Connections between interests |
-| `recommendation_lanes_cache` | Cached lane results |
-| `viewing_patterns` | Temporal viewing preferences |
-| `llm_recommendations_cache` | Cached LLM responses |
-| `svd_recommendations` | Matrix factorization results |
-
----
-
-## 📈 Metrics from Testing
-
-```
-User Interactions:     269 watchlist items
-Genre Affinities:      22 genres tracked
-Top Genres:            Drama (458), Adventure (434), Action (343)
-Behavior Mode:         Discovery (exploring widely)
-Session Average:       12.8 items per session
-Exploration Score:     0.81 (adventurous)
-Achievements:          7+ unlocked
-Subscriptions:         2 active (Hulu, Prime Video)
-Monthly Spend:         $22.98
-Blindspots Generated:  9 unique recommendations
-```
+### UI Implementation
+- Home screen with hero spending card
+- Quick insights row (watched, watch time, cost/hour)
+- Services list with value indicators
+- Discover screen with swipe gestures
+- Watchlist screen with tabs and hero spotlight
+- Tips screen with Worth Discovering carousel
 
 ---
 
@@ -558,128 +303,93 @@ Blindspots Generated:  9 unique recommendations
 |-------|------------|
 | Framework | React Native + Expo SDK 54 |
 | Language | TypeScript |
-| Backend | Supabase (Auth, Database, Edge Functions) |
+| Backend | Supabase (Auth, Database, RLS) |
 | Content API | TMDb (The Movie Database) |
 | Banking | Plaid (subscription detection) |
-| AI/ML | Claude Haiku (planned), SVD Matrix Factorization |
-| Animations | React Native Reanimated |
+| Animations | React Native Reanimated v4 |
 | Gestures | React Native Gesture Handler |
 | Gradients | Expo Linear Gradient |
-| Haptics | Expo Haptics |
+| Icons | Lucide React Native |
+| Build | EAS Build (development client) |
 | Navigation | Custom state-based tabs |
-| Styling | StyleSheet + Dark mode |
 
 ---
 
-## 📁 Project Structure
+## 📈 Metrics from Testing (December 2, 2025)
 
 ```
-src/
-├── components/
-│   ├── home/                    # Home screen components
-│   │   ├── HeroSpendCard.tsx
-│   │   ├── QuickInsights.tsx
-│   │   ├── UpcomingSection.tsx
-│   │   └── ServicesSection.tsx
-│   ├── discover/                # Discover screen components
-│   │   ├── SwipeCard.tsx
-│   │   ├── SwipeIndicator.tsx
-│   │   └── ActionButtons.tsx
-│   ├── watchlist/               # Watchlist screen components
-│   │   ├── TabBar.tsx
-│   │   ├── GenreFilterChips.tsx
-│   │   ├── HeroSpotlight.tsx
-│   │   └── RecommendationLane.tsx
-│   ├── recommendations/         # Lane UI components
-│   ├── ContentCard.tsx
-│   ├── ServiceBadge.tsx
-│   └── ...
-├── contexts/
-│   ├── AuthContext.tsx
-│   └── ThemeContext.tsx
-├── hooks/
-│   ├── useRecommendationCache.ts
-│   ├── useTasteProfile.ts
-│   ├── useSubscriptionStats.ts
-│   ├── useWatchingStats.ts
-│   ├── useUpcoming.ts
-│   ├── useRecommendationLanes.ts
-│   └── ...
-├── screens/
-│   ├── DashboardScreen.tsx      # Redesigning
-│   ├── DiscoverScreen.tsx       # Redesigning
-│   ├── WatchlistScreen.tsx      # Redesigning
-│   ├── TipsScreen.tsx
-│   ├── SettingsScreen.tsx
-│   └── DebugRecommendationsScreen.tsx
-├── services/
-│   ├── recommendationOrchestrator.ts
-│   ├── contentDNA.ts
-│   ├── userTasteProfile.ts
-│   ├── recommendationLanes.ts
-│   ├── interestGraph.ts
-│   ├── contextualRecommendations.ts
-│   ├── llmRecommendations.ts
-│   ├── smartRecommendations.ts
-│   ├── blindspotRecommendations.ts
-│   ├── matrixFactorization.ts
-│   ├── genreAffinity.ts
-│   ├── valueScore.ts
-│   └── ...
-├── data/
-│   ├── globalInterestEdges.ts
-│   └── serviceColors.ts
-├── types/
-│   └── index.ts
-└── utils/
-    └── ...
-
-supabase/
-├── migrations/
-│   ├── 20251202000000_create_svd_recommendations.sql
-│   └── 20251202010000_recommendation_intelligence.sql
-└── functions/
-    ├── compute-svd-recommendations/
-    └── llm-recommendations/
+User Interactions:     269 watchlist items
+Genre Affinities:      22 genres tracked
+Top Genres:            Drama (458), Adventure (434), Action (343)
+Unexplored Genres:     Thriller, Horror, Romance
+Behavior Mode:         Discovery (exploring widely)
+Session Average:       12.8 items per session
+Exploration Score:     0.81 (adventurous)
+Subscriptions:         2 active (Amazon Prime $10.99, Hulu $11.99)
+Monthly Spend:         $22.98
+Annual Projection:     $275.76
+Value Status:          Great Value (overall)
+Blindspots Generated:  8 unique recommendations
+Session Cache:         280+ items shown
+Global Exclusions:     246 watchlist items excluded
 ```
 
 ---
 
-## 🎯 Target Market
+## 🚀 Development Pipeline
 
-- **Primary:** Streaming subscribers with 3+ services
-- **Pain Point:** Subscription fatigue, paying for unused services
-- **Behavior:** Want recommendations but also want to save money
-- **Market Size:** $97B streaming market, households average 5-7 services, spending $61-70 monthly
+### Immediate Priorities (This Week)
 
----
+1. **Fix Critical Errors**
+   - [ ] Add graceful handling for missing `content_dna` table
+   - [ ] Add graceful handling for missing `interest_graph_edges` table
+   - [ ] Fix rewatch suggestions FK query
 
-## 💰 Business Model
+2. **Fix Functional Issues**
+   - [ ] Fix genre affinity tracking (extract IDs from genre objects)
+   - [ ] Fix genre filtering on Watchlist screen
+   - [ ] Wire up button navigation handlers
+   - [ ] Fix unknown titles display
 
-### Freemium Tier (Free)
-- Basic subscription tracking
-- Manual content logging
-- Simple genre-based recommendations
+3. **Performance Optimization**
+   - [ ] Reduce Home/Tips load time from 15-20s to <5s
+   - [ ] Implement skeleton loading states
+   - [ ] Add more aggressive caching
 
-### Premium Tier ($2.99-4.99/month)
-- Netflix-level personalized recommendations
-- Content DNA matching
-- Multi-lane recommendation system
-- LLM-powered natural language requests
-- Value analytics and rotation suggestions
-- Churn predictions
-- Interest graph exploration
+### Phase 2: Database Tables (Next Week)
 
-### Cost Structure (1,000 users)
+1. **Create Missing Tables in Supabase**
+   - [ ] `content_dna` - Content attribute storage
+   - [ ] `interest_graph_edges` - Interest relationships
+   - [ ] `user_taste_profiles` - Aggregated preferences
 
-| Component | Monthly Cost |
-|-----------|--------------|
-| Supabase | ~$25 |
-| TMDb API | Free |
-| Claude Haiku (1 call/user/day) | ~$4-8 |
-| Total | ~$30-35 |
+2. **Implement Services**
+   - [ ] Content DNA computation
+   - [ ] User taste profile aggregation
+   - [ ] Interest graph population
 
-**Projected Cash Positive:** Month 7 with ~$2,500 working capital bridge
+### Phase 3: Enhanced Recommendations
+
+1. **Multi-Lane System**
+   - [ ] "Because You Watched" lane
+   - [ ] Talent Spotlight lanes
+   - [ ] Interest Cluster lanes
+
+2. **Worth Discovering Improvements**
+   - [ ] Filter by subscribed services
+   - [ ] More variety in recommendations
+
+### Phase 4: Polish & Launch
+
+1. **UI Refinements**
+   - [ ] Animation polish
+   - [ ] Empty state designs
+   - [ ] Error state handling
+
+2. **Launch Preparation**
+   - [ ] Waitlist integration
+   - [ ] Analytics setup
+   - [ ] App store assets
 
 ---
 
@@ -687,74 +397,71 @@ supabase/
 
 | Milestone | Target | Status |
 |-----------|--------|--------|
-| Recommendation Intelligence Schema | Week 1 | ✅ Complete |
-| UI Design Specifications | Week 2 | ✅ Complete |
-| UI Redesign Implementation | Week 2-3 | 🔧 In Progress |
+| UI Redesign Implementation | Week 1-2 | ✅ Complete (with bugs) |
+| Critical Bug Fixes | Week 2 | 🔧 In Progress |
+| Database Tables Creation | Week 3 | ⏳ Pending |
 | Content DNA + Taste Profiles | Week 3-4 | ⏳ Pending |
+| Performance Optimization | Week 4 | ⏳ Pending |
 | Multi-Lane UI Integration | Week 4-5 | ⏳ Pending |
-| Interest Graph + Bridge Recs | Week 5-6 | ⏳ Pending |
-| LLM Integration | Week 6-7 | ⏳ Pending |
-| Contextual Intelligence | Week 7-8 | ⏳ Pending |
-| Polish & Testing | Week 8-9 | ⏳ Pending |
-| Waitlist Launch | Week 9-10 | ⏳ Pending |
-| Alpha Release | Week 11-12 | ⏳ Pending |
-| Public Beta | Week 14 | ⏳ Pending |
+| LLM Integration | Week 5-6 | ⏳ Pending |
+| Polish & Testing | Week 6-7 | ⏳ Pending |
+| Waitlist Launch | Week 7-8 | ⏳ Pending |
+| Alpha Release | Week 9-10 | ⏳ Pending |
 
 ---
 
 ## 📝 Recent Updates
 
-### Session 4 (Current) - UI Redesign Sprint
-- Analyzed Rocket Money UI patterns for value communication
-- Designed Home screen with hero spending card, quick insights, upcoming section
-- Analyzed Tinder UI patterns for swipe-based discovery
-- Designed Discover screen with gesture-based card interactions and haptic feedback
-- Analyzed Netflix UI patterns for content browsing
-- Designed Watchlist screen with multi-lane recommendation system, taste signature, hero spotlight
-- Created comprehensive component specifications for all three screens
-- Defined color palette and service brand colors
-- Specified new hooks for data fetching (useSubscriptionStats, useUpcoming, useRecommendationLanes, etc.)
-- Created implementation prompts for Claude Code
+### Session 5 (December 2, 2025) - UI Implementation & Bug Discovery
+
+**Achievements:**
+- Successfully implemented Rocket Money-inspired Home screen
+- Successfully implemented Tinder-inspired Discover screen with swipe gestures
+- Successfully implemented Netflix-inspired Watchlist screen with tabs and hero spotlight
+- Fixed all import path errors (changed from `@/` aliases to relative paths)
+- Installed missing packages (expo-linear-gradient, lucide-react-native, date-fns)
+- Fixed Reanimated v4 API compatibility (gesture handlers)
+- Fixed type mismatches between SwipeScreen and UnifiedContent types
+- Created new EAS development build with native modules
+- App successfully runs and displays new UI
+
+**Issues Discovered:**
+- `content_dna` and `interest_graph_edges` tables not created in Supabase
+- Rewatch feature blocked by FK relationship error
+- Genre filtering not working on Watchlist
+- Genre tracking passing `undefined` instead of IDs
+- Several navigation buttons not wired up
+- 15-20 second load times on Home and Tips screens
+- Some watchlist items showing as "Unknown Title"
+
+**Technical Notes:**
+- EAS Build: `85f5a245-23db-4288-bd30-39135d8861a3`
+- Build includes: react-native-svg, expo-linear-gradient, lucide-react-native
+- Metro bundler successfully bundles 4458 modules
+
+### Session 4 - UI Design Specifications
+- Analyzed Rocket Money, Tinder, and Netflix UI patterns
+- Created comprehensive design specifications for all screens
+- Defined component library and color palette
 
 ### Session 3 - Recommendation Intelligence Architecture
-- Designed 6-layer recommendation intelligence system
-- Created Content DNA schema with 40+ content dimensions
-- Defined User Taste Profile structure with exploration scoring
-- Architected Multi-Lane recommendation system (10+ lane types)
-- Built Interest Graph with global edge definitions
-- Planned LLM integration with Claude Haiku
-- Designed Contextual Intelligence for time/mood awareness
-- Created database migrations for all new tables
-- Defined implementation roadmap (6-week plan)
+- Designed 6-layer recommendation system
+- Created database schemas for Content DNA, Taste Profiles, Interest Graph
+- Defined implementation roadmap
 
-### Session 2 - Stability & Core Fixes
-- Dropped Foreign Key constraints for composite IDs
-- Decoupled `getWatchlist` from database joins
-- Updated value score to human-readable labels
-- Fixed overlapping buttons on Discover screen
-- Fixed 0-hour logging for subscriptions
-- Implemented SVD matrix factorization (blocked by FK error)
+### Session 2 - Core Stability
+- Fixed app crashes and database issues
+- Implemented value scoring
+- Decoupled watchlist architecture
 
 ### Session 1 - Foundation
-- Implemented Blindspot algorithm (5 discovery types)
-- Fixed type/media_type inconsistencies
-- Added genre affinity tracking on all interactions
-- Core app structure and authentication complete
-
----
-
-## 🔗 Related Documents
-
-- `journal.txt` - Development transcript catalog
-- `docs/SVD_RECOMMENDATIONS.md` - Matrix factorization documentation
-- `docs/CONTENT_DNA.md` - Content DNA system documentation (pending)
-- `docs/UI_DESIGN.md` - UI specifications and component library (pending)
+- Implemented blindspot algorithm
+- Added genre affinity tracking
+- Core authentication and data flow
 
 ---
 
 ## 🏆 Competitive Differentiation
-
-StreamSense occupies a unique position in the market:
 
 | Feature | Rocket Money | JustWatch | Netflix | StreamSense |
 |---------|--------------|-----------|---------|-------------|
@@ -763,25 +470,12 @@ StreamSense occupies a unique position in the market:
 | Content Discovery | ❌ | ✅ | ✅ | ✅ |
 | Cross-Service Search | ❌ | ✅ | ❌ | ✅ |
 | Personalized Recs | ❌ | ❌ | ✅ | ✅ |
-| Content DNA Matching | ❌ | ❌ | ✅ | ✅ |
 | Cost Optimization | ✅ | ❌ | ❌ | ✅ |
-| Churn Predictions | ❌ | ❌ | ❌ | ✅ |
-| Service Badges on Recs | ❌ | ✅ | ❌ | ✅ |
-| Match Percentages | ❌ | ❌ | ✅ | ✅ |
+| Service Badges | ❌ | ✅ | ❌ | ✅ |
 | Swipe Discovery | ❌ | ❌ | ❌ | ✅ |
-| Taste Signature | ❌ | ❌ | ✅ | ✅ |
 
 **No competitor effectively bridges financial tracking with entertainment intelligence.**
 
 ---
 
-## 🎨 Design Credits
-
-UI patterns inspired by:
-- **Rocket Money** - Value-first dashboard design, hero metrics, grouped information cards
-- **Tinder** - Swipe-based discovery mechanics, satisfying gesture interactions
-- **Netflix** - Multi-lane content browsing, contextual recommendation labels, progressive disclosure
-
----
-
-*Last updated: December 2, 2025*
+*Last updated: December 2, 2025 - Session 5*
