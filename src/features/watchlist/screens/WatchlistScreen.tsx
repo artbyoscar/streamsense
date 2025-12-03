@@ -84,7 +84,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
 
       try {
         const results = await getFilteredRecommendations('all', activeGenre);
-        console.log(`[Watchlist] Filtered recommendations: ${results.length} items`);
+        console.log('[Watchlist] Filtered recommendations: ' + results.length + ' items');
         setRecommendations(results);
       } catch (error) {
         console.error('[Watchlist] Error filtering recommendations:', error);
