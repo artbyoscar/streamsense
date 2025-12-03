@@ -18,6 +18,7 @@ interface ServiceInfo {
 
 interface ContentCardProps {
   item: UnifiedContent | any;
+  serviceBadge?: { name: string; color: string; initial: string } | null;
   showServiceBadge?: boolean;
   showMatchScore?: boolean;
   showProgress?: boolean;
@@ -26,6 +27,7 @@ interface ContentCardProps {
 
 export const ContentCard: React.FC<ContentCardProps> = ({
   item,
+  serviceBadge = null,
   showServiceBadge = false,
   showMatchScore = false,
   showProgress = false,
@@ -38,19 +40,8 @@ export const ContentCard: React.FC<ContentCardProps> = ({
   const progress = item.progress || 0;
   const matchScore = item.matchScore || item.match_score;
 
-  // Mock service info - in production, this would come from a service
-  const getServiceInfo = (): ServiceInfo | null => {
-    if (!showServiceBadge) return null;
-    // This is a placeholder - you'd integrate with actual service availability logic
-    return {
-      name: 'Netflix',
-      color: '#E50914',
-      initial: 'N',
-      isSubscribed: true,
-    };
-  };
-
-  const serviceInfo = getServiceInfo();
+  // Use real service badge if provided
+  const serviceInfo = showServiceBadge && serviceBadge ? serviceBadge : null;
 
   return (
     <TouchableOpacity style={styles.contentCard} onPress={onPress} activeOpacity={0.8}>
@@ -189,3 +180,6 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
 });
+
+
+

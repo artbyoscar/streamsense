@@ -13,6 +13,7 @@ interface RecommendationLaneProps {
   title: string;
   subtitle?: string;
   items: (UnifiedContent | any)[];
+  serviceBadges?: Map<number, { name: string; color: string; initial: string }>;
   showServiceBadge?: boolean;
   showMatchScore?: boolean;
   onSeeAll?: () => void;
@@ -23,6 +24,7 @@ export const RecommendationLane: React.FC<RecommendationLaneProps> = ({
   title,
   subtitle,
   items,
+  serviceBadges,
   showServiceBadge = false,
   showMatchScore = false,
   onSeeAll,
@@ -104,3 +106,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
+
+
+
