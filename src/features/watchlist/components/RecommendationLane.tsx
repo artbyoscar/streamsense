@@ -60,6 +60,7 @@ export const RecommendationLane: React.FC<RecommendationLaneProps> = ({
           <ContentCard
             key={`${item.id}-${index}`}
             item={item}
+            serviceBadge={serviceBadges?.get(item.id) || null}
             showServiceBadge={showServiceBadge}
             showMatchScore={showMatchScore}
             onPress={() => onItemPress(item)}
@@ -106,6 +107,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
 });
+
 
 
 
