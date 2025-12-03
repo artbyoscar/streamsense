@@ -73,7 +73,7 @@ export const SwipeScreen: React.FC = () => {
         limit: 50,
         mediaType: 'mixed',
         forceRefresh: false,
-        excludeSessionItems: true,
+        excludeSessionItems: false, // Don't exclude - let pagination and fatigue handle variety
       });
       setItems(recommendations);
       setCurrentIndex(0);

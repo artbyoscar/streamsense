@@ -63,6 +63,7 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
 
 export const PickedForYouSection: React.FC = () => {
   const { data: lanes, isLoading } = useRecommendationLanes();
+  const { setActiveTab, setSelectedContent, setShowContentDetail } = useCustomNavigation();
 
   // Get first lane with recommendations (Hidden Gems or Trending For You)
   const pickedForYou = lanes
@@ -79,11 +80,23 @@ export const PickedForYouSection: React.FC = () => {
     })) || [];
 
   const handleItemPress = (item: any) => {
-    // TODO: Navigate to content detail
-    console.log('Picked for you:', item.title);
+    // Navigate to content detail modal
+    const content = {
+      id: item.id,
+      title: item.title,
+      posterPath: item.posterUrl?.replace('https://image.tmdb.org/t/p/w500', '') || null,
+      media_type: item.type || 'movie',
+      type: item.type || 'movie',
+      overview: item.overview || '',
+      rating: item.rating || 0,
+      releaseDate: item.releaseDate || null,
+      genres: item.genres || [],
+      backdropPath: item.backdropPath || null,
+      voteCount: item.voteCount || 0,
+    };
+    setSelectedContent(content);
+    setShowContentDetail(true);
   };
-
-  const { setActiveTab } = useCustomNavigation();
 
   const handleViewAll = () => {
     setActiveTab('Watchlist');
@@ -256,5 +269,9 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
+
+
+
+
 
 
