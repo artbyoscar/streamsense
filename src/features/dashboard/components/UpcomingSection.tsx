@@ -17,6 +17,10 @@ interface UpcomingBillItemProps {
 }
 
 const UpcomingBillItem: React.FC<UpcomingBillItemProps> = ({ serviceName, amount, renewalDate }) => {
+  // Handle missing renewal date
+  if (!renewalDate) {
+    return null;
+  }
   const date = parseISO(renewalDate);
   const formattedDate = format(date, 'MMM d');
 
@@ -43,6 +47,10 @@ interface UpcomingReleaseItemProps {
 }
 
 const UpcomingReleaseItem: React.FC<UpcomingReleaseItemProps> = ({ title, service, releaseDate }) => {
+  // Handle missing release date
+  if (!releaseDate) {
+    return null;
+  }
   const date = parseISO(releaseDate);
   const formattedDate = format(date, 'MMM d');
 
@@ -201,3 +209,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+
+
