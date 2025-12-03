@@ -40,6 +40,15 @@ export const getRewatchSuggestions = async (
   userId: string,
   limit: number = 10
 ): Promise<RewatchSuggestion[]> => {
+  // Temporarily disabled - title column doesn't exist in watchlist_items
+  console.log('[Rewatch] Feature temporarily disabled');
+  return [];
+};
+
+const getRewatchSuggestions_DISABLED = async (
+  userId: string,
+  limit: number = 10
+): Promise<RewatchSuggestion[]> => {
   try {
     console.log('[Rewatch] Getting rewatch suggestions for user:', userId);
 
@@ -50,7 +59,7 @@ export const getRewatchSuggestions = async (
         id,
         rating,
         added_at,
-        tmdb_id, media_type, title
+        tmdb_id, media_type, poster_url
       `)
       .eq('user_id', userId)
       .eq('status', 'watched')
@@ -256,4 +265,6 @@ export const getRewatchStats = async (userId: string): Promise<{
     };
   }
 };
+
+
 
