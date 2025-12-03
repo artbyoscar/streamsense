@@ -405,22 +405,12 @@ export class RecommendationOrchestrator {
   private async seedGlobalGraphEdges(): Promise<void> {
     try {
       // Check if already seeded
-      const { count, error: checkError } = await supabase
-      .from('interest_graph_edges')
-      .select('*', { count: 'exact', head: true })
-      .eq('is_global', true);
+      const { count } = await supabase
+        .from('interest_graph_edges')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_global', true);
 
-    // Handle missing table gracefully
-    if (checkError) {
-      if (checkError.code === 'PGRST205') {
-        console.log('[Orchestrator] interest_graph_edges table not yet created - skipping');
-        return;
-      }
-      console.warn('[Orchestrator] Error checking global edges:', checkError);
-      return;
-    }
-
-    if (count && count > 0) {
+      if (count && count > 0) {
         console.log(`[Orchestrator] Global graph edges already seeded (${count} edges)`);
         return;
       }
@@ -705,5 +695,3 @@ export class RecommendationOrchestrator {
 
 // Export singleton instance
 export const recommendationOrchestrator = new RecommendationOrchestrator();
-
-

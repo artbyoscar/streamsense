@@ -50,13 +50,7 @@ export const getRewatchSuggestions = async (
         id,
         rating,
         added_at,
-        content (
-          id,
-          tmdb_id,
-          title,
-          type,
-          poster_url
-        )
+        tmdb_id, media_type, title
       `)
       .eq('user_id', userId)
       .eq('status', 'watched')
@@ -262,3 +256,4 @@ export const getRewatchStats = async (userId: string): Promise<{
     };
   }
 };
+

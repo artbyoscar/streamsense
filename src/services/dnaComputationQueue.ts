@@ -242,9 +242,13 @@ class DNAComputationQueue {
         .in('tmdb_id', tmdbIds);
 
       if (dnaError) {
-        console.error('[DNAQueue] Error fetching existing DNA:', dnaError);
+      if (dnaError.code === 'PGRST205') {
+        console.log('[DNAQueue] content_dna table not yet created - skipping DNA scan');
         return;
       }
+      console.error('[DNAQueue] Error fetching existing DNA:', dnaError);
+      return;
+    }
 
       // Create set of existing DNA for fast lookup
       const existingDNASet = new Set(
@@ -281,3 +285,5 @@ class DNAComputationQueue {
 // ============================================================================
 
 export const dnaComputationQueue = new DNAComputationQueue();
+
+
