@@ -166,6 +166,12 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   // HANDLERS
   // ============================================================================
 
+  const handleTabChange = (tab: WatchlistTab) => {
+    setActiveWatchlistTab(tab);
+    setActiveGenre('All'); // Reset genre filter when changing tabs
+    console.log('[Watchlist] Tab changed to:', tab, '- filter reset to All');
+  };
+
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -271,7 +277,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
       />
 
       {/* Tab Bar */}
-      <TabBar activeTab={activeTab} onTabChange={setActiveWatchlistTab} />
+      <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
       {/* Genre Filter Chips - Sticky (only on For You tab) */}
       {activeTab === 'forYou' && (
