@@ -3,7 +3,7 @@
  * Complete redesign with tabs, genres, hero spotlight, and recommendation lanes
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/features/auth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
@@ -73,6 +73,31 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   } = useRecommendationCache(user?.id);
 
   const [recommendations, setRecommendations] = useState<UnifiedContent[]>([]);
+
+  // ============================================================================
+  // GENRE FILTERING FOR WATCHLIST TABS
+  // ============================================================================
+
+  // Filter watchlist items by selected genre
+  const filterByGenre = useCallback((items: WatchlistItemWithContent[]) => {
+    if (activeGenre === 'All') return items;
+
+    return items.filter(item => {
+      const genres = item.content?.genres || item.genres || [];
+      if (Array.isArray(genres)) {
+        // Handle both genre names (string[]) and genre objects ({name: string}[])
+        return genres.some((g: any) => {
+          const genreName = typeof g === 'string' ? g : g.name || g;
+          return genreName.toLowerCase() === activeGenre.toLowerCase();
+        });
+      }
+      return false;
+    });
+  }, [activeGenre]);
+
+  const filteredWantToWatch = useMemo(() => filterByGenre(wantToWatch), [wantToWatch, filterByGenre]);
+  const filteredWatching = useMemo(() => filterByGenre(watching), [watching, filterByGenre]);
+  const filteredWatched = useMemo(() => filterByGenre(watched), [watched, filterByGenre]);
 
   // ============================================================================
   // FETCH RECOMMENDATIONS
@@ -279,12 +304,10 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
       {/* Tab Bar */}
       <TabBar activeTab={activeTab} onTabChange={handleTabChange} />
 
-      {/* Genre Filter Chips - Sticky (only on For You tab) */}
-      {activeTab === 'forYou' && (
-        <View style={styles.stickyFilters}>
-          <GenreFilterChips activeGenre={activeGenre} onGenreChange={setActiveGenre} />
-        </View>
-      )}
+      {/* Genre Filter Chips - Sticky (on all tabs) */}
+      <View style={styles.stickyFilters}>
+        <GenreFilterChips activeGenre={activeGenre} onGenreChange={setActiveGenre} />
+      </View>
 
       {/* Content Area */}
       <ScrollView
@@ -307,7 +330,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
 
         {activeTab === 'wantToWatch' && (
           <WatchlistContent
-            items={wantToWatch}
+            items={filteredWantToWatch}
             status="want_to_watch"
             isEmpty={isCurrentTabEmpty}
             onItemPress={handleItemPress}
@@ -317,7 +340,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
 
         {activeTab === 'watching' && (
           <WatchlistContent
-            items={watching}
+            items={filteredWatching}
             status="watching"
             isEmpty={isCurrentTabEmpty}
             onItemPress={handleItemPress}
@@ -327,7 +350,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
 
         {activeTab === 'watched' && (
           <WatchlistContent
-            items={watched}
+            items={filteredWatched}
             status="watched"
             isEmpty={isCurrentTabEmpty}
             onItemPress={handleItemPress}
