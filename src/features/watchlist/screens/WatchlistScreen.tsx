@@ -273,18 +273,21 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
       {/* Tab Bar */}
       <TabBar activeTab={activeTab} onTabChange={setActiveWatchlistTab} />
 
+      {/* Genre Filter Chips - Sticky (only on For You tab) */}
+      {activeTab === 'forYou' && (
+        <View style={styles.stickyFilters}>
+          <GenreFilterChips activeGenre={activeGenre} onGenreChange={setActiveGenre} />
+        </View>
+      )}
+
       {/* Content Area */}
       <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
-        stickyHeaderIndices={[0]} // Genre chips stick
         refreshControl={
           <RefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} tintColor="#a78bfa" />
         }
       >
-        {/* Genre Filter Chips (sticky) */}
-        <GenreFilterChips activeGenre={activeGenre} onGenreChange={setActiveGenre} />
-
         {/* Tab Content */}
         {activeTab === 'forYou' && (
           <ForYouContent
@@ -345,6 +348,12 @@ const styles = StyleSheet.create({
   centerContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  stickyFilters: {
+    backgroundColor: '#0f0f0f',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    paddingBottom: 8,
   },
   content: {
     flex: 1,
