@@ -257,11 +257,23 @@ export async function addToWatchlist(
     console.log('[Watchlist] Fetching metadata for', mediaType, tmdbId);
     const tmdbData = await getContentDetails(tmdbId, mediaType);
 
-    // Try to insert/update content table with metadata (requires new schema)
-    const { data: contentData, error: contentError } = await supabase
+    // First, check if content already exists
+    const { data: existingContent } = await supabase
       .from('content')
-      .upsert(
-        {
+      .select('id, title')
+      .eq('tmdb_id', tmdbId)
+      .eq('type', mediaType)
+      .maybeSingle();
+
+    if (existingContent) {
+      // Content already exists, use it
+      console.log('[Watchlist] ✅ Using existing content:', existingContent.title, '(UUID:', existingContent.id + ')');
+      finalContentId = existingContent.id;
+    } else {
+      // Content doesn't exist, insert it
+      const { data: contentData, error: contentError } = await supabase
+        .from('content')
+        .insert({
           tmdb_id: tmdbId,
           title: tmdbData.title,
           type: mediaType,
@@ -272,23 +284,37 @@ export async function addToWatchlist(
           release_date: tmdbData.releaseDate || null,
           vote_average: tmdbData.rating || null,
           popularity: tmdbData.popularity || null,
-        },
-        {
-          onConflict: 'tmdb_id',
-          ignoreDuplicates: false,
-        }
-      )
-      .select()
-      .single();
+        })
+        .select()
+        .single();
 
-    if (contentError) {
-      // Content table doesn't exist or upsert failed - fall back to legacy approach
-      console.warn('[Watchlist] ⚠️  Content table upsert failed, using legacy content_id:', contentError.code);
-      console.log('[Watchlist] Falling back to string content_id format');
-      finalContentId = contentId; // Use legacy string format "movie-1724"
-    } else if (contentData) {
-      console.log('[Watchlist] ✅ Stored metadata for', contentData.title, '(UUID:', contentData.id + ')');
-      finalContentId = contentData.id; // Use UUID from content table
+      if (contentError) {
+        // If error is duplicate key (race condition), retry finding the existing row
+        if (contentError.code === '23505') {
+          console.log('[Watchlist] Content was just inserted by another request, fetching it...');
+          const { data: retryContent } = await supabase
+            .from('content')
+            .select('id, title')
+            .eq('tmdb_id', tmdbId)
+            .eq('type', mediaType)
+            .single();
+
+          if (retryContent) {
+            finalContentId = retryContent.id;
+          } else {
+            // Fallback to legacy format
+            console.warn('[Watchlist] ⚠️  Could not fetch content after duplicate error');
+            finalContentId = contentId;
+          }
+        } else {
+          // Content table doesn't exist or other error - fall back to legacy approach
+          console.warn('[Watchlist] ⚠️  Content table insert failed, using legacy content_id:', contentError.code);
+          finalContentId = contentId; // Use legacy string format "movie-1724"
+        }
+      } else if (contentData) {
+        console.log('[Watchlist] ✅ Stored new metadata for', contentData.title, '(UUID:', contentData.id + ')');
+        finalContentId = contentData.id; // Use UUID from content table
+      }
     }
   } catch (e) {
     console.warn('[Watchlist] ⚠️  Metadata storage failed, using legacy content_id:', e);
