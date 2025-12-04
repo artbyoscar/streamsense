@@ -95,7 +95,7 @@ export const getRawWatchlist = async (userId: string) => {
     console.warn('[WatchlistData] ⚠️  Content table JOIN failed, falling back to simple query:', error.code);
     console.log('[WatchlistData] This is normal if migrations haven\'t been run or using legacy schema');
 
-    // Query without content table JOIN
+    // Query without content table JOIN - includes media_type, title columns if they exist
     const fallbackResult = await supabase
       .from('watchlist_items')
       .select('*')
@@ -118,7 +118,7 @@ export const getRawWatchlist = async (userId: string) => {
   const parsedItems = data.map(item => {
     // Handle both new items (with content object) and legacy items (string content_id)
     if (item.content && typeof item.content === 'object') {
-      // New items with stored metadata
+      // New items with stored metadata in content table
       return {
         ...item,
         tmdb_id: item.content.tmdb_id,
@@ -136,13 +136,26 @@ export const getRawWatchlist = async (userId: string) => {
         _hasStoredMetadata: true,
       };
     } else {
-      // Legacy items with string content_id (e.g., "movie-1724")
+      // Legacy items - check for metadata stored directly in watchlist_items table
       const { tmdbId, mediaType } = parseContentId(item.content_id);
+
+      // Prefer values from table columns over parsed values
+      const finalTmdbId = item.tmdb_id || tmdbId;
+      const finalMediaType = item.media_type || mediaType;
+      const hasDirectMetadata = !!(item.title && item.title !== 'Unknown');
+
       return {
         ...item,
-        tmdb_id: tmdbId,
-        media_type: mediaType,
-        _hasStoredMetadata: false,
+        tmdb_id: finalTmdbId,
+        media_type: finalMediaType,
+        title: item.title || undefined,
+        poster_url: item.poster_path || undefined,
+        poster_path: item.poster_path || undefined,
+        posterPath: item.poster_path || undefined,
+        overview: item.overview || undefined,
+        vote_average: item.vote_average || undefined,
+        release_date: item.release_date || undefined,
+        _hasStoredMetadata: hasDirectMetadata,
       };
     }
   });
