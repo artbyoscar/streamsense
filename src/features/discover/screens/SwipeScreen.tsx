@@ -128,35 +128,33 @@ export const SwipeScreen: React.FC = () => {
     resetCard();
   }, [currentIndex, items.length, resetCard]);
 
-  const handleLike = useCallback(async () => {
+  const handleLike = useCallback(() => {
     if (!user?.id || !currentItem) return;
 
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // OPTIMISTIC UI: Do everything immediately, save in background
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // Add to watchlist using service (stores metadata in content table)
-      const contentId = `${currentItem.type}-${currentItem.id}`;
-      const genreIds = currentItem.genres?.map(g => g.id) || [];
+    // Add to exclusions so it won't appear again
+    addToExclusions(currentItem.id);
 
-      await addToWatchlist(
-        contentId,
-        currentItem.id,
-        currentItem.type,
-        'want_to_watch',
-        genreIds
-      );
+    console.log(`[Discover] ✅ Added "${currentItem.title}" to watchlist (optimistic), removed from deck`);
 
-      // Add to exclusions so it won't appear again
-      addToExclusions(currentItem.id);
+    // Move to next card IMMEDIATELY (don't wait for save)
+    moveToNext();
 
-      console.log(`[Discover] ✅ Added "${currentItem.title}" to watchlist, removed from deck`);
-      moveToNext();
-    } catch (error) {
-      console.error('[Discover] Error adding to watchlist:', error);
-      // Still add to exclusions and move on even if error
-      addToExclusions(currentItem.id);
-      moveToNext();
-    }
+    // Save in background - fire and forget
+    const contentId = `${currentItem.type}-${currentItem.id}`;
+    const genreIds = currentItem.genres?.map(g => g.id) || [];
+
+    addToWatchlist(
+      contentId,
+      currentItem.id,
+      currentItem.type,
+      'want_to_watch',
+      genreIds
+    )
+      .then(() => console.log('[Discover] Background save complete'))
+      .catch((error) => console.error('[Discover] Background save failed:', error));
   }, [user, currentItem, moveToNext]);
 
   const handleSkip = useCallback(() => {
@@ -171,66 +169,62 @@ export const SwipeScreen: React.FC = () => {
     moveToNext();
   }, [currentItem, moveToNext]);
 
-  const handleWatching = useCallback(async () => {
+  const handleWatching = useCallback(() => {
     if (!user?.id || !currentItem) return;
 
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // OPTIMISTIC UI: Do everything immediately, save in background
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // Add to watchlist with "watching" status (stores metadata in content table)
-      const contentId = `${currentItem.type}-${currentItem.id}`;
-      const genreIds = currentItem.genres?.map(g => g.id) || [];
+    // Add to exclusions so it won't appear again
+    addToExclusions(currentItem.id);
 
-      await addToWatchlist(
-        contentId,
-        currentItem.id,
-        currentItem.type,
-        'watching',
-        genreIds
-      );
+    console.log(`[Discover] ▶️ Marked "${currentItem.title}" as watching (optimistic), removed from deck`);
 
-      // Add to exclusions so it won't appear again
-      addToExclusions(currentItem.id);
+    // Move to next card IMMEDIATELY (don't wait for save)
+    moveToNext();
 
-      console.log(`[Discover] ▶️ Marked "${currentItem.title}" as watching, removed from deck`);
-      moveToNext();
-    } catch (error) {
-      console.error('[Discover] Error marking as watching:', error);
-      // Still add to exclusions and move on even if error
-      addToExclusions(currentItem.id);
-      moveToNext();
-    }
+    // Save in background - fire and forget
+    const contentId = `${currentItem.type}-${currentItem.id}`;
+    const genreIds = currentItem.genres?.map(g => g.id) || [];
+
+    addToWatchlist(
+      contentId,
+      currentItem.id,
+      currentItem.type,
+      'watching',
+      genreIds
+    )
+      .then(() => console.log('[Discover] Background save complete'))
+      .catch((error) => console.error('[Discover] Background save failed:', error));
   }, [user, currentItem, moveToNext]);
 
-  const handleWatched = useCallback(async () => {
+  const handleWatched = useCallback(() => {
     if (!user?.id || !currentItem) return;
 
-    try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // OPTIMISTIC UI: Do everything immediately, save in background
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      // Add to watchlist with "watched" status (stores metadata in content table)
-      const contentId = `${currentItem.type}-${currentItem.id}`;
-      const genreIds = currentItem.genres?.map(g => g.id) || [];
+    // Add to exclusions so it won't appear again
+    addToExclusions(currentItem.id);
 
-      await addToWatchlist(
-        contentId,
-        currentItem.id,
-        currentItem.type,
-        'watched',
-        genreIds
-      );
+    console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched (optimistic), removed from deck`);
 
-      // Add to exclusions so it won't appear again
-      addToExclusions(currentItem.id);
+    // Move to next card IMMEDIATELY (don't wait for save)
+    moveToNext();
 
-      console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched, removed from deck`);
-      moveToNext();
-    } catch (error) {
-      console.error('[Discover] Error marking as watched:', error);
-      // Still add to exclusions and move on even if error
-      addToExclusions(currentItem.id);
-      moveToNext();
-    }
+    // Save in background - fire and forget
+    const contentId = `${currentItem.type}-${currentItem.id}`;
+    const genreIds = currentItem.genres?.map(g => g.id) || [];
+
+    addToWatchlist(
+      contentId,
+      currentItem.id,
+      currentItem.type,
+      'watched',
+      genreIds
+    )
+      .then(() => console.log('[Discover] Background save complete'))
+      .catch((error) => console.error('[Discover] Background save failed:', error));
   }, [user, currentItem, moveToNext]);
 
   const openDetails = useCallback(() => {
