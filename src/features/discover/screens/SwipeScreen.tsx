@@ -1,8 +1,6 @@
 /**
  * Discover Screen - Tinder-Inspired Swipe Interface
- * Polished card-based UI for rapid content discovery
- * 
- * Fixed for StreamSense codebase compatibility
+ * 🔧 FIXED: Proper exclusion persistence and cache management
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -29,10 +27,14 @@ import Animated, {
 import * as Haptics from 'expo-haptics';
 import { X, Heart, Play, CheckCircle2, Info, Star, Sparkles, RefreshCw } from 'lucide-react-native';
 
-// Relative imports matching your project structure
 import { useAuth } from '../../../hooks/useAuth';
 import { supabase } from '../../../config/supabase';
-import { getSmartRecommendations, addToExclusions } from '../../../services/smartRecommendations';
+import { 
+  getSmartRecommendations, 
+  addToExclusions,
+  refreshWatchlistCache, // 🆕 Import for cache refresh
+  getExclusionStats,     // 🆕 Import for debugging
+} from '../../../services/smartRecommendations';
 import { trackGenreInteraction } from '../../../services/genreAffinity';
 import { addToWatchlist } from '../../watchlist/services/watchlistService';
 import type { UnifiedContent } from '../../../types';
@@ -64,21 +66,31 @@ export const SwipeScreen: React.FC = () => {
   const currentItem = items[currentIndex];
 
   // ============================================================================
-  // DATA LOADING
+  // DATA LOADING - FIXED
   // ============================================================================
 
   const loadItems = useCallback(async () => {
-    if (!user?.id) return;
+    if (!user?.id) {
+      console.warn('[Discover] No user ID, cannot load items');
+      return;
+    }
 
     try {
       setIsLoading(true);
+      
+      // 🆕 Log exclusion stats before loading
+      const stats = getExclusionStats();
+      console.log('[Discover] Loading items. Current exclusions:', stats);
+
       const recommendations = await getSmartRecommendations({
         userId: user.id,
         limit: 50,
         mediaType: 'mixed',
         forceRefresh: false,
-        excludeSessionItems: false, // Don't exclude - let pagination and fatigue handle variety
+        excludeSessionItems: false, // Discover uses pagination, not session exclusion
       });
+      
+      console.log(`[Discover] Loaded ${recommendations.length} items`);
       setItems(recommendations);
       setCurrentIndex(0);
     } catch (error) {
@@ -105,7 +117,7 @@ export const SwipeScreen: React.FC = () => {
   }, [currentIndex, items]);
 
   // ============================================================================
-  // ACTIONS
+  // ACTIONS - FIXED WITH PROPER EXCLUSION HANDLING
   // ============================================================================
 
   const resetCard = useCallback(() => {
@@ -114,38 +126,34 @@ export const SwipeScreen: React.FC = () => {
   }, [translateX, translateY]);
 
   const moveToNext = useCallback(() => {
-    // Remove the current card from the deck
     setItems(prev => {
       const newItems = [...prev];
       newItems.splice(currentIndex, 1);
       return newItems;
     });
 
-    // Keep currentIndex at same position (which now shows next card)
-    // But if we removed the last card, reset to 0
     if (currentIndex >= items.length - 1) {
       setCurrentIndex(0);
     }
 
-    // Reset card position for next card
     resetCard();
   }, [currentIndex, items.length, resetCard]);
 
-  const handleLike = useCallback(() => {
+  // 🔧 FIXED: handleLike now properly awaits exclusion
+  const handleLike = useCallback(async () => {
     if (!user?.id || !currentItem) return;
 
-    // OPTIMISTIC UI: Do everything immediately, save in background
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Add to exclusions so it won't appear again
-    addToExclusions(currentItem.id);
+    // 🔧 FIX: Add to exclusions FIRST (now async and persisted)
+    await addToExclusions(currentItem.id);
 
-    console.log(`[Discover] ✅ Added "${currentItem.title}" to watchlist (optimistic), removed from deck`);
+    console.log(`[Discover] ✅ Added "${currentItem.title}" to watchlist, excluded from future recs`);
 
-    // Move to next card IMMEDIATELY (don't wait for save)
+    // Move to next card
     moveToNext();
 
-    // Save in background - fire and forget
+    // Save to database in background
     const contentId = `${currentItem.type}-${currentItem.id}`;
     const genreIds = currentItem.genres?.map(g => g.id) || [];
 
@@ -156,37 +164,42 @@ export const SwipeScreen: React.FC = () => {
       'want_to_watch',
       genreIds
     )
-      .then(() => console.log('[Discover] Background save complete'))
+      .then(async () => {
+        console.log('[Discover] Background save complete');
+        // 🆕 Refresh watchlist cache after successful save
+        if (user?.id) {
+          await refreshWatchlistCache(user.id);
+        }
+      })
       .catch((error) => console.error('[Discover] Background save failed:', error));
   }, [user, currentItem, moveToNext]);
 
-  const handleSkip = useCallback(() => {
+  // 🔧 FIXED: handleSkip now properly awaits exclusion
+  const handleSkip = useCallback(async () => {
     if (!currentItem) return;
 
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Add to exclusions so it won't appear again
-    addToExclusions(currentItem.id);
+    // 🔧 FIX: Add to exclusions (now async and persisted!)
+    await addToExclusions(currentItem.id);
 
-    console.log(`[Discover] ⏭️ Skipped "${currentItem.title}", removed from deck`);
+    console.log(`[Discover] ⏭️ Skipped "${currentItem.title}", excluded from future recs`);
     moveToNext();
   }, [currentItem, moveToNext]);
 
-  const handleWatching = useCallback(() => {
+  // 🔧 FIXED: handleWatching now properly awaits exclusion
+  const handleWatching = useCallback(async () => {
     if (!user?.id || !currentItem) return;
 
-    // OPTIMISTIC UI: Do everything immediately, save in background
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Add to exclusions so it won't appear again
-    addToExclusions(currentItem.id);
+    // 🔧 FIX: Add to exclusions FIRST
+    await addToExclusions(currentItem.id);
 
-    console.log(`[Discover] ▶️ Marked "${currentItem.title}" as watching (optimistic), removed from deck`);
+    console.log(`[Discover] ▶️ Marked "${currentItem.title}" as watching, excluded from future recs`);
 
-    // Move to next card IMMEDIATELY (don't wait for save)
     moveToNext();
 
-    // Save in background - fire and forget
     const contentId = `${currentItem.type}-${currentItem.id}`;
     const genreIds = currentItem.genres?.map(g => g.id) || [];
 
@@ -197,20 +210,26 @@ export const SwipeScreen: React.FC = () => {
       'watching',
       genreIds
     )
-      .then(() => console.log('[Discover] Background save complete'))
+      .then(async () => {
+        console.log('[Discover] Background save complete');
+        if (user?.id) {
+          await refreshWatchlistCache(user.id);
+        }
+      })
       .catch((error) => console.error('[Discover] Background save failed:', error));
   }, [user, currentItem, moveToNext]);
 
-  const handleWatched = useCallback(() => {
+  // 🔧 FIXED: handleWatched now properly awaits exclusion
+  const handleWatched = useCallback(async () => {
     if (!user?.id || !currentItem) return;
 
-    // OPTIMISTIC UI: Remove card immediately
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    addToExclusions(currentItem.id);
+    
+    // 🔧 FIX: Add to exclusions FIRST
+    await addToExclusions(currentItem.id);
 
-    console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched, removed from deck`);
+    console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched, excluded from future recs`);
 
-    // Save to watchlist with null rating initially
     const contentId = `${currentItem.type}-${currentItem.id}`;
     const genreIds = currentItem.genres?.map(g => g.id) || [];
 
@@ -220,28 +239,29 @@ export const SwipeScreen: React.FC = () => {
       currentItem.type,
       'watched',
       genreIds,
-      undefined // No rating yet
+      undefined
     )
-      .then(() => console.log('[Discover] Background save complete (will update rating if submitted)'))
+      .then(async () => {
+        console.log('[Discover] Background save complete');
+        if (user?.id) {
+          await refreshWatchlistCache(user.id);
+        }
+      })
       .catch((error) => console.error('[Discover] Background save failed:', error));
 
-    // Store content for rating modal and show modal
     setContentToRate(currentItem);
     setShowRatingModal(true);
 
-    // Move to next card IMMEDIATELY
     moveToNext();
   }, [user, currentItem, moveToNext]);
 
   const handleRatingSubmit = useCallback(async (rating: number) => {
     if (!user?.id || !contentToRate) return;
 
-    // Close modal
     setShowRatingModal(false);
 
     console.log(`[Discover] ⭐ Updating rating to ${rating} for "${contentToRate.title}"`);
 
-    // Update the rating in database
     try {
       const { error } = await supabase
         .from('watchlist_items')
@@ -258,12 +278,10 @@ export const SwipeScreen: React.FC = () => {
       console.error('[Discover] Error updating rating:', error);
     }
 
-    // Clear content to rate
     setContentToRate(null);
   }, [user, contentToRate]);
 
   const handleRatingSkip = useCallback(() => {
-    // Just close modal - item was already saved with null rating
     console.log(`[Discover] Skipped rating for "${contentToRate?.title}"`);
     setShowRatingModal(false);
     setContentToRate(null);
@@ -276,19 +294,28 @@ export const SwipeScreen: React.FC = () => {
     console.log('[Discover] Show details for:', currentItem.title);
   }, [currentItem]);
 
-  const handleRefresh = useCallback(() => {
+  // 🔧 FIXED: handleRefresh now refreshes cache properly
+  const handleRefresh = useCallback(async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    loadItems();
-  }, [loadItems]);
+    
+    // 🆕 Refresh watchlist cache first to ensure exclusions are up to date
+    if (user?.id) {
+      console.log('[Discover] Refreshing watchlist cache before loading new items');
+      await refreshWatchlistCache(user.id);
+    }
+    
+    // Then load new items
+    await loadItems();
+  }, [loadItems, user?.id]);
 
   // ============================================================================
-  // GESTURE HANDLING (Reanimated v4 compatible)
+  // GESTURE HANDLING
   // ============================================================================
 
   const panGesture = Gesture.Pan()
     .onUpdate((event) => {
       translateX.value = event.translationX;
-      translateY.value = event.translationY * 0.5; // Dampen vertical
+      translateY.value = event.translationY * 0.5;
     })
     .onEnd((event) => {
       const shouldDismissRight = event.translationX > SWIPE_THRESHOLD;
@@ -303,7 +330,6 @@ export const SwipeScreen: React.FC = () => {
           runOnJS(handleSkip)();
         });
       } else {
-        // Spring back to center
         translateX.value = withSpring(0, { damping: 15 });
         translateY.value = withSpring(0, { damping: 15 });
       }
@@ -396,7 +422,7 @@ export const SwipeScreen: React.FC = () => {
   }
 
   // ============================================================================
-  // END OF DECK (check if no items left after removals)
+  // END OF DECK
   // ============================================================================
 
   if (!isLoading && (items.length === 0 || !currentItem)) {
@@ -417,7 +443,6 @@ export const SwipeScreen: React.FC = () => {
     );
   }
 
-  // Guard against undefined currentItem
   if (!currentItem) {
     return (
       <View style={styles.container}>
@@ -451,7 +476,6 @@ export const SwipeScreen: React.FC = () => {
       <View style={styles.cardContainer}>
         <GestureDetector gesture={panGesture}>
           <Animated.View style={[styles.card, animatedCardStyle]}>
-            {/* Poster Image */}
             {imageUri ? (
               <Image
                 source={{ uri: imageUri }}
@@ -464,14 +488,12 @@ export const SwipeScreen: React.FC = () => {
               </View>
             )}
 
-            {/* Gradient Overlay */}
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.8)', 'rgba(0,0,0,0.95)']}
               locations={[0.5, 0.8, 1]}
               style={styles.gradient}
             />
 
-            {/* Swipe Indicators */}
             <Animated.View style={[styles.likeIndicator, likeIndicatorStyle]}>
               <Heart size={32} color="#22c55e" fill="#22c55e" />
               <Text style={styles.indicatorText}>WANT TO WATCH</Text>
@@ -482,7 +504,6 @@ export const SwipeScreen: React.FC = () => {
               <Text style={styles.indicatorText}>NOT INTERESTED</Text>
             </Animated.View>
 
-            {/* Content Info Overlay */}
             <View style={styles.cardInfo}>
               <Text style={styles.cardTitle} numberOfLines={2}>
                 {currentItem.title}
@@ -507,7 +528,6 @@ export const SwipeScreen: React.FC = () => {
               </View>
             </View>
 
-            {/* Info Button */}
             <TouchableOpacity
               style={styles.infoButton}
               onPress={openDetails}
@@ -571,7 +591,7 @@ export const SwipeScreen: React.FC = () => {
 };
 
 // ============================================================================
-// STYLES
+// STYLES (unchanged)
 // ============================================================================
 
 const styles = StyleSheet.create({
@@ -579,8 +599,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#0f0f0f',
   },
-
-  // Header Zone
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -610,8 +628,6 @@ const styles = StyleSheet.create({
     color: '#888',
     fontWeight: '500',
   },
-
-  // Card Zone
   cardContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -705,8 +721,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Swipe Indicators
   likeIndicator: {
     position: 'absolute',
     top: 20,
@@ -738,8 +752,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-
-  // Primary Actions Zone
   primaryActions: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -767,8 +779,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-
-  // Secondary Actions Zone
   secondaryActions: {
     flexDirection: 'row',
     justifyContent: 'center',
@@ -807,8 +817,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-
-  // Empty State
   emptyState: {
     flex: 1,
     justifyContent: 'center',
@@ -845,8 +853,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-
-  // Loading State
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
