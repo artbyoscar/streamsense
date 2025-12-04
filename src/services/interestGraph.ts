@@ -48,33 +48,54 @@ export interface InterestSuggestion {
 export class InterestGraphService {
   private nodes: Map<string, InterestNode> = new Map();
   private edges: InterestEdge[] = [];
+  private lastGraphBuild: Map<string, number> = new Map();
+  private isBuilding = false;
 
   /**
    * Build the interest graph for a user
+   * OPTIMIZED: Throttled to prevent redundant builds
    */
   async buildUserGraph(userId: string): Promise<void> {
-    console.log('[InterestGraph] Building interest graph for user:', userId);
-
-    // Clear existing graph
-    this.nodes.clear();
-    this.edges = [];
-
-    // Get user's watched content
-    const { data: watchedItems, error } = await supabase
-      .from('watchlist_items')
-      .select('tmdb_id, media_type, status, rating, created_at')
-      .eq('user_id', userId)
-      .in('status', ['watched', 'watching'])
-      .not('tmdb_id', 'is', null)
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (error || !watchedItems || watchedItems.length === 0) {
-      console.log('[InterestGraph] No watched items found');
+    // Skip if already building (prevent duplicate simultaneous builds)
+    if (this.isBuilding) {
+      console.log('[InterestGraph] ⏭️  Graph build already in progress, skipping');
       return;
     }
 
-    console.log(`[InterestGraph] Processing ${watchedItems.length} watched items...`);
+    // Throttle: Skip if built within last 5 minutes
+    const lastBuild = this.lastGraphBuild.get(userId) || 0;
+    const timeSinceBuild = Date.now() - lastBuild;
+    const THROTTLE_MS = 5 * 60 * 1000; // 5 minutes
+
+    if (timeSinceBuild < THROTTLE_MS) {
+      console.log(`[InterestGraph] ⏭️  Graph built ${Math.round(timeSinceBuild / 1000)}s ago, using cached version`);
+      return;
+    }
+
+    console.log('[InterestGraph] Building interest graph for user:', userId);
+    this.isBuilding = true;
+
+    try {
+      // Clear existing graph
+      this.nodes.clear();
+      this.edges = [];
+
+      // Get user's watched content
+      const { data: watchedItems, error } = await supabase
+        .from('watchlist_items')
+        .select('tmdb_id, media_type, status, rating, created_at')
+        .eq('user_id', userId)
+        .in('status', ['watched', 'watching'])
+        .not('tmdb_id', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(100);
+
+      if (error || !watchedItems || watchedItems.length === 0) {
+        console.log('[InterestGraph] No watched items found');
+        return;
+      }
+
+      console.log(`[InterestGraph] Processing ${watchedItems.length} watched items...`);
 
     // Build nodes from watched content
     const dnaMap = new Map<number, ContentDNA>();
@@ -174,15 +195,24 @@ export class InterestGraphService {
       }
     }
 
-    console.log(`[InterestGraph] Built ${this.nodes.size} interest nodes`);
+      console.log(`[InterestGraph] Built ${this.nodes.size} interest nodes`);
 
-    // Build edges based on co-occurrence
-    await this.buildEdgesFromCoOccurrence(watchedItems, dnaMap);
+      // Build edges based on co-occurrence
+      await this.buildEdgesFromCoOccurrence(watchedItems, dnaMap);
 
-    // Add known thematic relationships
-    this.addThematicEdges();
+      // Add known thematic relationships
+      this.addThematicEdges();
 
-    console.log(`[InterestGraph] Built ${this.edges.length} interest edges`);
+      console.log(`[InterestGraph] Built ${this.edges.length} interest edges`);
+
+      // Update throttle timestamp
+      this.lastGraphBuild.set(userId, Date.now());
+    } catch (error) {
+      console.error('[InterestGraph] Error building graph:', error);
+      throw error;
+    } finally {
+      this.isBuilding = false;
+    }
   }
 
   /**

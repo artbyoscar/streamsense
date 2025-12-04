@@ -32,6 +32,9 @@ export interface OrchestratorStats {
 
 export class RecommendationOrchestrator {
   private initialized = false;
+  private isUpdatingProfile = false;
+  private profileUpdateTimeout: NodeJS.Timeout | null = null;
+  private lastProfileUpdate: Map<string, number> = new Map();
   private stats: OrchestratorStats = {
     dnaComputations: 0,
     profileUpdates: 0,
@@ -112,11 +115,30 @@ export class RecommendationOrchestrator {
    * Update user's taste profile
    * Call this when user rates content or periodically in background
    *
+   * OPTIMIZED: Debounced and non-blocking to prevent UI freezes
+   *
    * @param userId - User ID
    * @returns Updated UserTasteProfile
    */
   async updateUserProfile(userId: string): Promise<UserTasteProfile | null> {
+    // Skip if already updating for this user (debounce duplicate calls)
+    if (this.isUpdatingProfile) {
+      console.log('[Orchestrator] ⏭️  Profile update already in progress, skipping duplicate call');
+      return null;
+    }
+
+    // Throttle: Skip if updated within last 30 seconds
+    const lastUpdate = this.lastProfileUpdate.get(userId) || 0;
+    const timeSinceUpdate = Date.now() - lastUpdate;
+    const THROTTLE_MS = 30000; // 30 seconds
+
+    if (timeSinceUpdate < THROTTLE_MS) {
+      console.log(`[Orchestrator] ⏭️  Profile updated ${Math.round(timeSinceUpdate / 1000)}s ago, throttling`);
+      return null;
+    }
+
     const timer = new PerformanceTimer('Orchestrator: Update profile', { userId });
+    this.isUpdatingProfile = true;
 
     try {
       console.log(`[Orchestrator] Updating taste profile for user ${userId}...`);
@@ -134,19 +156,22 @@ export class RecommendationOrchestrator {
       // Save to Supabase cache
       await this.saveProfileToCache(userId, profile);
 
-      // Update interest graph
-      try {
-        await interestGraphService.buildUserGraph(userId);
-        console.log(`[Orchestrator] ✅ Interest graph updated for user ${userId}`);
-      } catch (error) {
+      // Update interest graph IN BACKGROUND (don't await - run async)
+      // This prevents blocking the UI for 5+ seconds
+      interestGraphService.buildUserGraph(userId).then(() => {
+        console.log(`[Orchestrator] ✅ Interest graph updated for user ${userId} (background)`);
+      }).catch((error) => {
         console.warn(`[Orchestrator] ⚠️ Interest graph update failed:`, error);
-        // Don't fail the whole operation if graph update fails
-      }
+      });
 
       console.log(`[Orchestrator] ✅ Profile updated for user ${userId}`);
       console.log(`[Orchestrator]    Taste Signature: ${profile.tasteSignature}`);
       console.log(`[Orchestrator]    Confidence: ${Math.round(profile.confidence * 100)}%`);
       console.log(`[Orchestrator]    Sample Size: ${profile.sampleSize} items`);
+      console.log(`[Orchestrator]    ⚡ Interest graph building in background (non-blocking)`);
+
+      // Update throttle timestamp
+      this.lastProfileUpdate.set(userId, Date.now());
 
       timer.end();
       return profile;
@@ -155,6 +180,8 @@ export class RecommendationOrchestrator {
       console.error(`[Orchestrator] ❌ Error updating profile for user ${userId}:`, error);
       this.stats.errors++;
       return null;
+    } finally {
+      this.isUpdatingProfile = false;
     }
   }
 
