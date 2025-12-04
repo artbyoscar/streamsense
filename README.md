@@ -137,38 +137,58 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ---
 
-## 🐛 Current Bug List (Session 11)
+## 🐛 Current Bug List (Post Session 11 Testing)
 
-### Priority 0: Critical
-
-| # | Issue | Root Cause | Status |
-|---|-------|------------|--------|
-| 1 | ~~Watchlist loads 30-40 seconds~~ | ~~Sequential API calls + verbose logging~~ | ✅ **FIXED** (3s now) |
-| 2 | ~~Exclusions only loading 38 of 254~~ | ~~App code not reading updated tmdb_id values~~ | ✅ **FIXED** (254 now) |
-
-### Priority 1: UX Blockers
+### Priority 0: Critical UX
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 3 | Filter bar not accessible when scrolled | Filters inside ScrollView | 🔧 Fix Applied (verify) |
-| 4 | Filter not resetting on tab change | No state reset in tab handler | 🔧 Fix Applied (verify) |
-| 5 | Hero not updating on filter change | Missing useEffect dependency | 🔧 Needs Fix |
-| 6 | Low genre diversity (34 items) | Single fetch returns limited variety | 🔧 Needs Fix |
+| 1 | ~~Watchlist loads 30-40 seconds~~ | ~~Sequential API calls~~ | ✅ **FIXED** (713ms) |
+| 2 | ~~Exclusions only loading 38 of 254~~ | ~~App code not reading tmdb_id~~ | ✅ **FIXED** (246 now) |
+| 3 | Dashboard stats take 10 seconds | Waits for full watchlist hydration | 🔧 Needs Fix |
+| 4 | Unknown titles in Want to Watch/Watching | No metadata columns in schema | 🔧 Needs Fix |
 
-### Priority 2: Data Issues
+### Priority 1: Filter Issues
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 7 | Unknown titles in Want to Watch/Watching | Metadata columns missing from schema | 🔧 Fix Applied (verify) |
-| 8 | Duplicate key error on re-add | Upsert conflict handling incorrect | 🔧 Fix Applied (verify) |
-| 9 | 56 watchlist items missing tmdb_id | UUID content_ids cannot be parsed | ⚠️ Partial |
+| 5 | ~~Filter bar not accessible when scrolled~~ | ~~Filters inside ScrollView~~ | ✅ **FIXED** |
+| 6 | ~~Filter not resetting on tab change~~ | ~~No state reset~~ | ✅ **FIXED** |
+| 7 | Filter bar hidden on Want to Watch/Watching | Conditional render for forYou only | 🔧 Needs Fix |
+| 8 | Action→Adventure shows no change | Items overlap both genres | 🔧 Needs Fix |
+| 9 | Empty genres (Horror, Documentary) | Only fetching top 5 user genres | 🔧 Needs Fix |
 
-### Recommended Fix Order (Next Session)
+### Priority 2: Discover Issues
 
-1. ~~**Fix #2** (exclusions loading)~~ ✅ **COMPLETE** - Now loading 254 items
-2. **Fix #3** (sticky filter bar): Major UX blocker
-3. **Fix #4** (filter reset): Quick win
-4. **Fix #7** (unknown titles): Schema update + hydration
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 10 | "Want to Watch" button slow | Awaits TMDb + DB save | 🔧 Needs Fix |
+| 11 | "Watched" button slow | Awaits TMDb + DB save | 🔧 Needs Fix |
+| 12 | No rating prompt after Watched | Feature not implemented | 🔧 Needs Fix |
+
+### Priority 3: Data Issues
+
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 13 | Wrong streaming services (FuboTV) | TMDb returns all providers, not user subs | 🔧 Needs Fix |
+| 14 | Picked For You needs "Load More" | No pagination/refresh | 🔧 Needs Fix |
+| 15 | Missing "Watching" items | Data sync issue | ⚠️ Investigate |
+
+### Recommended Fix Order (Session 12)
+
+**Quick Wins (30 min)**
+1. **Prompt 5**: Discover button delays - Optimistic UI pattern
+2. **Prompt 3**: Show filter bar on all tabs - 5 min
+3. **Prompt 6**: Rating modal after Watched - 20 min
+
+**Data Fixes (45 min)**
+4. **Prompt 2**: Unknown titles - Schema + save function
+5. **Prompt 1**: Dashboard stats speed - Direct DB query
+
+**Content Quality (45 min)**
+6. **Prompt 4**: Action→Adventure filter fix
+7. **Prompt 7**: Empty genres (Horror, Documentary)
+8. **Prompt 9**: Picked For You "Load More"
 
 ---
 
@@ -334,15 +354,15 @@ All five fix prompts from Part 3 have been implemented:
 
 ---
 
-## 📈 Metrics from Testing (December 3-4, 2025)
+## 📈 Metrics from Testing (December 4, 2025)
 
 ```
-User Interactions:     310+ watchlist items
+User Interactions:     323 watchlist items
 Genre Affinities:      22 genres tracked
-Top Genres:            Drama (490), Adventure (435), Action (349)
+Top Genres:            Drama (501), Adventure (435), Action (349)
 Unexplored Genres:     Thriller, Horror, Romance
 Behavior Mode:         Discovery (exploring widely)
-Session Average:       10.7 items per session
+Session Average:       11.1 items per session
 Confidence Score:      0.72
 Taste Signature:       Emotional Family Drama Fan
 Subscriptions:         2 active
@@ -350,18 +370,39 @@ Subscriptions:         2 active
   - Crunchyroll:       $7.99/mo (Provider ID: 283)
 Monthly Total:         $27.98
 Annual Projection:     $336/year
-Provider Filtering:    ✅ Active - logs show filtering by [8, 283]
+Provider Filtering:    ✅ Active - logs show filtering by [283, 8]
 Service Badges:        ✅ Working - real provider data displayed
-Blindspots Generated:  8-9 unique recommendations
-Session Cache:         300+ items shown (pruned to 200)
-Watchlist Exclusions:  254 items with tmdb_id (82% coverage)
+Blindspots Generated:  5 unique recommendations
+Session Cache:         505 items (pruned to 200)
+Watchlist Exclusions:  246 items with tmdb_id (76% coverage)
 
-Performance (Session 11):
-  - Watchlist Load:    3 seconds (was 30-40s) ✅
-  - Genre Index Build: 2ms (background)
-  - Taste Profile:     5-6 seconds (non-blocking)
-  - TMDb Batch Fetch:  ~5 seconds for 100 items
-  - Exclusions:        254 items loaded ✅ (was 38)
+Status Distribution:
+  - Want to Watch:     75 items
+  - Watching:          8 items
+  - Watched:           240 items
+
+Performance (Post Session 11):
+  - Watchlist Load:    713-860ms ✅ (was 30-40s)
+  - RecCache Build:    3.5 seconds
+  - Genre Index:       2ms (background)
+  - Dashboard Stats:   ~10 seconds ❌ (needs fix)
+  - Exclusions:        246 items loaded ✅
+
+Genre Cache Distribution:
+  - Drama:             18 items
+  - Adventure:         11 items
+  - Action:            10 items
+  - Fantasy:           7 items
+  - Sci-Fi:            5 items
+  - Anime:             4 items
+  - Comedy:            4 items
+  - Animation:         3 items
+  - Thriller:          2 items
+  - Mystery:           2 items
+  - Crime:             1 item
+  - Romance:           1 item
+  - Horror:            0 items ❌
+  - Documentary:       0 items ❌
 ```
 
 ---
@@ -445,7 +486,7 @@ Performance (Session 11):
 
 ### Session 11 (December 3-4, 2025) - Performance Breakthrough 🚀
 
-**Major Achievement: Watchlist load time reduced from 30-40s to 3s**
+**Major Achievement: Watchlist load time reduced from 30-40s to 713ms**
 
 **Root Causes Identified:**
 1. RecCache making 6+ sequential API calls for genre fetches
@@ -462,14 +503,27 @@ Performance (Session 11):
 - Discovered 272 of 310 watchlist items had `tmdb_id: null`
 - Found `content_id` format: "tv-247767", "movie-12345"
 - Ran SQL backfill to extract tmdb_id from content_id
-- Fixed 216 additional items (38 → 254 with tmdb_id)
+- Fixed 216 additional items (38 → 246 with tmdb_id)
 
 **Fix Prompts Executed:**
-1. ✅ Exclusions loading fix - Now correctly loading 254 items
-2. 🔧 Sticky filter bar - Prompt applied
-3. 🔧 Filter reset on tab change - Prompt applied
-4. 🔧 Unknown titles hydration - Prompt applied
-5. 🔧 Duplicate key error fix - Prompt applied
+1. ✅ Exclusions loading fix - Now correctly loading 246 items
+2. ✅ Sticky filter bar - Working from anywhere on page
+3. ✅ Filter reset on tab change - Working
+4. ❌ Unknown titles hydration - Schema columns still missing
+5. 🔧 Duplicate key error fix - Needs verification
+
+**Post-Fix Testing Results:**
+- ✅ Watchlist loads in 713ms (was 30-40s)
+- ✅ Filter bar accessible from any scroll position
+- ✅ Filter resets to "All" on tab change
+- ✅ Genre changes work (All→Action, Adventure→Animation, etc.)
+- ❌ Dashboard stats slow (~10 seconds)
+- ❌ Unknown titles persist in Want to Watch/Watching
+- ❌ Filter bar hidden on Want to Watch/Watching tabs
+- ❌ Action→Adventure shows no visible change
+- ❌ Empty genres (Horror: 0, Documentary: 0)
+- ❌ Discover buttons (Want to Watch, Watched) have delays
+- ❌ No rating prompt after marking as Watched
 
 **Files Modified:**
 - `src/hooks/useRecommendationCache.ts` - Complete rewrite
