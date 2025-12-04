@@ -478,6 +478,19 @@ export const getSmartRecommendations = async (
     // Recent interactions are weighted more heavily than older ones
     const topGenresData = await getUserTopGenres(userId, 5, true); // useDecay=true
 
+    // ALWAYS INCLUDE GENRES: Ensure all filterable genres have content
+    // This prevents empty states when filtering by Romance, Horror, Anime, Documentary, etc.
+    const ALWAYS_INCLUDE_GENRES = [
+      'Animation',   // Animation (non-Japanese)
+      'Romance',     // Romance
+      'Horror',      // Horror
+      'Documentary', // Documentary
+      'Thriller',    // Thriller
+      'Crime',       // Crime
+      'Mystery',     // Mystery
+      'Fantasy',     // Fantasy
+    ];
+
     // Determine top genres based on user mode
     let topGenres: string[] = [];
     if (topGenresData && topGenresData.length > 0) {
@@ -503,7 +516,11 @@ export const getSmartRecommendations = async (
       console.log('[SmartRecs] Using default genres (no affinity data)');
     }
 
+    // Combine user's top genres with always-include genres (remove duplicates)
+    const combinedGenres = [...new Set([...topGenres, ...ALWAYS_INCLUDE_GENRES])];
+
     console.log('[SmartRecs] Selected genres for', pattern.mode, 'mode:', topGenres);
+    console.log('[SmartRecs] Total genres to fetch (including always-include):', combinedGenres.length, combinedGenres);
 
     const recommendations: any[] = [];
 
@@ -541,12 +558,12 @@ export const getSmartRecommendations = async (
       let page = getRandomPage();
 
       // Convert genre names to movie-specific genre IDs
-      // If specific genres are requested, use those instead of user's top genres
+      // If specific genres are requested, use those instead of combined genres
       const movieGenreIds = options.genres && options.genres.length > 0
         ? options.genres
-        : topGenres
+        : combinedGenres
             .flatMap(name => MOVIE_GENRE_IDS[name] || [])
-            .slice(0, 3);
+            .slice(0, 5); // Increased from 3 to 5 to include more variety
 
       // Use first 2-3 genres with OR operator for variety (not too specific, not too broad)
       const movieGenreQuery = movieGenreIds.join('|');
@@ -607,12 +624,12 @@ export const getSmartRecommendations = async (
     // Fetch TV shows
     if (mediaType === 'tv' || mediaType === 'mixed') {
       // Convert genre names to TV-specific genre IDs
-      // If specific genres are requested, use those instead of user's top genres
+      // If specific genres are requested, use those instead of combined genres
       const tvGenreIds = options.genres && options.genres.length > 0
         ? options.genres
-        : topGenres
+        : combinedGenres
             .flatMap(name => TV_GENRE_IDS[name] || [])
-            .slice(0, 2); // Use fewer genres for TV to avoid overly specific queries
+            .slice(0, 4); // Increased from 2 to 4 to include more variety
 
       let page = getRandomPage();
 
