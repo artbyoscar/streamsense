@@ -20,6 +20,7 @@ import { usePremiumStore } from '@/features/premium';
 import { COLORS, Card } from '@/components';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
+import { backfillWatchlistMetadata } from '@/utils/backfillWatchlistMetadata';
 
 // ============================================================================
 // TYPES
@@ -151,6 +152,9 @@ export const SettingsScreen: React.FC = () => {
   const [priceAlerts, setPriceAlerts] = useState(true);
   const [emailReports, setEmailReports] = useState(isPremium);
   const [selectedCurrency, setSelectedCurrency] = useState('USD');
+
+  // Developer state
+  const [isBackfilling, setIsBackfilling] = useState(false);
 
   // Get user info
   const userName = user?.user_metadata?.first_name
@@ -306,6 +310,46 @@ export const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleBackfill = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
+    Alert.alert(
+      'Backfill Watchlist Metadata',
+      'This will fetch metadata for all watchlist items that show "Unknown". This may take 30-60 seconds.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Backfill',
+          onPress: async () => {
+            setIsBackfilling(true);
+            try {
+              console.log('[Settings] Starting backfill...');
+              const result = await backfillWatchlistMetadata(user.id);
+
+              if (result.success) {
+                Alert.alert(
+                  'Backfill Complete',
+                  `Successfully updated ${result.updated} items.\n${result.failed > 0 ? `Failed: ${result.failed}` : 'No failures.'}`,
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Backfill Failed', 'An error occurred during backfill. Check console for details.');
+              }
+            } catch (error) {
+              console.error('[Settings] Backfill error:', error);
+              Alert.alert('Backfill Failed', 'An error occurred. Check console for details.');
+            } finally {
+              setIsBackfilling(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
       {/* Account Section */}
@@ -441,6 +485,18 @@ export const SettingsScreen: React.FC = () => {
               title="Test Features"
               subtitle="Test error handling, performance, and Sentry"
               onPress={() => Alert.alert('Test Features', 'Test features coming soon!')}
+            />
+
+            <View style={styles.divider} />
+
+            <SettingItem
+              icon="database-refresh"
+              title={isBackfilling ? 'Backfilling Metadata...' : 'Fix Unknown Watchlist Titles'}
+              subtitle={isBackfilling ? 'Please wait, this may take 30-60 seconds' : 'Fetch metadata for items showing "Unknown"'}
+              onPress={isBackfilling ? undefined : handleBackfill}
+              showChevron={!isBackfilling}
+              badge={isBackfilling ? 'RUNNING' : undefined}
+              badgeColor={COLORS.warning}
             />
           </Card>
         </>
