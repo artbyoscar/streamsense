@@ -3,9 +3,11 @@
  * Provides data for the Rocket Money-inspired dashboard
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useSubscriptionsData, calculateMonthlySpend } from '@/features/subscriptions';
 import { useWatchlistStore } from '@/features/watchlist';
+import { supabase } from '@/config/supabase';
+import { useAuthStore } from '@/stores/authStore';
 
 // ============================================================================
 // SUBSCRIPTION STATS
@@ -79,72 +81,82 @@ export interface WatchingStats {
 
 export function useWatchingStats(): WatchingStats {
   const { monthlySpend } = useSubscriptionsData();
-  const watchlist = useWatchlistStore((state) => state.watchlist) as any[];
+  const user = useAuthStore((state) => state.user);
+  const [stats, setStats] = useState<WatchingStats>({
+    watchedThisMonth: 0,
+    hoursWatched: 0,
+    avgCostPerHour: 0,
+  });
 
-  return useMemo(() => {
-    console.log('[DashboardStats] 📊 Calculating watching stats...');
-    console.log('[DashboardStats] Watchlist length:', watchlist?.length || 0);
-    console.log('[DashboardStats] Monthly spend:', monthlySpend);
+  useEffect(() => {
+    const fetchStats = async () => {
+      if (!user?.id) {
+        console.log('[DashboardStats] No user ID, skipping stats fetch');
+        return;
+      }
 
-    // Guard against undefined/null watchlist
-    if (!watchlist || !Array.isArray(watchlist)) {
-      console.warn('[DashboardStats] ⚠️  Watchlist is not available or not an array');
-      return {
-        watchedThisMonth: 0,
-        hoursWatched: 0,
-        avgCostPerHour: 0,
-      };
-    }
+      const startTime = Date.now();
+      console.log('[DashboardStats] 📊 Fetching stats from database...');
 
-    // Count ALL watched items (not just this month)
-    const watchedItems = watchlist.filter((item: any) => {
-      return item.status === 'watched';
-    });
+      try {
+        // Get count of ALL watched items (fast query - no hydration needed)
+        const { count: totalWatchedCount, error: countError } = await supabase
+          .from('watchlist_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'watched');
 
-    console.log('[DashboardStats] Total watched items:', watchedItems.length);
-    console.log('[DashboardStats] Sample item:', watchedItems[0]);
+        if (countError) {
+          console.error('[DashboardStats] Error fetching watched count:', countError);
+          return;
+        }
 
-    // For "this month", we need updated_at field
-    // But if it's missing, we'll just show total watched count
-    const now = new Date();
-    const thisMonth = watchlist.filter((item: any) => {
-      if (item.status !== 'watched') return false;
+        // Get count of items watched this month
+        const now = new Date();
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-      // If no updated_at, can't filter by month
-      if (!item.updated_at && !item.added_at) return false;
+        const { count: thisMonthCount, error: monthError } = await supabase
+          .from('watchlist_items')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .eq('status', 'watched')
+          .gte('updated_at', firstDayOfMonth);
 
-      const itemDate = new Date(item.updated_at || item.added_at);
-      const isThisMonth = itemDate.getMonth() === now.getMonth() &&
-                         itemDate.getFullYear() === now.getFullYear();
+        if (monthError) {
+          console.warn('[DashboardStats] ⚠️  Error fetching this month count, using total:', monthError);
+        }
 
-      return isThisMonth;
-    });
+        // Use this month count if available, otherwise use total watched
+        const watchedThisMonth = (thisMonthCount && thisMonthCount > 0) ? thisMonthCount : (totalWatchedCount || 0);
 
-    // If no items have updated_at, show total watched instead of 0
-    const watchedThisMonth = thisMonth.length > 0 ? thisMonth.length : watchedItems.length;
+        // Calculate hours watched (estimate 1.5 hours per item on average)
+        const hoursWatched = Math.round(watchedThisMonth * 1.5);
 
-    console.log('[DashboardStats] Watched this month:', thisMonth.length);
-    console.log('[DashboardStats] Using watched count:', watchedThisMonth);
+        // Cost per hour
+        const avgCostPerHour = hoursWatched > 0 ? monthlySpend / hoursWatched : 0;
 
-    // Calculate hours watched (estimate 2 hours per movie, 1 hour per TV episode)
-    // In production, this would come from actual watch time tracking
-    const hoursWatched = Math.round(watchedThisMonth * 1.5); // Average
+        const fetchTime = Date.now() - startTime;
+        console.log('[DashboardStats] ✅ Stats fetched in ' + fetchTime + 'ms:', {
+          totalWatched: totalWatchedCount,
+          watchedThisMonth,
+          hoursWatched,
+          avgCostPerHour: avgCostPerHour.toFixed(2),
+        });
 
-    // Cost per hour
-    const avgCostPerHour = hoursWatched > 0 ? monthlySpend / hoursWatched : 0;
-
-    console.log('[DashboardStats] ✅ Final stats:', {
-      watchedThisMonth,
-      hoursWatched,
-      avgCostPerHour: avgCostPerHour.toFixed(2),
-    });
-
-    return {
-      watchedThisMonth,
-      hoursWatched,
-      avgCostPerHour,
+        setStats({
+          watchedThisMonth,
+          hoursWatched,
+          avgCostPerHour,
+        });
+      } catch (error) {
+        console.error('[DashboardStats] ❌ Error fetching stats:', error);
+      }
     };
-  }, [watchlist, monthlySpend]);
+
+    fetchStats();
+  }, [user?.id, monthlySpend]);
+
+  return stats;
 }
 
 // ============================================================================
