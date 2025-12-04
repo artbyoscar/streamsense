@@ -81,7 +81,6 @@ export interface WatchingStats {
 }
 
 export function useWatchingStats(): WatchingStats {
-  const { monthlySpend } = useSubscriptionsData();
   const [userId, setUserId] = useState<string | null>(null);
 
   const [stats, setStats] = useState<WatchingStats>({
@@ -125,32 +124,36 @@ export function useWatchingStats(): WatchingStats {
       console.log('[DashboardStats] 📊 Fetching stats for user:', userId);
 
       try {
-        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
-
-        // Parallel queries for speed
-        const [totalResult, monthResult] = await Promise.all([
+        // Parallel queries for speed - fetch everything directly from database
+        const [watchedResult, subscriptionsResult] = await Promise.all([
           supabase
             .from('watchlist_items')
             .select('*', { count: 'exact', head: true })
             .eq('user_id', userId)
             .eq('status', 'watched'),
           supabase
-            .from('watchlist_items')
-            .select('*', { count: 'exact', head: true })
+            .from('subscriptions')
+            .select('price')
             .eq('user_id', userId)
-            .eq('status', 'watched')
-            .gte('updated_at', firstDayOfMonth),
+            .eq('status', 'active'),
         ]);
 
         if (!isMounted) return;
 
-        const totalWatched = totalResult.count ?? 0;
+        const totalWatched = watchedResult.count ?? 0;
         const hoursWatched = Math.round(totalWatched * 1.5);
+
+        // Calculate monthly spend directly from subscriptions
+        const monthlySpend = (subscriptionsResult.data || []).reduce(
+          (sum, sub) => sum + (sub.price || 0),
+          0
+        );
+
         const avgCostPerHour = hoursWatched > 0
           ? parseFloat((monthlySpend / hoursWatched).toFixed(2))
           : 0;
 
-        console.log('[DashboardStats] ✅ Stats:', { totalWatched, hoursWatched, avgCostPerHour });
+        console.log('[DashboardStats] ✅ Stats:', { totalWatched, hoursWatched, avgCostPerHour, monthlySpend });
 
         setStats({
           watchedThisMonth: totalWatched,
@@ -167,7 +170,7 @@ export function useWatchingStats(): WatchingStats {
     fetchStats();
 
     return () => { isMounted = false; };
-  }, [userId, monthlySpend]);
+  }, [userId]);
 
   return stats;
 }
