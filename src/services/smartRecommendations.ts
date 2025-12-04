@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
 import { getAdaptiveRecommendationParams } from './userBehavior';
 import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
-import { buildUserDNAProfile, rankByDNASimilarity } from './contentDNA';
+import { contentDNAService } from './contentDNA';
 import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
 import { getUserProviderIds } from './watchProviders';
@@ -656,8 +656,24 @@ export const getSmartRecommendations = async (
     const negativeFiltered = filterByNegativeSignals(shuffled, negativeSignals);
     const diversified = diversifyRecommendations(negativeFiltered);
 
-    const userDNA = await buildUserDNAProfile(userId);
-    const dnaRanked = userDNA ? rankByDNASimilarity(diversified, userDNA) : diversified;
+    // Build user taste profile (for future DNA-based ranking)
+    // Note: DNA ranking is computed via taste profile, not direct DNA comparison
+    let dnaRanked = diversified;
+    try {
+      const userTasteProfile = await contentDNAService.buildUserTasteProfile(userId);
+      if (userTasteProfile) {
+        console.log('[SmartRecs] User taste profile:', {
+          signature: userTasteProfile.tasteSignature,
+          topTone: Object.entries(userTasteProfile.preferredTone)
+            .sort((a, b) => b[1] - a[1])[0],
+          confidence: userTasteProfile.confidence,
+        });
+        // TODO: Implement DNA-based re-ranking using taste profile
+        // For now, diversified order is used
+      }
+    } catch (dnaError) {
+      console.warn('[SmartRecs] Taste profile build failed:', dnaError);
+    }
 
     let withCollaborative = await mixCollaborativeRecommendations(userId, dnaRanked, 0.2);
 
