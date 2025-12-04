@@ -36,6 +36,7 @@ import { getSmartRecommendations, addToExclusions } from '../../../services/smar
 import { trackGenreInteraction } from '../../../services/genreAffinity';
 import { addToWatchlist } from '../../watchlist/services/watchlistService';
 import type { UnifiedContent } from '../../../types';
+import { RatingModal } from '../components/RatingModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = Math.min(SCREEN_WIDTH * 0.85, 340);
@@ -52,6 +53,8 @@ export const SwipeScreen: React.FC = () => {
   const [items, setItems] = useState<UnifiedContent[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [contentToRate, setContentToRate] = useState<UnifiedContent | null>(null);
 
   // Animation values
   const translateX = useSharedValue(0);
@@ -201,31 +204,81 @@ export const SwipeScreen: React.FC = () => {
   const handleWatched = useCallback(() => {
     if (!user?.id || !currentItem) return;
 
+    // Show rating modal instead of immediately saving
+    setContentToRate(currentItem);
+    setShowRatingModal(true);
+  }, [user, currentItem]);
+
+  const handleRatingSubmit = useCallback((rating: number) => {
+    if (!user?.id || !contentToRate) return;
+
+    // Close modal
+    setShowRatingModal(false);
+
     // OPTIMISTIC UI: Do everything immediately, save in background
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     // Add to exclusions so it won't appear again
-    addToExclusions(currentItem.id);
+    addToExclusions(contentToRate.id);
 
-    console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched (optimistic), removed from deck`);
+    console.log(`[Discover] ✔️ Marked "${contentToRate.title}" as watched with rating ${rating} (optimistic), removed from deck`);
+
+    // Move to next card IMMEDIATELY (don't wait for save)
+    moveToNext();
+
+    // Save in background with rating - fire and forget
+    const contentId = `${contentToRate.type}-${contentToRate.id}`;
+    const genreIds = contentToRate.genres?.map(g => g.id) || [];
+
+    addToWatchlist(
+      contentId,
+      contentToRate.id,
+      contentToRate.type,
+      'watched',
+      genreIds,
+      rating // Pass the rating
+    )
+      .then(() => console.log('[Discover] Background save complete with rating:', rating))
+      .catch((error) => console.error('[Discover] Background save failed:', error));
+
+    // Clear content to rate
+    setContentToRate(null);
+  }, [user, contentToRate, moveToNext]);
+
+  const handleRatingSkip = useCallback(() => {
+    if (!user?.id || !contentToRate) return;
+
+    // Close modal
+    setShowRatingModal(false);
+
+    // OPTIMISTIC UI: Do everything immediately, save in background
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Add to exclusions so it won't appear again
+    addToExclusions(contentToRate.id);
+
+    console.log(`[Discover] ✔️ Marked "${contentToRate.title}" as watched (no rating), removed from deck`);
 
     // Move to next card IMMEDIATELY (don't wait for save)
     moveToNext();
 
     // Save in background - fire and forget
-    const contentId = `${currentItem.type}-${currentItem.id}`;
-    const genreIds = currentItem.genres?.map(g => g.id) || [];
+    const contentId = `${contentToRate.type}-${contentToRate.id}`;
+    const genreIds = contentToRate.genres?.map(g => g.id) || [];
 
     addToWatchlist(
       contentId,
-      currentItem.id,
-      currentItem.type,
+      contentToRate.id,
+      contentToRate.type,
       'watched',
       genreIds
     )
-      .then(() => console.log('[Discover] Background save complete'))
+      .then(() => console.log('[Discover] Background save complete (no rating)'))
       .catch((error) => console.error('[Discover] Background save failed:', error));
-  }, [user, currentItem, moveToNext]);
+
+    // Clear content to rate
+    setContentToRate(null);
+  }, [user, contentToRate, moveToNext]);
 
   const openDetails = useCallback(() => {
     if (!currentItem) return;
@@ -516,6 +569,14 @@ export const SwipeScreen: React.FC = () => {
           <Text style={styles.watchedText}>Watched</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Rating Modal */}
+      <RatingModal
+        visible={showRatingModal}
+        contentTitle={contentToRate?.title || ''}
+        onSubmit={handleRatingSubmit}
+        onSkip={handleRatingSkip}
+      />
     </View>
   );
 };

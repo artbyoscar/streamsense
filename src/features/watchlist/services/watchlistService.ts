@@ -211,7 +211,8 @@ export async function addToWatchlist(
   tmdbId: number,
   mediaType: 'movie' | 'tv',
   status: 'want_to_watch' | 'watching' | 'watched' = 'want_to_watch',
-  genres?: number[]
+  genres?: number[],
+  rating?: number
 ): Promise<WatchlistItem> {
   const {
     data: { user },
@@ -331,6 +332,7 @@ export async function addToWatchlist(
         user_id: user.id,
         content_id: finalContentId, // Either UUID or legacy string "movie-1724"
         status,
+        rating: rating || null, // Optional rating (0.5-5.0)
         priority: 'medium',
         notify_on_available: false,
         // Store metadata directly for instant display (no TMDb fetch needed)
