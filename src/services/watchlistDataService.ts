@@ -22,7 +22,7 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
   try {
     const { data, error } = await supabase
       .from('watchlist_items')
-      .select('content_id')
+      .select('content_id, tmdb_id')  // ✅ Select BOTH columns (tmdb_id was backfilled)
       .eq('user_id', userId);
 
     if (error) {
@@ -36,11 +36,13 @@ export const getWatchlistIds = async (userId: string): Promise<Set<string>> => {
 
     const idSet = new Set<string>();
     data.forEach(item => {
-      // Only add valid content_ids
-      if (item.content_id && item.content_id !== 'undefined' && item.content_id !== 'null') {
+      // Prioritize tmdb_id from backfill (numeric column)
+      if (item.tmdb_id) {
+        idSet.add(item.tmdb_id.toString());
+      } else if (item.content_id && item.content_id !== 'undefined' && item.content_id !== 'null') {
+        // Fallback to parsing content_id for legacy items without tmdb_id
         idSet.add(item.content_id);
 
-        // Try to parse and add tmdb_id as well
         const { tmdbId } = parseContentId(item.content_id);
         if (tmdbId) {
           idSet.add(tmdbId.toString());
