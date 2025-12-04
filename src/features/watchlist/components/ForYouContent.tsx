@@ -57,6 +57,14 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     fetchBadges();
   }, [user?.id, recommendations.length]);
 
+  // Log hero changes for debugging
+  useEffect(() => {
+    const heroItem = recommendations[0];
+    if (heroItem) {
+      console.log('[ForYou] 🎬 Hero updated:', heroItem.title || heroItem.name, '(ID:', heroItem.id || heroItem.tmdb_id, ')');
+    }
+  }, [recommendations]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -76,13 +84,6 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
 
   // Hero item is the first item
   const heroItem = recommendations[0];
-
-  // Log hero changes for debugging
-  useEffect(() => {
-    if (heroItem) {
-      console.log('[ForYou] 🎬 Hero updated:', heroItem.title || heroItem.name, '(ID:', heroItem.id || heroItem.tmdb_id, ')');
-    }
-  }, [heroItem?.id, heroItem?.tmdb_id]);
 
   // Create lanes from recommendations
   const lanes = [
