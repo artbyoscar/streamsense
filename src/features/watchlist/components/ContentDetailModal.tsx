@@ -103,15 +103,31 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
     try {
       setIsLoading(true);
       const contentType = getContentType(content);
+
+      console.log('[ContentDetail] Fetching watch providers for:', {
+        id: content.id,
+        title: content.title,
+        type: contentType,
+      });
+
       const providers = await getUSWatchProviders(content.id, contentType);
+
+      console.log('[ContentDetail] Watch providers response:', {
+        hasProviders: !!providers,
+        hasFlatrate: !!providers?.flatrate,
+        flatrateCount: providers?.flatrate?.length || 0,
+        providers: providers?.flatrate?.map(p => ({ id: p.provider_id, name: p.provider_name })) || [],
+      });
 
       if (providers?.flatrate) {
         setWatchProviders(providers.flatrate);
       } else {
+        console.warn('[ContentDetail] No streaming providers found for this content');
         setWatchProviders([]);
       }
     } catch (error) {
       console.error('[ContentDetail] Error fetching watch providers:', error);
+      setWatchProviders([]);
     } finally {
       setIsLoading(false);
     }
@@ -222,6 +238,12 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
       // Step 2: Insert or update watchlist item
       const streamingServices = watchProviders.map(p => p.provider_name);
+      console.log('[ContentDetail] Saving with streaming services:', {
+        providersCount: watchProviders.length,
+        services: streamingServices,
+        providerDetails: watchProviders.map(p => ({ id: p.provider_id, name: p.provider_name })),
+      });
+
       const previousStatus = existingWatchlistItem?.status;
       const previousRating = existingWatchlistItem?.rating || 0;
 
