@@ -48,15 +48,17 @@ class DNAComputationQueue {
         .eq('media_type', mediaType)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        // PGRST116 is "not found" error, which is expected
-        console.error('[DNAQueue] Error checking DNA existence:', error);
+      // Handle missing table (PGRST205) OR not found (PGRST116)
+      if (error) {
+        if (error.code === 'PGRST205' || error.code === 'PGRST116') {
+          return false;
+        }
+        console.warn('[DNAQueue] Error checking DNA existence:', error.message);
         return false;
       }
 
       return !!data;
     } catch (error) {
-      console.error('[DNAQueue] Error checking DNA existence:', error);
       return false;
     }
   }
