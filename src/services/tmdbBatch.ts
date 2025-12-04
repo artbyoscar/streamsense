@@ -111,8 +111,15 @@ async function fetchSingleDetails(
     cacheDetails(tmdbId, mediaType, details);
 
     return details;
-  } catch (error) {
-    console.error(`[TMDbBatch] Error fetching ${mediaType} ${tmdbId}:`, error);
+  } catch (error: any) {
+    // Gracefully handle 404 errors (content removed from TMDb)
+    if (error?.response?.status === 404) {
+      console.log(`[TMDbBatch] Content no longer exists: ${mediaType} ${tmdbId} (404 - skipping)`);
+      return null;
+    }
+
+    // Log other errors as warnings, not errors
+    console.warn(`[TMDbBatch] Failed to fetch ${mediaType} ${tmdbId}:`, error?.message || error);
     return null;
   }
 }
@@ -194,8 +201,10 @@ export async function batchFetchKeywords(
           const { data } = await tmdbApi.get(`/${item.mediaType}/${item.tmdbId}/keywords`);
           const keywords = item.mediaType === 'movie' ? data.keywords : data.results;
           results.set(key, keywords || []);
-        } catch (error) {
-          console.error(`[TMDbBatch] Error fetching keywords for ${item.mediaType} ${item.tmdbId}:`, error);
+        } catch (error: any) {
+          if (error?.response?.status !== 404) {
+            console.warn(`[TMDbBatch] Error fetching keywords for ${item.mediaType} ${item.tmdbId}:`, error?.message);
+          }
           results.set(getCacheKey(item.tmdbId, item.mediaType), []);
         }
       })
@@ -239,8 +248,10 @@ export async function batchFetchCredits(
             cast: data.cast || [],
             crew: data.crew || [],
           });
-        } catch (error) {
-          console.error(`[TMDbBatch] Error fetching credits for ${item.mediaType} ${item.tmdbId}:`, error);
+        } catch (error: any) {
+          if (error?.response?.status !== 404) {
+            console.warn(`[TMDbBatch] Error fetching credits for ${item.mediaType} ${item.tmdbId}:`, error?.message);
+          }
           results.set(getCacheKey(item.tmdbId, item.mediaType), { cast: [], crew: [] });
         }
       })
