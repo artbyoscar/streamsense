@@ -36,16 +36,15 @@ The dashboard communicates value at a glance with a hero spending card and quick
 ```
 ┌────────────────────────────────────────────┐
 │ Good evening, there                   ⚙️  │
-│ Tuesday, December 2                        │
+│ Tuesday, December 3                        │
 ├────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────┐ │
 │ │ MONTHLY STREAMING      ✓ Great Value  │ │
-│ │         $32.97                         │ │
-│ │ $2.64 more than last month            │ │
-│ │ 📅 $396/year across 3 services        │ │
+│ │         $27.98                         │ │
+│ │ 📅 $336/year across 2 services        │ │
 │ └────────────────────────────────────────┘ │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│ │ 217      │ │ 325.5h   │ │ $0.10    │    │
+│ │ 232      │ │ 348h     │ │ $0.08    │    │
 │ │ WATCHED  │ │WATCH TIME│ │COST/HOUR │    │
 │ └──────────┘ └──────────┘ └──────────┘    │
 │ Your Services                    Manage All│
@@ -57,7 +56,7 @@ The dashboard communicates value at a glance with a hero spending card and quick
 │ │    ✓ Great Value                      │ │
 │ └────────────────────────────────────────┘ │
 │ Picked For You                    View All │
-│ [Landman] [Retribution] [August Rush]      │
+│ [Queen of Tears] [Avatar] [Cabinet]        │
 └────────────────────────────────────────────┘
 ```
 
@@ -67,65 +66,13 @@ The dashboard communicates value at a glance with a hero spending card and quick
 
 Swipe-based content discovery with satisfying gestures and clear actions.
 
-```
-┌────────────────────────────────────────────┐
-│ Discover                                   │
-│ Quick swipe to build your watchlist        │
-├────────────────────────────────────────────┤
-│                                            │
-│        ┌──────────────────────┐            │
-│        │  [85%]               │            │
-│        │                      │            │
-│        │    POSTER IMAGE      │            │
-│        │    (swipeable)       │            │
-│        │                      │            │
-│        │  ░░░ GRADIENT ░░░░░  │            │
-│        │  Fargo               │            │
-│        │  ★ 8.3 • TV Series   │            │
-│        └──────────────────────┘            │
-│                                            │
-│           ( ✕ )         ( ♥ )              │
-│            Skip          Like              │
-│                                            │
-│      [▶ Watching]    [✓ Watched]           │
-└────────────────────────────────────────────┘
-```
-
 **Status:** ✅ Swipe gestures working, provider filtering active
 
 ### Watchlist/For You Screen (Netflix Inspired) ✅ Implemented
 
 Multi-lane browsing with contextual recommendation labels.
 
-```
-┌────────────────────────────────────────────┐
-│ Watchlist                            🔍    │
-│ ✨ Drama, Adventure, Action lover         │
-├────────────────────────────────────────────┤
-│ [For You][Want to Watch][Watching][Watched]│
-├────────────────────────────────────────────┤
-│ [All][Action][Adventure][Animation]...     │
-├────────────────────────────────────────────┤
-│ ┌────────────────────────────────────────┐ │
-│ │     HERO SPOTLIGHT (backdrop)          │ │
-│ │     85% Match                          │ │
-│ │     Troll                              │ │
-│ │     ★ 6.6 • 2022 • Movie              │ │
-│ │     [Netflix] Included in subscription │ │
-│ │     [+ My List]  [ℹ Details]           │ │
-│ └────────────────────────────────────────┘ │
-│                                            │
-│ Top Picks For You                See All > │
-│ Personalized based on your taste           │
-│ [poster][poster][poster][poster]...        │
-│                                            │
-│ Trending on Your Services        See All > │
-│ Popular now on your subscriptions          │
-│ [N][CR][N][CR]... (real service badges)    │
-└────────────────────────────────────────────┘
-```
-
-**Status:** ✅ Core UI implemented, service badges working
+**Status:** ✅ Core UI implemented, **load time reduced from 30s to 3s** (Session 11)
 
 ### Tips and Insights Screen ✅ Implemented
 
@@ -142,7 +89,7 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 | Layer | Purpose | Status |
 |-------|---------|--------|
 | **Content DNA** | Deep content attributes beyond genres | ⚠️ Schema ready, graceful fallback added |
-| **User Taste Profile** | Aggregated preferences from behavior | ⚠️ Schema ready, table not created |
+| **User Taste Profile** | Aggregated preferences from behavior | ✅ Working - "Emotional Family Drama Fan" |
 | **Multi-Lane Recommendations** | Parallel recommendation strategies | ✅ Implemented with provider filtering |
 | **Interest Graph** | Maps connections between interests | ⚠️ Schema ready, graceful fallback added |
 | **LLM Personalization** | Claude Haiku integration | ⏳ Planned |
@@ -159,6 +106,7 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 | Session Exclusion | ✅ Working | Prevents repeat recommendations |
 | Negative Filtering | ✅ Working | Skipped content excluded |
 | Real Service Badges | ✅ Working | Fetches actual provider data per item |
+| Taste Profile | ✅ Working | Builds signature from 100 watchlist items |
 | SVD Matrix Factorization | ⚠️ Limited | Single-user generates 0 predictions |
 | Collaborative Filtering | ⚠️ Blocked | Needs multiple users |
 
@@ -166,21 +114,21 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ## 📊 Project Status
 
-### Overall Completion: **85%**
+### Overall Completion: **88%**
 
 | Category | Status | Completion | Notes |
 |----------|--------|------------|-------|
 | Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, EAS Build |
 | Authentication | ✅ Complete | 100% | Supabase Auth |
 | Subscription Management | ✅ Complete | 100% | Manage All modal, add/edit/delete |
-| Watchlist System | ✅ Complete | 95% | 284 items tracked |
+| Watchlist System | ✅ Complete | 95% | 310+ items tracked |
 | Genre Affinity Learning | ✅ Complete | 100% | Real-time tracking |
 | Provider Filtering | ✅ Complete | 100% | Filters by subscribed services |
 | Service Badges | ✅ Complete | 100% | Real provider data displayed |
 | Basic Recommendations | ✅ Complete | 90% | Genre-based active |
 | Home Screen UI | ✅ Implemented | 90% | Navigation fixed, Manage All working |
 | Discover Screen UI | ✅ Implemented | 80% | Swipe working, provider filtering active |
-| Watchlist Screen UI | 🔧 Performance | 60% | Loading too slow (see bugs) |
+| Watchlist Screen UI | ✅ **Fixed** | 85% | **Load time: 30s → 3s** |
 | Tips and Insights | ✅ Complete | 85% | Content variety needed |
 | Error Handling | ✅ Complete | 100% | Graceful fallbacks for missing tables |
 | Content DNA System | ⚠️ Blocked | 20% | Table not created, graceful fallback active |
@@ -189,46 +137,111 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ---
 
-## 🐛 Current Bug List (Session 10)
+## 🐛 Current Bug List (Session 11)
 
-### Priority 0: Critical Performance
-
-| # | Issue | Root Cause | Status |
-|---|-------|------------|--------|
-| 1 | Watchlist loads 30-40 seconds | 284 individual TMDb API calls during hydration | 🔧 Needs Fix |
-| 2 | Filter chips not clickable when scrolled | Z-index or position issue with sticky header | 🔧 Needs Fix |
-| 3 | Adding to list does not remove card | No exclusion/refresh after action in Discover | 🔧 Needs Fix |
-
-### Priority 1: Broken Features
+### Priority 0: Critical
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 4 | Action/Adventure filters show same content | Items belong to multiple genres, showing any-match instead of primary | 🔧 Needs Fix |
-| 5 | Crime filter shows The 100 | TMDb has it as Drama/Sci-Fi/Action, not Crime | 🔧 Needs Fix |
-| 6 | Drama filter shows Young Sheldon | Young Sheldon is Comedy (ID 35), genre matching logic incorrect | 🔧 Needs Fix |
-| 7 | Unknown Titles in watchlist | TMDb hydration failing, metadata not stored on add | 🔧 Needs Fix |
+| 1 | ~~Watchlist loads 30-40 seconds~~ | ~~Sequential API calls + verbose logging~~ | ✅ **FIXED** (3s now) |
+| 2 | ~~Exclusions only loading 38 of 254~~ | ~~App code not reading updated tmdb_id values~~ | ✅ **FIXED** (254 now) |
 
-### Priority 2: Missing Features
+### Priority 1: UX Blockers
 
-| # | Issue | Status |
-|---|-------|--------|
-| 8 | Rating prompt after "Watched" swipe | ⏳ Enhancement |
-| 9 | Tips "Worth Discovering" showing stale content | ⏳ Enhancement |
-| 10 | Service filter for watchlist tabs | ⏳ Enhancement |
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 3 | Filter bar not accessible when scrolled | Filters inside ScrollView | 🔧 Fix Applied (verify) |
+| 4 | Filter not resetting on tab change | No state reset in tab handler | 🔧 Fix Applied (verify) |
+| 5 | Hero not updating on filter change | Missing useEffect dependency | 🔧 Needs Fix |
+| 6 | Low genre diversity (34 items) | Single fetch returns limited variety | 🔧 Needs Fix |
 
-### Recommended Fix Order
+### Priority 2: Data Issues
 
-1. **Fix #2** (filter chips z-index): Quick win, approximately 5 minutes
-2. **Fix #1** (watchlist speed): Store metadata on add, show immediately. Biggest impact, approximately 20 minutes
-3. **Fix #3** (card removal after action): Approximately 10 minutes
-4. **Fix #4-6** (genre filtering accuracy): Use primary genre matching, approximately 15 minutes
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 7 | Unknown titles in Want to Watch/Watching | Metadata columns missing from schema | 🔧 Fix Applied (verify) |
+| 8 | Duplicate key error on re-add | Upsert conflict handling incorrect | 🔧 Fix Applied (verify) |
+| 9 | 56 watchlist items missing tmdb_id | UUID content_ids cannot be parsed | ⚠️ Partial |
+
+### Recommended Fix Order (Next Session)
+
+1. ~~**Fix #2** (exclusions loading)~~ ✅ **COMPLETE** - Now loading 254 items
+2. **Fix #3** (sticky filter bar): Major UX blocker
+3. **Fix #4** (filter reset): Quick win
+4. **Fix #7** (unknown titles): Schema update + hydration
 
 ---
 
-## ✅ Recently Resolved (Sessions 7-10)
+## ✅ Session 11 Achievements (December 3-4, 2025)
+
+### Performance Breakthrough 🚀
+
+**Watchlist load time reduced from 30-40 seconds to 3 seconds (90% improvement)**
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Load time | 30-40s | 3s | **90%** |
+| Console logs | 700+ | ~20 | **97%** |
+| Algorithm | O(n²) | O(n) | **10x faster** |
+| UI blocking | Yes | No | Background indexing |
+
+**Root Causes Fixed:**
+1. RecCache was making 6+ sequential API calls for each genre
+2. Genre indexing had 735+ synchronous console.log operations (105 items × 7 genres)
+3. UI was blocked until all operations completed
+
+**Solution Implemented:**
+- Single fetch approach (1 API call instead of 6+)
+- Removed verbose per-item logging, kept summary logs only
+- Background genre indexing with `setTimeout`
+- UI renders immediately, index builds asynchronously
+
+### Database Backfill ✅
+
+**tmdb_id population increased from 38 to 254 items**
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Items with tmdb_id | 38 | 254 |
+| Items missing tmdb_id | 272 | 56 |
+| Exclusion coverage | 11% | 82% |
+
+**SQL Used:**
+```sql
+UPDATE watchlist_items
+SET 
+  tmdb_id = CAST(SPLIT_PART(content_id, '-', 2) AS INTEGER),
+  media_type = SPLIT_PART(content_id, '-', 1)
+WHERE user_id = 'a9a3de55-50c2-4e91-9270-7f7f3b810532'
+  AND tmdb_id IS NULL
+  AND content_id ~ '^(tv|movie)-[0-9]+$';
+```
+
+### Fix Prompts Executed ✅
+
+All five fix prompts from Part 3 have been implemented:
+1. ✅ **Exclusions Loading** - Now correctly loading 254 items
+2. 🔧 **Sticky Filter Bar** - Prompt executed
+3. 🔧 **Filter Reset on Tab Change** - Prompt executed
+4. 🔧 **Unknown Titles Hydration** - Prompt executed
+5. 🔧 **Duplicate Key Error Fix** - Prompt executed
+
+### Files Modified (Session 11)
+
+| File | Changes |
+|------|---------|
+| `src/hooks/useRecommendationCache.ts` | Single fetch, background indexing, reduced logging |
+| `src/services/smartRecommendations.ts` | Exclusion parameter explicitly enabled |
+| Database: `watchlist_items` | 216 rows updated with tmdb_id |
+
+---
+
+## ✅ Recently Resolved (Sessions 7-11)
 
 | Issue | Resolution | Session |
 |-------|------------|---------|
+| **Watchlist 30-40s load time** | Single fetch + background indexing + log reduction | **Session 11** |
+| **tmdb_id missing on 272 items** | SQL backfill from content_id parsing | **Session 11** |
 | Service badges show wrong service | Implemented real badge system with TMDb provider data | Session 10 |
 | Provider filtering not active | Verified working via logs | Session 9 |
 | Manage All modal | Created SubscriptionsManageModal with full CRUD | Session 7 |
@@ -252,11 +265,10 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 ### Subscription Tracking
 - Manual subscription entry with service name, price, billing cycle
 - Full CRUD via Manage All modal (add, edit, delete)
-- Total monthly cost calculation
+- Total monthly cost calculation ($27.98)
 - Human-readable value scores ("Great Value", "Low Usage")
-- Annual projection
+- Annual projection ($336/year)
 - Service-level value indicators
-- Crunchyroll support
 
 ### Provider Filtering
 - Recommendations filtered by subscribed services
@@ -264,34 +276,32 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 - Netflix (8), Crunchyroll (283), and all major services supported
 - Content only appears if available on user subscriptions
 
-### Service Badges System
-- SERVICE_BADGES configuration for 11 streaming services
-- PROVIDER_ID_TO_SERVICE mapping for TMDb provider IDs
-- getUserSubscriptionNames() fetches user active services
-- batchGetServiceBadges() processes items in batches with rate limiting
-- ContentCard accepts serviceBadge prop
-- RecommendationLane passes badges to cards
-- ForYouContent fetches badges for Trending lane
-
-### Watchlist Management
-- 284 items tracked across all statuses
-- Status management: Want to Watch, Watching, Watched
+### Watchlist Performance (Session 11)
+- **Load time: 3 seconds** (was 30-40 seconds)
+- 310+ items tracked across all statuses
+- Status management: Want to Watch (71), Watching (8), Watched (232)
 - 5-star rating system
-- Decoupled architecture (API hydration)
-- Content persists across sessions
+- Background genre indexing (non-blocking)
 
 ### Genre Affinity Learning
 - 22 genre affinities tracked
-- Top genres: Drama (460), Adventure (434), Action (343)
+- Top genres: Drama (490), Adventure (435), Action (349)
 - Temporal decay (recent preferences weighted higher)
-- Discovery mode detection (0.74-0.77 confidence)
-- Average 12 items per session
+- Discovery mode detection (0.72 confidence)
+- Average 10.7 items per session
+
+### Taste Profile System
+- Analyzes 100 watchlist items
+- Computes weighted DNA profiles
+- Generates taste signature: "Emotional Family Drama Fan"
+- Discovery opportunities identified
+- Profile updates in ~5 seconds (non-blocking)
 
 ### Smart Recommendations
 - Personalized picks based on genre affinity
 - Provider-aware filtering (only subscribed services)
 - Session-based exclusion (300+ items in session cache)
-- Watchlist exclusion (246 items)
+- Watchlist exclusion (254 items with tmdb_id)
 - Negative filtering for skipped content
 - Fatigue scoring active
 - Session cache pruning (limits to 200 items)
@@ -301,24 +311,8 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 - Classic gaps (acclaimed films not seen)
 - Unexplored genres (Thriller, Horror, Romance identified)
 - Service exclusives
-- 7 blindspots generated per load
-- Caching for faster subsequent loads
-
-### UI Implementation
-- Home screen with hero spending card (no red error banners)
-- Manage All modal with subscription management
-- Quick insights row (watched: 217, watch time: 325.5h, cost/hour: $0.10)
-- Services list with value indicators
-- Navigation buttons working
-- Discover screen with swipe gestures and provider filtering
-- Watchlist screen with tabs and hero spotlight
-- Tips screen with Worth Discovering carousel
-
-### Error Handling
-- Graceful fallback for missing `content_dna` table
-- Graceful fallback for missing `interest_graph_edges` table
-- Rewatch feature disabled with informative logging
-- Null-safe date parsing in UpcomingSection
+- Adjacent interests
+- 8-9 blindspots generated per load
 
 ---
 
@@ -340,47 +334,60 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ---
 
-## 📈 Metrics from Testing (December 2-3, 2025)
+## 📈 Metrics from Testing (December 3-4, 2025)
 
 ```
-User Interactions:     284 watchlist items
+User Interactions:     310+ watchlist items
 Genre Affinities:      22 genres tracked
-Top Genres:            Drama (460), Adventure (434), Action (343)
+Top Genres:            Drama (490), Adventure (435), Action (349)
 Unexplored Genres:     Thriller, Horror, Romance
 Behavior Mode:         Discovery (exploring widely)
-Session Average:       12 items per session
-Confidence Score:      0.74-0.77
-Subscriptions:         2 active (testing)
+Session Average:       10.7 items per session
+Confidence Score:      0.72
+Taste Signature:       Emotional Family Drama Fan
+Subscriptions:         2 active
   - Netflix:           $15.49/mo (Provider ID: 8)
   - Crunchyroll:       $7.99/mo (Provider ID: 283)
+Monthly Total:         $27.98
+Annual Projection:     $336/year
 Provider Filtering:    ✅ Active - logs show filtering by [8, 283]
 Service Badges:        ✅ Working - real provider data displayed
-Blindspots Generated:  7 unique recommendations
+Blindspots Generated:  8-9 unique recommendations
 Session Cache:         300+ items shown (pruned to 200)
-Global Exclusions:     248 watchlist items excluded
+Watchlist Exclusions:  254 items with tmdb_id (82% coverage)
+
+Performance (Session 11):
+  - Watchlist Load:    3 seconds (was 30-40s) ✅
+  - Genre Index Build: 2ms (background)
+  - Taste Profile:     5-6 seconds (non-blocking)
+  - TMDb Batch Fetch:  ~5 seconds for 100 items
+  - Exclusions:        254 items loaded ✅ (was 38)
 ```
 
 ---
 
 ## 🚀 Development Pipeline
 
-### Immediate Priorities (Session 11)
+### Immediate Priorities (Session 12)
 
-**Performance Fixes (P0)**
-- [ ] Store TMDb metadata in database on add (eliminate 284 API calls)
-- [ ] Fix filter chip z-index for sticky header interaction
-- [ ] Add exclusion set update and card animation after watchlist action
+**Verify Fix Prompts (P0)**
+- [ ] Test sticky filter bar functionality
+- [ ] Test filter reset on tab change
+- [ ] Test unknown titles hydration
+- [ ] Test duplicate key error resolution
+- [ ] Verify watched content no longer appears in For You
 
-**Genre Filtering Accuracy (P1)**
-- [ ] Implement primary genre matching instead of any-match
-- [ ] Verify genre ID accuracy against TMDb data
-- [ ] Add visual distinction for multi-genre items
+**UX Fixes (P1)**
+- [ ] Fix hero update on filter change (if still broken)
+- [ ] Address low genre diversity (34 items)
+- [ ] Fix empty genres (Animation, Documentary, Thriller showing 0 items)
 
 **Data Integrity (P1)**
-- [ ] Store title on add to database to prevent Unknown Titles
-- [ ] Add fallback handling for failed TMDb hydration
+- [ ] Add metadata columns to watchlist_items schema
+- [ ] Hydrate Unknown titles from TMDb
+- [ ] Fix duplicate key error on upsert
 
-### Phase 2: Feature Enhancements (Next Week)
+### Phase 2: Feature Enhancements
 
 **User Experience**
 - [ ] Rating prompt after "Watched" swipe in Discover
@@ -398,11 +405,6 @@ Global Exclusions:     248 watchlist items excluded
 - [ ] "Because You Watched" lane
 - [ ] Talent Spotlight lanes
 - [ ] Interest Cluster lanes
-
-**Worth Discovering Improvements**
-- [ ] Filter by subscribed services
-- [ ] More variety in recommendations
-- [ ] Fresh content on each load
 
 ### Phase 4: Polish and Launch
 
@@ -427,9 +429,9 @@ Global Exclusions:     248 watchlist items excluded
 | Subscription Management Modal | Week 2 | ✅ Complete |
 | Provider Filtering | Week 2 | ✅ Complete |
 | Service Badges System | Week 2-3 | ✅ Complete |
-| Performance Optimization | Week 3 | 🔧 In Progress |
-| Genre Filtering Accuracy | Week 3 | 🔧 In Progress |
-| Database Tables Creation | Week 3-4 | ⏳ Pending |
+| **Performance Optimization** | Week 3 | ✅ **Complete** (Session 11) |
+| Exclusions & Filter Fixes | Week 3-4 | 🔧 In Progress |
+| Database Tables Creation | Week 4 | ⏳ Pending |
 | Content DNA + Taste Profiles | Week 4-5 | ⏳ Pending |
 | Multi-Lane UI Integration | Week 5-6 | ⏳ Pending |
 | LLM Integration | Week 6-7 | ⏳ Pending |
@@ -441,43 +443,60 @@ Global Exclusions:     248 watchlist items excluded
 
 ## 📝 Session History
 
+### Session 11 (December 3-4, 2025) - Performance Breakthrough 🚀
+
+**Major Achievement: Watchlist load time reduced from 30-40s to 3s**
+
+**Root Causes Identified:**
+1. RecCache making 6+ sequential API calls for genre fetches
+2. 735+ synchronous console.log operations during genre indexing
+3. UI blocked until all operations completed
+
+**Solutions Implemented:**
+1. Single fetch approach (150 items in one call)
+2. Removed verbose per-item logging (700+ → 20 logs)
+3. Background genre indexing with setTimeout
+4. UI renders immediately, index builds asynchronously
+
+**Database Work:**
+- Discovered 272 of 310 watchlist items had `tmdb_id: null`
+- Found `content_id` format: "tv-247767", "movie-12345"
+- Ran SQL backfill to extract tmdb_id from content_id
+- Fixed 216 additional items (38 → 254 with tmdb_id)
+
+**Fix Prompts Executed:**
+1. ✅ Exclusions loading fix - Now correctly loading 254 items
+2. 🔧 Sticky filter bar - Prompt applied
+3. 🔧 Filter reset on tab change - Prompt applied
+4. 🔧 Unknown titles hydration - Prompt applied
+5. 🔧 Duplicate key error fix - Prompt applied
+
+**Files Modified:**
+- `src/hooks/useRecommendationCache.ts` - Complete rewrite
+- `src/services/smartRecommendations.ts` - Explicit exclusion parameter
+- Database: `watchlist_items` - 216 rows updated
+
 ### Session 10 (December 3, 2025) - Performance Analysis
 
 **Achievements:**
 - Verified service badges displaying correctly with real provider data
-- Identified critical performance bottleneck: 284 individual TMDb API calls
+- Identified critical performance bottleneck: sequential API calls
 - Documented genre filtering accuracy issues
-- Identified filter chip z-index issue preventing interaction when scrolled
 - Created consolidated bug list with priority tiers
-
-**Root Cause Analysis:**
-- Watchlist load time (30-40s) caused by `getWatchlist` calling TMDb API for each of 284 items
-- `content_id` formatted as `"movie-1724"` not matching UUID format expected by content table join
-- Genre filtering showing any-match instead of primary genre
 
 ### Session 9 (December 2, 2025) - Bug Triage
 
 **Achievements:**
 - Completed service badges implementation testing
 - Verified ForYouContent badge fetching
-- Documented genre filtering performance issues (5-10 second delays)
-- Identified Want to Watch tab showing empty despite items existing
+- Documented genre filtering performance issues
 
 ### Session 8 (December 2, 2025) - Service Badges Implementation
 
 **Achievements:**
-- Verified provider filtering working via console logs
-- Identified hardcoded Netflix badge issue in ContentCard
 - Implemented real service badge system with 11 streaming services
 - Created SERVICE_BADGES and PROVIDER_ID_TO_SERVICE mappings
 - Updated ContentCard, RecommendationLane, and ForYouContent components
-
-**Files Modified:**
-- `src/services/watchProviders.ts` - Badge configuration and fetching functions
-- `src/features/subscriptions/components/SubscriptionForm.tsx` - Added Crunchyroll
-- `src/features/watchlist/components/ContentCard.tsx` - serviceBadge prop
-- `src/features/watchlist/components/RecommendationLane.tsx` - serviceBadges prop
-- `src/features/watchlist/components/ForYouContent.tsx` - Badge fetching logic
 
 ### Session 7 (December 2, 2025) - Manage All and Provider Verification
 
@@ -485,14 +504,12 @@ Global Exclusions:     248 watchlist items excluded
 - Created SubscriptionsManageModal component with full CRUD
 - Fixed NavigationContext corruption issues
 - Added Crunchyroll to subscription options
-- Verified provider filtering works correctly
 
-### Session 6 (December 2, 2025) - Database Error Fixes and Navigation
+### Session 6 (December 2, 2025) - Database Error Fixes
 
 **Achievements:**
 - Fixed all three critical database errors with graceful error handling
 - Fixed navigation button handlers
-- Fixed UpcomingSection crash when subscriptions have null billing dates
 - App loads cleanly with no red error banners
 
 ---
@@ -510,9 +527,10 @@ Global Exclusions:     248 watchlist items excluded
 | Provider Filtering | ❌ | ✅ | ❌ | ✅ |
 | Real Service Badges | ❌ | ✅ | ❌ | ✅ |
 | Swipe Discovery | ❌ | ❌ | ❌ | ✅ |
+| Taste Profiles | ❌ | ❌ | ✅ | ✅ |
 
 **No competitor effectively bridges financial tracking with entertainment intelligence.**
 
 ---
 
-*Last updated: December 3, 2025 - Session 10*
+*Last updated: December 4, 2025 - Session 11 (Post-Fix Prompts)*
