@@ -204,81 +204,70 @@ export const SwipeScreen: React.FC = () => {
   const handleWatched = useCallback(() => {
     if (!user?.id || !currentItem) return;
 
-    // Show rating modal instead of immediately saving
-    setContentToRate(currentItem);
-    setShowRatingModal(true);
-  }, [user, currentItem]);
-
-  const handleRatingSubmit = useCallback((rating: number) => {
-    if (!user?.id || !contentToRate) return;
-
-    // Close modal
-    setShowRatingModal(false);
-
-    // OPTIMISTIC UI: Do everything immediately, save in background
+    // OPTIMISTIC UI: Remove card immediately
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    addToExclusions(currentItem.id);
 
-    // Add to exclusions so it won't appear again
-    addToExclusions(contentToRate.id);
+    console.log(`[Discover] ✔️ Marked "${currentItem.title}" as watched, removed from deck`);
 
-    console.log(`[Discover] ✔️ Marked "${contentToRate.title}" as watched with rating ${rating} (optimistic), removed from deck`);
-
-    // Move to next card IMMEDIATELY (don't wait for save)
-    moveToNext();
-
-    // Save in background with rating - fire and forget
-    const contentId = `${contentToRate.type}-${contentToRate.id}`;
-    const genreIds = contentToRate.genres?.map(g => g.id) || [];
+    // Save to watchlist with null rating initially
+    const contentId = `${currentItem.type}-${currentItem.id}`;
+    const genreIds = currentItem.genres?.map(g => g.id) || [];
 
     addToWatchlist(
       contentId,
-      contentToRate.id,
-      contentToRate.type,
+      currentItem.id,
+      currentItem.type,
       'watched',
       genreIds,
-      rating // Pass the rating
+      undefined // No rating yet
     )
-      .then(() => console.log('[Discover] Background save complete with rating:', rating))
+      .then(() => console.log('[Discover] Background save complete (will update rating if submitted)'))
       .catch((error) => console.error('[Discover] Background save failed:', error));
 
-    // Clear content to rate
-    setContentToRate(null);
-  }, [user, contentToRate, moveToNext]);
+    // Store content for rating modal and show modal
+    setContentToRate(currentItem);
+    setShowRatingModal(true);
 
-  const handleRatingSkip = useCallback(() => {
+    // Move to next card IMMEDIATELY
+    moveToNext();
+  }, [user, currentItem, moveToNext]);
+
+  const handleRatingSubmit = useCallback(async (rating: number) => {
     if (!user?.id || !contentToRate) return;
 
     // Close modal
     setShowRatingModal(false);
 
-    // OPTIMISTIC UI: Do everything immediately, save in background
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    console.log(`[Discover] ⭐ Updating rating to ${rating} for "${contentToRate.title}"`);
 
-    // Add to exclusions so it won't appear again
-    addToExclusions(contentToRate.id);
+    // Update the rating in database
+    try {
+      const { error } = await supabase
+        .from('watchlist_items')
+        .update({ rating })
+        .eq('user_id', user.id)
+        .eq('tmdb_id', contentToRate.id);
 
-    console.log(`[Discover] ✔️ Marked "${contentToRate.title}" as watched (no rating), removed from deck`);
-
-    // Move to next card IMMEDIATELY (don't wait for save)
-    moveToNext();
-
-    // Save in background - fire and forget
-    const contentId = `${contentToRate.type}-${contentToRate.id}`;
-    const genreIds = contentToRate.genres?.map(g => g.id) || [];
-
-    addToWatchlist(
-      contentId,
-      contentToRate.id,
-      contentToRate.type,
-      'watched',
-      genreIds
-    )
-      .then(() => console.log('[Discover] Background save complete (no rating)'))
-      .catch((error) => console.error('[Discover] Background save failed:', error));
+      if (error) {
+        console.error('[Discover] Error updating rating:', error);
+      } else {
+        console.log('[Discover] Rating updated successfully');
+      }
+    } catch (error) {
+      console.error('[Discover] Error updating rating:', error);
+    }
 
     // Clear content to rate
     setContentToRate(null);
-  }, [user, contentToRate, moveToNext]);
+  }, [user, contentToRate]);
+
+  const handleRatingSkip = useCallback(() => {
+    // Just close modal - item was already saved with null rating
+    console.log(`[Discover] Skipped rating for "${contentToRate?.title}"`);
+    setShowRatingModal(false);
+    setContentToRate(null);
+  }, [contentToRate]);
 
   const openDetails = useCallback(() => {
     if (!currentItem) return;
