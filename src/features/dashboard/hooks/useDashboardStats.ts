@@ -82,9 +82,7 @@ export interface WatchingStats {
 
 export function useWatchingStats(): WatchingStats {
   const { monthlySpend } = useSubscriptionsData();
-  // SELECT userId DIRECTLY - not user object then extract
-  // This ensures Zustand detects the primitive value change
-  const userId = useAuthStore((state) => state.user?.id);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [stats, setStats] = useState<WatchingStats>({
     watchedThisMonth: 0,
@@ -93,14 +91,31 @@ export function useWatchingStats(): WatchingStats {
     isLoading: true,
   });
 
-  // Debug: Log every render to see what's happening
-  console.log('[DashboardStats] Render state:', { userId, monthlySpend, isLoading: stats.isLoading });
+  // Listen to Supabase auth DIRECTLY - bypass Zustand
+  useEffect(() => {
+    // Check current session immediately
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[DashboardStats] Got session:', session?.user?.id);
+      setUserId(session?.user?.id ?? null);
+    });
 
+    // Subscribe to auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[DashboardStats] Auth state change:', event, session?.user?.id);
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Fetch stats when userId becomes available
   useEffect(() => {
     console.log('[DashboardStats] Effect triggered, userId:', userId);
 
     if (!userId) {
-      console.log('[DashboardStats] ⏳ No userId yet, waiting...');
+      console.log('[DashboardStats] ⏳ Waiting for auth...');
       return;
     }
 
@@ -110,8 +125,7 @@ export function useWatchingStats(): WatchingStats {
       console.log('[DashboardStats] 📊 Fetching stats for user:', userId);
 
       try {
-        const now = new Date();
-        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
 
         // Parallel queries for speed
         const [totalResult, monthResult] = await Promise.all([
@@ -131,18 +145,12 @@ export function useWatchingStats(): WatchingStats {
         if (!isMounted) return;
 
         const totalWatched = totalResult.count ?? 0;
-        const watchedThisMonth = monthResult.count ?? totalWatched;
         const hoursWatched = Math.round(totalWatched * 1.5);
         const avgCostPerHour = hoursWatched > 0
           ? parseFloat((monthlySpend / hoursWatched).toFixed(2))
           : 0;
 
-        console.log('[DashboardStats] ✅ Stats calculated:', {
-          totalWatched,
-          watchedThisMonth,
-          hoursWatched,
-          avgCostPerHour,
-        });
+        console.log('[DashboardStats] ✅ Stats:', { totalWatched, hoursWatched, avgCostPerHour });
 
         setStats({
           watchedThisMonth: totalWatched,
@@ -152,17 +160,13 @@ export function useWatchingStats(): WatchingStats {
         });
       } catch (error) {
         console.error('[DashboardStats] ❌ Error:', error);
-        if (isMounted) {
-          setStats(prev => ({ ...prev, isLoading: false }));
-        }
+        if (isMounted) setStats(prev => ({ ...prev, isLoading: false }));
       }
     };
 
     fetchStats();
 
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [userId, monthlySpend]);
 
   return stats;
