@@ -92,6 +92,15 @@ export function useWatchingStats(): WatchingStats {
     isLoading: true,
   });
 
+  // Debug: Log hook state changes
+  useEffect(() => {
+    console.log('[DashboardStats] Hook state:', {
+      userId,
+      hasUser: !!user,
+      monthlySpend,
+    });
+  }, [userId, user, monthlySpend]);
+
   useEffect(() => {
     const fetchStats = async () => {
       if (!userId) {
