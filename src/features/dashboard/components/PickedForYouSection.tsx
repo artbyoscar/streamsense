@@ -70,8 +70,10 @@ export const PickedForYouSection: React.FC = () => {
     ?.flatMap(lane => lane.items)
     .slice(0, 10)
     .map(item => ({
-      id: item.tmdb_id.toString(),
-      title: item.title,
+      // Preserve ALL original item data for content detail
+      ...item,
+      // Add display-specific fields
+      id: item.tmdb_id?.toString() || item.id?.toString(),
       posterUrl: item.poster_path
         ? `https://image.tmdb.org/t/p/w342${item.poster_path}`
         : undefined,
@@ -80,19 +82,27 @@ export const PickedForYouSection: React.FC = () => {
     })) || [];
 
   const handleItemPress = (item: any) => {
-    // Navigate to content detail modal
-    const content = {
+    console.log('[PickedForYou] Opening content detail with data:', {
       id: item.id,
       title: item.title,
-      posterPath: item.posterUrl?.replace('https://image.tmdb.org/t/p/w500', '') || null,
-      media_type: item.type || 'movie',
-      type: item.type || 'movie',
+      hasOverview: !!item.overview,
+      hasGenres: !!item.genres?.length,
+      hasRating: !!item.rating,
+    });
+
+    // Navigate to content detail modal with full metadata
+    const content = {
+      id: item.tmdb_id || item.id,
+      title: item.title,
+      posterPath: item.poster_path || item.posterPath || null,
+      media_type: item.media_type || item.type || 'movie',
+      type: item.media_type || item.type || 'movie',
       overview: item.overview || '',
-      rating: item.rating || 0,
-      releaseDate: item.releaseDate || null,
+      rating: item.rating || item.vote_average || 0,
+      releaseDate: item.releaseDate || item.release_date || null,
       genres: item.genres || [],
-      backdropPath: item.backdropPath || null,
-      voteCount: item.voteCount || 0,
+      backdropPath: item.backdropPath || item.backdrop_path || null,
+      voteCount: item.voteCount || item.vote_count || 0,
     };
     setSelectedContent(content);
     setShowContentDetail(true);
