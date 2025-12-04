@@ -50,43 +50,18 @@ export const useRecommendationCache = (userId: string | undefined) => {
         const startTime = Date.now();
         console.log('[RecCache] Starting diverse cache pre-fetch...');
 
-        const mainRecs = await getSmartRecommendations({
+        // ✅ SINGLE FETCH - No sequential genre fetches (was causing 25+ second delays)
+        const allRecs = await getSmartRecommendations({
           userId,
-          limit: 100,
+          limit: 150, // Increased from 100 to get more diversity in one call
           mediaType: 'mixed',
           forceRefresh: false,
         });
 
         const fetchTime = Date.now() - startTime;
-        console.log('[RecCache] Main fetch: ' + mainRecs.length + ' items in ' + fetchTime + 'ms');
+        console.log('[RecCache] ✅ Single fetch: ' + allRecs.length + ' items in ' + fetchTime + 'ms');
 
-        const underrepresentedGenres = [
-          { name: 'Horror', ids: [27] },
-          { name: 'Documentary', ids: [99] },
-          { name: 'Thriller', ids: [53] },
-          { name: 'Crime', ids: [80] },
-          { name: 'Romance', ids: [10749] },
-        ];
-
-        let additionalRecs: UnifiedContent[] = [];
-
-        for (const genre of underrepresentedGenres) {
-          try {
-            const genreRecs = await getSmartRecommendations({
-              userId,
-              limit: 15,
-              mediaType: 'mixed',
-              genres: genre.ids,
-              forceRefresh: false,
-            });
-            console.log('[RecCache] ' + genre.name + ' fetch: ' + genreRecs.length + ' items');
-            additionalRecs = [...additionalRecs, ...genreRecs];
-          } catch (err) {
-            console.log('[RecCache] Failed to fetch ' + genre.name + ':', err);
-          }
-        }
-
-        const allRecs = [...mainRecs, ...additionalRecs];
+        // Deduplicate (shouldn't have duplicates from single fetch, but just in case)
         const seenIds = new Set<number>();
         const uniqueRecs = allRecs.filter(item => {
           if (seenIds.has(item.id)) return false;
@@ -94,6 +69,9 @@ export const useRecommendationCache = (userId: string | undefined) => {
           return true;
         });
 
+        if (uniqueRecs.length < allRecs.length) {
+          console.log('[RecCache] Removed ' + (allRecs.length - uniqueRecs.length) + ' duplicates');
+        }
         console.log('[RecCache] Total unique: ' + uniqueRecs.length + ' items');
 
         const validItems = uniqueRecs.filter(item => {
