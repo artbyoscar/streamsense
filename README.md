@@ -35,8 +35,8 @@ The dashboard communicates value at a glance with a hero spending card and quick
 
 ```
 ┌────────────────────────────────────────────┐
-│ Good evening, there                   ⚙️  │
-│ Tuesday, December 3                        │
+│ Good evening, Oscar                   ⚙️  │
+│ Wednesday, December 4                      │
 ├────────────────────────────────────────────┤
 │ ┌────────────────────────────────────────┐ │
 │ │ MONTHLY STREAMING      ✓ Great Value  │ │
@@ -44,7 +44,7 @@ The dashboard communicates value at a glance with a hero spending card and quick
 │ │ 📅 $336/year across 2 services        │ │
 │ └────────────────────────────────────────┘ │
 │ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│ │ 232      │ │ 348h     │ │ $0.08    │    │
+│ │ 248      │ │ 366h     │ │ $0.08    │    │
 │ │ WATCHED  │ │WATCH TIME│ │COST/HOUR │    │
 │ └──────────┘ └──────────┘ └──────────┘    │
 │ Your Services                    Manage All│
@@ -56,23 +56,23 @@ The dashboard communicates value at a glance with a hero spending card and quick
 │ │    ✓ Great Value                      │ │
 │ └────────────────────────────────────────┘ │
 │ Picked For You                    View All │
-│ [Queen of Tears] [Avatar] [Cabinet]        │
+│ [Steins;Gate] [The OA] [Yu-Gi-Oh! 5D's]   │
 └────────────────────────────────────────────┘
 ```
 
-**Status:** ✅ Core UI working, Manage All modal functional
+**Status:** ✅ Dashboard stats now load instantly (~350ms)
 
 ### Discover Screen (Tinder Inspired) ✅ Implemented
 
 Swipe-based content discovery with satisfying gestures and clear actions.
 
-**Status:** ✅ Swipe gestures working, provider filtering active
+**Status:** ✅ Swipe gestures working, optimistic UI for instant feedback, rating modal after "Watched"
 
 ### Watchlist/For You Screen (Netflix Inspired) ✅ Implemented
 
 Multi-lane browsing with contextual recommendation labels.
 
-**Status:** ✅ Core UI implemented, **load time reduced from 30s to 3s** (Session 11)
+**Status:** ✅ Core UI implemented, **load time reduced from 30s to 600ms** (Sessions 11-12)
 
 ### Tips and Insights Screen ✅ Implemented
 
@@ -107,6 +107,8 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 | Negative Filtering | ✅ Working | Skipped content excluded |
 | Real Service Badges | ✅ Working | Fetches actual provider data per item |
 | Taste Profile | ✅ Working | Builds signature from 100 watchlist items |
+| Always-Include Genres | ✅ **NEW** | Romance, Horror, Anime, Documentary always fetched |
+| Half-Star Ratings | ✅ **NEW** | 0.5 increment rating modal after "Watched" |
 | SVD Matrix Factorization | ⚠️ Limited | Single-user generates 0 predictions |
 | Collaborative Filtering | ⚠️ Blocked | Needs multiple users |
 
@@ -114,225 +116,180 @@ StreamSense implements a **6-layer recommendation intelligence system** inspired
 
 ## 📊 Project Status
 
-### Overall Completion: **88%**
+### Overall Completion: **91%**
 
 | Category | Status | Completion | Notes |
 |----------|--------|------------|-------|
 | Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, EAS Build |
 | Authentication | ✅ Complete | 100% | Supabase Auth |
 | Subscription Management | ✅ Complete | 100% | Manage All modal, add/edit/delete |
-| Watchlist System | ✅ Complete | 95% | 310+ items tracked |
+| Watchlist System | ✅ Complete | 98% | 336+ items tracked, metadata schema added |
 | Genre Affinity Learning | ✅ Complete | 100% | Real-time tracking |
 | Provider Filtering | ✅ Complete | 100% | Filters by subscribed services |
 | Service Badges | ✅ Complete | 100% | Real provider data displayed |
-| Basic Recommendations | ✅ Complete | 90% | Genre-based active |
-| Home Screen UI | ✅ Implemented | 90% | Navigation fixed, Manage All working |
-| Discover Screen UI | ✅ Implemented | 80% | Swipe working, provider filtering active |
-| Watchlist Screen UI | ✅ **Fixed** | 85% | **Load time: 30s → 3s** |
+| Basic Recommendations | ✅ Complete | 95% | Genre-based + always-include genres |
+| Home Screen UI | ✅ Complete | 95% | Dashboard stats instant, Manage All working |
+| Discover Screen UI | ✅ Complete | 90% | Swipe working, rating modal, optimistic UI |
+| Watchlist Screen UI | ✅ **Fixed** | 90% | **Load time: 30s → 600ms** |
 | Tips and Insights | ✅ Complete | 85% | Content variety needed |
 | Error Handling | ✅ Complete | 100% | Graceful fallbacks for missing tables |
+| Metadata Backfill | 🔧 In Progress | 70% | 135 items fixed, 130 need media_type fix |
 | Content DNA System | ⚠️ Blocked | 20% | Table not created, graceful fallback active |
 | Interest Graph | ⚠️ Blocked | 20% | Table not created, graceful fallback active |
 | LLM Integration | ⏳ Planned | 0% | Claude Haiku |
 
 ---
 
-## 🐛 Current Bug List (Post Session 11 Testing)
+## 🐛 Current Bug List (Post Session 13)
 
-### Priority 0: Critical UX
-
-| # | Issue | Root Cause | Status |
-|---|-------|------------|--------|
-| 1 | ~~Watchlist loads 30-40 seconds~~ | ~~Sequential API calls~~ | ✅ **FIXED** (713ms) |
-| 2 | ~~Exclusions only loading 38 of 254~~ | ~~App code not reading tmdb_id~~ | ✅ **FIXED** (246 now) |
-| 3 | Dashboard stats take 10 seconds | Waits for full watchlist hydration | 🔧 Needs Fix |
-| 4 | Unknown titles in Want to Watch/Watching | No metadata columns in schema | 🔧 Needs Fix |
-
-### Priority 1: Filter Issues
+### Priority 0: Critical Data
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 5 | ~~Filter bar not accessible when scrolled~~ | ~~Filters inside ScrollView~~ | ✅ **FIXED** |
-| 6 | ~~Filter not resetting on tab change~~ | ~~No state reset~~ | ✅ **FIXED** |
-| 7 | Filter bar hidden on Want to Watch/Watching | Conditional render for forYou only | 🔧 Needs Fix |
-| 8 | Action→Adventure shows no change | Items overlap both genres | 🔧 Needs Fix |
-| 9 | Empty genres (Horror, Documentary) | Only fetching top 5 user genres | 🔧 Needs Fix |
+| 1 | ~~Watchlist loads 30-40 seconds~~ | ~~Sequential API calls~~ | ✅ **FIXED** (600ms) |
+| 2 | ~~Exclusions only loading 38 of 254~~ | ~~App code not reading tmdb_id~~ | ✅ **FIXED** (259 now) |
+| 3 | ~~Dashboard stats take 10 seconds~~ | ~~Zustand subscription issue~~ | ✅ **FIXED** (350ms) |
+| 4 | Unknown titles in Watching tab | Missing `media_type` column | 🔧 SQL Fix Ready |
+| 5 | 130 items failed backfill | Missing `media_type` in watchlist_items | 🔧 SQL Fix Ready |
+
+### Priority 1: Filter & UI Issues
+
+| # | Issue | Root Cause | Status |
+|---|-------|------------|--------|
+| 6 | ~~Filter bar not accessible when scrolled~~ | ~~Filters inside ScrollView~~ | ✅ **FIXED** |
+| 7 | ~~Filter not resetting on tab change~~ | ~~No state reset~~ | ✅ **FIXED** |
+| 8 | ~~Empty genres (Horror, Documentary)~~ | ~~Only fetching top 5 user genres~~ | ✅ **FIXED** |
+| 9 | Genre filters on Watchlist recs | Filter not triggering re-render | 🔧 Fix Ready |
+| 10 | No fade animation on Watchlist add | Missing removedIds state | 🔧 Fix Ready |
+| 11 | React Fragment warning | `index` prop instead of `key` | ⚠️ Non-blocking |
 
 ### Priority 2: Discover Issues
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 10 | "Want to Watch" button slow | Awaits TMDb + DB save | 🔧 Needs Fix |
-| 11 | "Watched" button slow | Awaits TMDb + DB save | 🔧 Needs Fix |
-| 12 | No rating prompt after Watched | Feature not implemented | 🔧 Needs Fix |
+| 12 | ~~"Want to Watch" button slow~~ | ~~Awaits TMDb + DB save~~ | ✅ **FIXED** (optimistic UI) |
+| 13 | ~~"Watched" button slow~~ | ~~Awaits TMDb + DB save~~ | ✅ **FIXED** (optimistic UI) |
+| 14 | ~~No rating prompt after Watched~~ | ~~Feature not implemented~~ | ✅ **FIXED** (half-star modal) |
 
-### Priority 3: Data Issues
+### Priority 3: Data Quality
 
 | # | Issue | Root Cause | Status |
 |---|-------|------------|--------|
-| 13 | Wrong streaming services (FuboTV) | TMDb returns all providers, not user subs | 🔧 Needs Fix |
-| 14 | Picked For You needs "Load More" | No pagination/refresh | 🔧 Needs Fix |
-| 15 | Missing "Watching" items | Data sync issue | ⚠️ Investigate |
-
-### Recommended Fix Order (Session 12)
-
-**Quick Wins (30 min)**
-1. **Prompt 5**: Discover button delays - Optimistic UI pattern
-2. **Prompt 3**: Show filter bar on all tabs - 5 min
-3. **Prompt 6**: Rating modal after Watched - 20 min
-
-**Data Fixes (45 min)**
-4. **Prompt 2**: Unknown titles - Schema + save function
-5. **Prompt 1**: Dashboard stats speed - Direct DB query
-
-**Content Quality (45 min)**
-6. **Prompt 4**: Action→Adventure filter fix
-7. **Prompt 7**: Empty genres (Horror, Documentary)
-8. **Prompt 9**: Picked For You "Load More"
+| 15 | Wrong streaming services (FuboTV) | TMDb returns all providers, not user subs | 🔧 Needs Fix |
+| 16 | Picked For You needs "Load More" | No pagination/refresh | 🔧 Needs Fix |
 
 ---
 
-## ✅ Session 11 Achievements (December 3-4, 2025)
+## ✅ Session 12-13 Achievements (December 4, 2025)
 
-### Performance Breakthrough 🚀
+### Performance Fixes 🚀
 
-**Watchlist load time reduced from 30-40 seconds to 3 seconds (90% improvement)**
+**Dashboard Stats: 10+ seconds → 350ms**
+- Bypassed Zustand store subscription (was not triggering re-renders)
+- Direct Supabase auth listener for immediate userId
+- Parallel data fetching instead of sequential
 
-| Metric | Before | After | Improvement |
-|--------|--------|-------|-------------|
-| Load time | 30-40s | 3s | **90%** |
-| Console logs | 700+ | ~20 | **97%** |
-| Algorithm | O(n²) | O(n) | **10x faster** |
-| UI blocking | Yes | No | Background indexing |
+**Discover Buttons: 2-3 seconds → Instant**
+- Implemented optimistic UI pattern
+- Card disappears immediately, save happens in background
+- No perceived delay for user
 
-**Root Causes Fixed:**
-1. RecCache was making 6+ sequential API calls for each genre
-2. Genre indexing had 735+ synchronous console.log operations (105 items × 7 genres)
-3. UI was blocked until all operations completed
+### New Features ✨
 
-**Solution Implemented:**
-- Single fetch approach (1 API call instead of 6+)
-- Removed verbose per-item logging, kept summary logs only
-- Background genre indexing with `setTimeout`
-- UI renders immediately, index builds asynchronously
+**Half-Star Rating Modal**
+- Appears after marking content as "Watched" in Discover
+- Supports 0.5 increments (tap left half of star = half star)
+- Submit or Skip options
+- Rating saved to database
 
-### Database Backfill ✅
+**Always-Include Genres**
+- Romance, Horror, Anime, Documentary, Thriller, Crime, Mystery, Fantasy
+- No longer dependent on user's top 5 genres
+- Genre filters now show content even for unexplored genres
 
-**tmdb_id population increased from 38 to 254 items**
+### Database Schema Updates
 
-| Metric | Before | After |
-|--------|--------|-------|
-| Items with tmdb_id | 38 | 254 |
-| Items missing tmdb_id | 272 | 56 |
-| Exclusion coverage | 11% | 82% |
-
-**SQL Used:**
+**New columns in `watchlist_items`:**
 ```sql
-UPDATE watchlist_items
-SET 
-  tmdb_id = CAST(SPLIT_PART(content_id, '-', 2) AS INTEGER),
-  media_type = SPLIT_PART(content_id, '-', 1)
-WHERE user_id = 'a9a3de55-50c2-4e91-9270-7f7f3b810532'
-  AND tmdb_id IS NULL
-  AND content_id ~ '^(tv|movie)-[0-9]+$';
+title TEXT,
+poster_path TEXT,
+overview TEXT,
+vote_average REAL,
+release_date TEXT,
+backdrop_path TEXT,
+genre_ids INTEGER[]
 ```
 
-### Fix Prompts Executed ✅
+**Metadata Backfill Results:**
+- 135 items successfully updated with titles
+- 130 items failed (missing `media_type` - SQL fix ready)
+- New items now save metadata automatically
 
-All five fix prompts from Part 3 have been implemented:
-1. ✅ **Exclusions Loading** - Now correctly loading 254 items
-2. 🔧 **Sticky Filter Bar** - Prompt executed
-3. 🔧 **Filter Reset on Tab Change** - Prompt executed
-4. 🔧 **Unknown Titles Hydration** - Prompt executed
-5. 🔧 **Duplicate Key Error Fix** - Prompt executed
-
-### Files Modified (Session 11)
+### Files Modified (Sessions 12-13)
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useRecommendationCache.ts` | Single fetch, background indexing, reduced logging |
-| `src/services/smartRecommendations.ts` | Exclusion parameter explicitly enabled |
-| Database: `watchlist_items` | 216 rows updated with tmdb_id |
+| `src/features/home/hooks/useDashboardStats.ts` | Direct Supabase auth, parallel fetching |
+| `src/features/discover/components/RatingModal.tsx` | New half-star rating component |
+| `src/features/discover/screens/SwipeScreen.tsx` | Optimistic UI, rating modal integration |
+| `src/services/smartRecommendations.ts` | ALWAYS_INCLUDE_GENRES array |
+| `src/services/watchlistService.ts` | Metadata columns in save function |
+| `src/utils/backfillWatchlistMetadata.ts` | Backfill utility for legacy items |
+| Database: `watchlist_items` | 7 new metadata columns |
 
 ---
 
-## ✅ Recently Resolved (Sessions 7-11)
+## 📈 Metrics from Testing (December 4, 2025)
 
-| Issue | Resolution | Session |
-|-------|------------|---------|
-| **Watchlist 30-40s load time** | Single fetch + background indexing + log reduction | **Session 11** |
-| **tmdb_id missing on 272 items** | SQL backfill from content_id parsing | **Session 11** |
-| Service badges show wrong service | Implemented real badge system with TMDb provider data | Session 10 |
-| Provider filtering not active | Verified working via logs | Session 9 |
-| Manage All modal | Created SubscriptionsManageModal with full CRUD | Session 7 |
-| Missing Crunchyroll option | Added to STREAMING_SERVICES array | Session 7 |
-| `content_dna` table error (PGRST205) | Added graceful error handling | Session 6 |
-| `interest_graph_edges` table error (PGRST205) | Added graceful error handling | Session 6 |
-| Rewatch FK relationship error (PGRST200) | Feature temporarily disabled | Session 6 |
-| "Add Subscription" button not working | Wired to SubscriptionForm modal | Session 6 |
-| UpcomingSection crash (null date) | Added null checks for parseISO | Session 6 |
-| Red error banners on startup | All three database errors handled | Session 6 |
+```
+User Interactions:     336 watchlist items
+Genre Affinities:      22 genres tracked
+Top Genres:            Drama (501), Adventure (435), Action (349)
+Unexplored Genres:     Thriller, Horror, Romance
+Behavior Mode:         Discovery (exploring widely)
+Session Average:       10.8 items per session
+Confidence Score:      0.74
+Taste Signature:       Emotional Family Drama Fan
+Subscriptions:         2 active
+  - Netflix:           $15.49/mo (Provider ID: 8)
+  - Crunchyroll:       $7.99/mo (Provider ID: 283)
+Monthly Total:         $27.98
+Annual Projection:     $336/year
+Provider Filtering:    ✅ Active - logs show filtering by [283, 8]
+Service Badges:        ✅ Working - real provider data displayed
+Blindspots Generated:  5 unique recommendations
+Session Cache:         324 items
+Watchlist Exclusions:  259 items with tmdb_id (77% coverage)
 
----
+Status Distribution:
+  - Want to Watch:     80 items
+  - Watching:          8 items
+  - Watched:           248 items
 
-## ✅ What Works
+Performance (Post Session 13):
+  - Watchlist Load:    600-700ms ✅ (was 30-40s)
+  - Dashboard Stats:   ~350ms ✅ (was 10+ seconds)
+  - Discover Actions:  <100ms ✅ (was 2-3 seconds)
+  - RecCache Build:    3.5 seconds
+  - Genre Index:       2ms (background)
+  - Exclusions:        259 items loaded ✅
 
-### Authentication and User Management
-- Email/password authentication via Supabase
-- Secure session management with Row Level Security
-- User profile persistence
-
-### Subscription Tracking
-- Manual subscription entry with service name, price, billing cycle
-- Full CRUD via Manage All modal (add, edit, delete)
-- Total monthly cost calculation ($27.98)
-- Human-readable value scores ("Great Value", "Low Usage")
-- Annual projection ($336/year)
-- Service-level value indicators
-
-### Provider Filtering
-- Recommendations filtered by subscribed services
-- Verified via logs: `[SmartRecs] Filtering by user providers: [8, 283]`
-- Netflix (8), Crunchyroll (283), and all major services supported
-- Content only appears if available on user subscriptions
-
-### Watchlist Performance (Session 11)
-- **Load time: 3 seconds** (was 30-40 seconds)
-- 310+ items tracked across all statuses
-- Status management: Want to Watch (71), Watching (8), Watched (232)
-- 5-star rating system
-- Background genre indexing (non-blocking)
-
-### Genre Affinity Learning
-- 22 genre affinities tracked
-- Top genres: Drama (490), Adventure (435), Action (349)
-- Temporal decay (recent preferences weighted higher)
-- Discovery mode detection (0.72 confidence)
-- Average 10.7 items per session
-
-### Taste Profile System
-- Analyzes 100 watchlist items
-- Computes weighted DNA profiles
-- Generates taste signature: "Emotional Family Drama Fan"
-- Discovery opportunities identified
-- Profile updates in ~5 seconds (non-blocking)
-
-### Smart Recommendations
-- Personalized picks based on genre affinity
-- Provider-aware filtering (only subscribed services)
-- Session-based exclusion (300+ items in session cache)
-- Watchlist exclusion (254 items with tmdb_id)
-- Negative filtering for skipped content
-- Fatigue scoring active
-- Session cache pruning (limits to 200 items)
-
-### Worth Discovering (Blindspots)
-- Hidden gems (high rating, low vote count)
-- Classic gaps (acclaimed films not seen)
-- Unexplored genres (Thriller, Horror, Romance identified)
-- Service exclusives
-- Adjacent interests
-- 8-9 blindspots generated per load
+Genre Cache Distribution:
+  - Drama:             17 items
+  - Adventure:         14 items
+  - Action:            13 items
+  - Fantasy:           10 items
+  - Anime:             11 items
+  - Sci-Fi:            8 items
+  - Comedy:            6 items
+  - Animation:         3 items
+  - Thriller:          3 items
+  - Horror:            3 items ✅ (was 0)
+  - Mystery:           2 items
+  - Crime:             2 items
+  - Romance:           2 items ✅ (was 0)
+  - Documentary:       0 items (needs content in TMDb for user's services)
+```
 
 ---
 
@@ -354,86 +311,33 @@ All five fix prompts from Part 3 have been implemented:
 
 ---
 
-## 📈 Metrics from Testing (December 4, 2025)
+## 🚀 Remaining Work
 
-```
-User Interactions:     323 watchlist items
-Genre Affinities:      22 genres tracked
-Top Genres:            Drama (501), Adventure (435), Action (349)
-Unexplored Genres:     Thriller, Horror, Romance
-Behavior Mode:         Discovery (exploring widely)
-Session Average:       11.1 items per session
-Confidence Score:      0.72
-Taste Signature:       Emotional Family Drama Fan
-Subscriptions:         2 active
-  - Netflix:           $15.49/mo (Provider ID: 8)
-  - Crunchyroll:       $7.99/mo (Provider ID: 283)
-Monthly Total:         $27.98
-Annual Projection:     $336/year
-Provider Filtering:    ✅ Active - logs show filtering by [283, 8]
-Service Badges:        ✅ Working - real provider data displayed
-Blindspots Generated:  5 unique recommendations
-Session Cache:         505 items (pruned to 200)
-Watchlist Exclusions:  246 items with tmdb_id (76% coverage)
+### Immediate (Session 14)
 
-Status Distribution:
-  - Want to Watch:     75 items
-  - Watching:          8 items
-  - Watched:           240 items
-
-Performance (Post Session 11):
-  - Watchlist Load:    713-860ms ✅ (was 30-40s)
-  - RecCache Build:    3.5 seconds
-  - Genre Index:       2ms (background)
-  - Dashboard Stats:   ~10 seconds ❌ (needs fix)
-  - Exclusions:        246 items loaded ✅
-
-Genre Cache Distribution:
-  - Drama:             18 items
-  - Adventure:         11 items
-  - Action:            10 items
-  - Fantasy:           7 items
-  - Sci-Fi:            5 items
-  - Anime:             4 items
-  - Comedy:            4 items
-  - Animation:         3 items
-  - Thriller:          2 items
-  - Mystery:           2 items
-  - Crime:             1 item
-  - Romance:           1 item
-  - Horror:            0 items ❌
-  - Documentary:       0 items ❌
+**SQL Fix for media_type:**
+```sql
+-- Fix items that have tmdb_id but no media_type
+UPDATE watchlist_items
+SET media_type = SPLIT_PART(content_id::text, '-', 1)
+WHERE media_type IS NULL
+  AND content_id IS NOT NULL
+  AND content_id::text ~ '^(tv|movie)-';
 ```
 
----
+**Then re-run backfill** to populate titles for the 130 failed items.
 
-## 🚀 Development Pipeline
-
-### Immediate Priorities (Session 12)
-
-**Verify Fix Prompts (P0)**
-- [ ] Test sticky filter bar functionality
-- [ ] Test filter reset on tab change
-- [ ] Test unknown titles hydration
-- [ ] Test duplicate key error resolution
-- [ ] Verify watched content no longer appears in For You
-
-**UX Fixes (P1)**
-- [ ] Fix hero update on filter change (if still broken)
-- [ ] Address low genre diversity (34 items)
-- [ ] Fix empty genres (Animation, Documentary, Thriller showing 0 items)
-
-**Data Integrity (P1)**
-- [ ] Add metadata columns to watchlist_items schema
-- [ ] Hydrate Unknown titles from TMDb
-- [ ] Fix duplicate key error on upsert
+**UI Fixes:**
+- [ ] Genre filter on Watchlist recommendations
+- [ ] Fade animation when adding from Watchlist page
+- [ ] Verify React Fragment warning source
 
 ### Phase 2: Feature Enhancements
 
 **User Experience**
-- [ ] Rating prompt after "Watched" swipe in Discover
 - [ ] Service filter for watchlist tabs (All, Netflix, Crunchyroll, etc.)
 - [ ] Force refresh logic for Tips "Worth Discovering"
+- [ ] "Load More" for Picked For You section
 
 **Database Tables**
 - [ ] Create `content_dna` table in Supabase
@@ -470,8 +374,12 @@ Genre Cache Distribution:
 | Subscription Management Modal | Week 2 | ✅ Complete |
 | Provider Filtering | Week 2 | ✅ Complete |
 | Service Badges System | Week 2-3 | ✅ Complete |
-| **Performance Optimization** | Week 3 | ✅ **Complete** (Session 11) |
-| Exclusions & Filter Fixes | Week 3-4 | 🔧 In Progress |
+| Performance Optimization | Week 3 | ✅ **Complete** |
+| Dashboard Stats Fix | Week 3 | ✅ **Complete** |
+| Discover Optimistic UI | Week 3 | ✅ **Complete** |
+| Rating Modal | Week 3 | ✅ **Complete** |
+| Genre Diversity Fix | Week 3 | ✅ **Complete** |
+| Metadata Schema + Backfill | Week 3-4 | 🔧 **70% Complete** |
 | Database Tables Creation | Week 4 | ⏳ Pending |
 | Content DNA + Taste Profiles | Week 4-5 | ⏳ Pending |
 | Multi-Lane UI Integration | Week 5-6 | ⏳ Pending |
@@ -484,87 +392,111 @@ Genre Cache Distribution:
 
 ## 📝 Session History
 
-### Session 11 (December 3-4, 2025) - Performance Breakthrough 🚀
+### Session 13 (December 4, 2025) - Data Quality Fixes
 
-**Major Achievement: Watchlist load time reduced from 30-40s to 713ms**
+**Focus:** Fixing "Unknown" titles and backfill failures
 
-**Root Causes Identified:**
+**Discoveries:**
+- Backfill failed 130 items because `media_type` column is NULL
+- "Watching" items have `tmdb_id` but no `media_type`
+- SQL fix ready to populate media_type from content_id
+
+**Files Created:**
+- `backfillWatchlistMetadataV2.ts` - Enhanced backfill with TMDb title search
+- `ForYouSection-fixed.tsx` - Working genre filters + fade animation
+- `watchlist-diagnostic-queries.sql` - SQL queries for debugging
+- `settings-backfill-v2.tsx` - Updated Settings handlers
+
+### Session 12 (December 4, 2025) - Performance Breakthrough Part 2
+
+**Major Achievements:**
+- Dashboard stats: 10+ seconds → 350ms
+- Discover buttons: 2-3 seconds → instant
+- Rating modal with half-star support
+- Always-include genres (Horror, Romance, Documentary, etc.)
+- Metadata schema added to watchlist_items
+- Backfill utility created (135 items fixed)
+
+**Root Causes Fixed:**
+1. Zustand store subscription not triggering re-renders for nested properties
+2. Discover buttons awaiting full save before UI response
+3. Genre filters only fetching user's top 5 genres
+
+### Session 11 (December 3-4, 2025) - Performance Breakthrough Part 1
+
+**Major Achievement: Watchlist load time reduced from 30-40s to 600ms**
+
+**Root Causes Fixed:**
 1. RecCache making 6+ sequential API calls for genre fetches
 2. 735+ synchronous console.log operations during genre indexing
 3. UI blocked until all operations completed
 
-**Solutions Implemented:**
-1. Single fetch approach (150 items in one call)
-2. Removed verbose per-item logging (700+ → 20 logs)
-3. Background genre indexing with setTimeout
-4. UI renders immediately, index builds asynchronously
-
 **Database Work:**
-- Discovered 272 of 310 watchlist items had `tmdb_id: null`
-- Found `content_id` format: "tv-247767", "movie-12345"
-- Ran SQL backfill to extract tmdb_id from content_id
-- Fixed 216 additional items (38 → 246 with tmdb_id)
+- SQL backfill to extract tmdb_id from content_id
+- Fixed 216 additional items (38 → 254 with tmdb_id)
 
-**Fix Prompts Executed:**
-1. ✅ Exclusions loading fix - Now correctly loading 246 items
-2. ✅ Sticky filter bar - Working from anywhere on page
-3. ✅ Filter reset on tab change - Working
-4. ❌ Unknown titles hydration - Schema columns still missing
-5. 🔧 Duplicate key error fix - Needs verification
+---
 
-**Post-Fix Testing Results:**
-- ✅ Watchlist loads in 713ms (was 30-40s)
-- ✅ Filter bar accessible from any scroll position
-- ✅ Filter resets to "All" on tab change
-- ✅ Genre changes work (All→Action, Adventure→Animation, etc.)
-- ❌ Dashboard stats slow (~10 seconds)
-- ❌ Unknown titles persist in Want to Watch/Watching
-- ❌ Filter bar hidden on Want to Watch/Watching tabs
-- ❌ Action→Adventure shows no visible change
-- ❌ Empty genres (Horror: 0, Documentary: 0)
-- ❌ Discover buttons (Want to Watch, Watched) have delays
-- ❌ No rating prompt after marking as Watched
+## ✅ What Works
 
-**Files Modified:**
-- `src/hooks/useRecommendationCache.ts` - Complete rewrite
-- `src/services/smartRecommendations.ts` - Explicit exclusion parameter
-- Database: `watchlist_items` - 216 rows updated
+### Authentication and User Management
+- Email/password authentication via Supabase
+- Secure session management with Row Level Security
+- User profile persistence
 
-### Session 10 (December 3, 2025) - Performance Analysis
+### Subscription Tracking
+- Manual subscription entry with service name, price, billing cycle
+- Full CRUD via Manage All modal (add, edit, delete)
+- Total monthly cost calculation ($27.98)
+- Human-readable value scores ("Great Value", "Low Usage")
+- Annual projection ($336/year)
+- Service-level value indicators
 
-**Achievements:**
-- Verified service badges displaying correctly with real provider data
-- Identified critical performance bottleneck: sequential API calls
-- Documented genre filtering accuracy issues
-- Created consolidated bug list with priority tiers
+### Provider Filtering
+- Recommendations filtered by subscribed services
+- Verified via logs: `[SmartRecs] Filtering by user providers: [8, 283]`
+- Netflix (8), Crunchyroll (283), and all major services supported
+- Content only appears if available on user subscriptions
 
-### Session 9 (December 2, 2025) - Bug Triage
+### Watchlist Performance
+- **Load time: 600ms** (was 30-40 seconds)
+- 336+ items tracked across all statuses
+- Status management: Want to Watch (80), Watching (8), Watched (248)
+- 5-star rating system with half-star support
+- Background genre indexing (non-blocking)
+- Metadata stored for new items
 
-**Achievements:**
-- Completed service badges implementation testing
-- Verified ForYouContent badge fetching
-- Documented genre filtering performance issues
+### Genre Affinity Learning
+- 22 genre affinities tracked
+- Top genres: Drama (501), Adventure (435), Action (349)
+- Temporal decay (recent preferences weighted higher)
+- Discovery mode detection (0.74 confidence)
+- Average 10.8 items per session
 
-### Session 8 (December 2, 2025) - Service Badges Implementation
+### Taste Profile System
+- Analyzes 100 watchlist items
+- Computes weighted DNA profiles
+- Generates taste signature: "Emotional Family Drama Fan"
+- Discovery opportunities identified
+- Profile updates in ~11 seconds (non-blocking)
 
-**Achievements:**
-- Implemented real service badge system with 11 streaming services
-- Created SERVICE_BADGES and PROVIDER_ID_TO_SERVICE mappings
-- Updated ContentCard, RecommendationLane, and ForYouContent components
+### Smart Recommendations
+- Personalized picks based on genre affinity
+- Provider-aware filtering (only subscribed services)
+- Session-based exclusion (324+ items in session cache)
+- Watchlist exclusion (259 items with tmdb_id)
+- Negative filtering for skipped content
+- Fatigue scoring active
+- Always-include genres for diversity
+- Session cache pruning (limits to 200 items)
 
-### Session 7 (December 2, 2025) - Manage All and Provider Verification
-
-**Achievements:**
-- Created SubscriptionsManageModal component with full CRUD
-- Fixed NavigationContext corruption issues
-- Added Crunchyroll to subscription options
-
-### Session 6 (December 2, 2025) - Database Error Fixes
-
-**Achievements:**
-- Fixed all three critical database errors with graceful error handling
-- Fixed navigation button handlers
-- App loads cleanly with no red error banners
+### Worth Discovering (Blindspots)
+- Hidden gems (high rating, low vote count)
+- Classic gaps (acclaimed films not seen)
+- Unexplored genres (Thriller, Horror, Romance identified)
+- Service exclusives
+- Adjacent interests
+- 5 blindspots generated per load
 
 ---
 
@@ -582,9 +514,10 @@ Genre Cache Distribution:
 | Real Service Badges | ❌ | ✅ | ❌ | ✅ |
 | Swipe Discovery | ❌ | ❌ | ❌ | ✅ |
 | Taste Profiles | ❌ | ❌ | ✅ | ✅ |
+| Half-Star Ratings | ❌ | ❌ | ❌ | ✅ |
 
 **No competitor effectively bridges financial tracking with entertainment intelligence.**
 
 ---
 
-*Last updated: December 4, 2025 - Session 11 (Post-Fix Prompts)*
+*Last updated: December 4, 2025 - Session 13*
