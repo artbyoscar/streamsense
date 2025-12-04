@@ -301,28 +301,34 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
         Alert.alert('Success', 'Watchlist updated!');
       } else {
-        // Insert new
-        const { error: insertError } = await supabase
+        // Upsert (insert or update on conflict)
+        const { error: upsertError } = await supabase
           .from('watchlist_items')
-          .insert({
-            user_id: user.id,
-            content_id: contentId,
-            status: selectedStatus,
-            rating: selectedStatus === 'watched' ? rating : null,
-            streaming_services: streamingServices,
-            priority: 'medium',
-            // Store metadata directly for instant display (no TMDb fetch needed)
-            tmdb_id: content.id,
-            media_type: contentType,
-            title: content.title || null,
-            poster_path: content.posterPath || null,
-            overview: content.overview || null,
-            vote_average: content.rating || null,
-            release_date: content.releaseDate || null,
-            backdrop_path: content.backdropPath || null,
-          });
+          .upsert(
+            {
+              user_id: user.id,
+              content_id: contentId,
+              status: selectedStatus,
+              rating: selectedStatus === 'watched' ? rating : null,
+              streaming_services: streamingServices,
+              priority: 'medium',
+              // Store metadata directly for instant display (no TMDb fetch needed)
+              tmdb_id: content.id,
+              media_type: contentType,
+              title: content.title || null,
+              poster_path: content.posterPath || null,
+              overview: content.overview || null,
+              vote_average: content.rating || null,
+              release_date: content.releaseDate || null,
+              backdrop_path: content.backdropPath || null,
+            },
+            {
+              onConflict: 'user_id,content_id',
+              ignoreDuplicates: false,
+            }
+          );
 
-        if (insertError) throw insertError;
+        if (upsertError) throw upsertError;
 
         // Track genre affinity for new watchlist item
         const genreIds = extractGenreIds(content);

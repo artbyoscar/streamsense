@@ -71,7 +71,7 @@ export const StarRating: React.FC<StarRatingProps> = ({
       </View>
       {showNumber && (
         <Text style={[styles.rating, { fontSize: size - 2, color }]}>
-          {scale === '10' ? rating.toFixed(1) : (rating * 2).toFixed(1)}
+          {rating.toFixed(1)}
         </Text>
       )}
     </View>

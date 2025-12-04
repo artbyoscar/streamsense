@@ -88,6 +88,20 @@ export const ContentCard: React.FC<ContentCardProps> = ({
       <Text style={styles.contentTitle} numberOfLines={2}>
         {title}
       </Text>
+
+      {/* Year (extract from release_date or releaseDate) */}
+      {(item.releaseDate || item.release_date || item.content?.release_date) && (
+        <Text style={styles.contentYear}>
+          {(item.releaseDate || item.release_date || item.content?.release_date).split('-')[0]}
+        </Text>
+      )}
+
+      {/* Overview/Bio */}
+      {(item.overview || item.content?.overview) && (
+        <Text style={styles.contentOverview} numberOfLines={2}>
+          {item.overview || item.content?.overview}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 };
@@ -178,6 +192,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#ccc',
     lineHeight: 16,
+  },
+  contentYear: {
+    fontSize: 11,
+    color: '#888',
+    marginTop: 2,
+  },
+  contentOverview: {
+    fontSize: 11,
+    color: '#999',
+    lineHeight: 14,
+    marginTop: 4,
   },
 });
 
