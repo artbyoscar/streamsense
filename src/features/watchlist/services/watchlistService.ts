@@ -252,10 +252,11 @@ export async function addToWatchlist(
 
   // Try to fetch and store TMDb metadata (new schema approach)
   let finalContentId = contentId; // Default to passed contentId (legacy format)
+  let tmdbData: any = null; // Store metadata for use in watchlist_items
 
   try {
     console.log('[Watchlist] Fetching metadata for', mediaType, tmdbId);
-    const tmdbData = await getContentDetails(tmdbId, mediaType);
+    tmdbData = await getContentDetails(tmdbId, mediaType);
 
     // First, check if content already exists
     const { data: existingContent } = await supabase
@@ -332,6 +333,15 @@ export async function addToWatchlist(
         status,
         priority: 'medium',
         notify_on_available: false,
+        // Store metadata directly for instant display (no TMDb fetch needed)
+        tmdb_id: tmdbId,
+        media_type: mediaType,
+        title: tmdbData?.title || null,
+        poster_path: tmdbData?.posterPath || null,
+        overview: tmdbData?.overview || null,
+        vote_average: tmdbData?.rating || null,
+        release_date: tmdbData?.releaseDate || null,
+        backdrop_path: tmdbData?.backdropPath || null,
       },
       {
         onConflict: 'user_id,content_id', // Update if user_id + content_id already exists
