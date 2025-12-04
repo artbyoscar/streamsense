@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Watchlist Service
  * API calls for watchlist management with optimized batch fetching
  */
@@ -154,7 +154,7 @@ export const getWatchlist = async (userId: string) => {
     const legacyItems = rawItems.length - itemsWithStoredMetadata;
 
     console.log(
-      '[Watchlist] ✅ Total load time: ' + totalTime + 'ms for ' + enrichedItems.length + ' items ' +
+      '[Watchlist] ? Total load time: ' + totalTime + 'ms for ' + enrichedItems.length + ' items ' +
       '(' + itemsWithStoredMetadata + ' from DB, ' + legacyItems + ' legacy items)'
     );
 
@@ -239,14 +239,14 @@ export async function addToWatchlist(
       .maybeSingle();
 
     if (!checkError && existingByTmdb) {
-      console.log('[Watchlist] ✅ Item already exists in watchlist, returning existing');
+      console.log('[Watchlist] ? Item already exists in watchlist, returning existing');
       return existingByTmdb;
     }
   } catch (e) {
     // If JOIN fails (content table doesn't exist), fall back to content_id check
     const existing = await fetchWatchlistItemByContentId(contentId);
     if (existing) {
-      console.log('[Watchlist] ✅ Item already exists (legacy check), returning existing');
+      console.log('[Watchlist] ? Item already exists (legacy check), returning existing');
       return existing;
     }
   }
@@ -269,7 +269,7 @@ export async function addToWatchlist(
 
     if (existingContent) {
       // Content already exists, use it
-      console.log('[Watchlist] ✅ Using existing content:', existingContent.title, '(UUID:', existingContent.id + ')');
+      console.log('[Watchlist] ? Using existing content:', existingContent.title, '(UUID:', existingContent.id + ')');
       finalContentId = existingContent.id;
     } else {
       // Content doesn't exist, insert it
@@ -282,7 +282,7 @@ export async function addToWatchlist(
           overview: tmdbData.overview || null,
           poster_url: tmdbData.posterPath || null,
           backdrop_url: tmdbData.backdropPath || null,
-          genres: tmdbData.genres?.map((g) => g.name) || [],
+          genres: tmdbData.genres?.map((g: { name: string }) => g.name) || [],
           release_date: tmdbData.releaseDate || null,
           vote_average: tmdbData.rating || null,
           popularity: tmdbData.popularity || null,
@@ -305,21 +305,21 @@ export async function addToWatchlist(
             finalContentId = retryContent.id;
           } else {
             // Fallback to legacy format
-            console.warn('[Watchlist] ⚠️  Could not fetch content after duplicate error');
+            console.warn('[Watchlist] ??  Could not fetch content after duplicate error');
             finalContentId = contentId;
           }
         } else {
           // Content table doesn't exist or other error - fall back to legacy approach
-          console.warn('[Watchlist] ⚠️  Content table insert failed, using legacy content_id:', contentError.code);
+          console.warn('[Watchlist] ??  Content table insert failed, using legacy content_id:', contentError.code);
           finalContentId = contentId; // Use legacy string format "movie-1724"
         }
       } else if (contentData) {
-        console.log('[Watchlist] ✅ Stored new metadata for', contentData.title, '(UUID:', contentData.id + ')');
+        console.log('[Watchlist] ? Stored new metadata for', contentData.title, '(UUID:', contentData.id + ')');
         finalContentId = contentData.id; // Use UUID from content table
       }
     }
   } catch (e) {
-    console.warn('[Watchlist] ⚠️  Metadata storage failed, using legacy content_id:', e);
+    console.warn('[Watchlist] ??  Metadata storage failed, using legacy content_id:', e);
     finalContentId = contentId; // Use legacy string format
   }
 
@@ -358,12 +358,12 @@ export async function addToWatchlist(
     throw error;
   }
 
-  console.log('[Watchlist] ✅ Successfully added/updated item in watchlist');
+  console.log('[Watchlist] ? Successfully added/updated item in watchlist');
 
   // Track genre interaction for recommendations
   if (genres && genres.length > 0) {
     try {
-      await trackGenreInteraction(user.id, genres, 'add_to_watchlist');
+      await trackGenreInteraction(user.id, genres, mediaType, 'ADD_TO_WATCHLIST');
     } catch (e) {
       console.warn('Failed to track genre interaction:', e);
     }
@@ -371,13 +371,13 @@ export async function addToWatchlist(
 
   // Queue DNA computation
   try {
-    dnaComputationQueue.addToQueue(tmdbId, mediaType);
+    dnaComputationQueue.enqueue(tmdbId, mediaType);
   } catch (e) {
     console.warn('Failed to queue DNA computation:', e);
   }
 
   // Refresh watchlist cache
-  refreshWatchlistCache();
+  refreshWatchlistCache(user.id);
 
   return data;
 }
@@ -437,7 +437,7 @@ export async function removeFromWatchlist(contentId: string): Promise<void> {
   }
 
   // Refresh watchlist cache
-  refreshWatchlistCache();
+  refreshWatchlistCache(user.id);
 }
 
 // ============================================================================
