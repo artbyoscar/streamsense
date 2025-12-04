@@ -47,6 +47,7 @@ export const useRecommendationCache = (userId: string | undefined) => {
       setError(null);
 
       try {
+        const startTime = Date.now();
         console.log('[RecCache] Starting diverse cache pre-fetch...');
 
         const mainRecs = await getSmartRecommendations({
@@ -56,7 +57,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
           forceRefresh: false,
         });
 
-        console.log('[RecCache] Main fetch: ' + mainRecs.length + ' items');
+        const fetchTime = Date.now() - startTime;
+        console.log('[RecCache] Main fetch: ' + mainRecs.length + ' items in ' + fetchTime + 'ms');
 
         const underrepresentedGenres = [
           { name: 'Horror', ids: [27] },
@@ -102,77 +104,112 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Validated: ' + validItems.length + ' items');
 
-        const byGenre = new Map<string, UnifiedContent[]>();
-        const genreNames = Object.keys(GENRE_NAME_TO_ID);
-
-        for (const genre of genreNames) {
-          const targetIds = GENRE_NAME_TO_ID[genre];
-
-          const genreItems = validItems.filter(item => {
-            // Special handling for Anime and Animation
-            if (genre === 'Anime') {
-              return isAnime(item);
-            } else if (genre === 'Animation') {
-              return isWesternAnimation(item);
-            }
-
-            // Get all genre IDs for the item
-            const itemGenreIds: number[] = [];
-            if (item.genre_ids && Array.isArray(item.genre_ids)) {
-              itemGenreIds.push(...item.genre_ids);
-            }
-            if (item.genres && Array.isArray(item.genres)) {
-              item.genres.forEach((g: any) => {
-                if (typeof g === 'number') itemGenreIds.push(g);
-                else if (g && g.id) itemGenreIds.push(g.id);
-              });
-            }
-
-            // STRICT FILTERING: Genre must be in top 2 positions (primary or secondary)
-            const primaryGenre = itemGenreIds[0];
-            const secondaryGenre = itemGenreIds[1];
-
-            // Check if either primary or secondary genre matches (using equivalents)
-            for (const targetId of targetIds) {
-              const equivalents = GENRE_EQUIVALENTS[targetId] || [targetId];
-
-              // Check primary genre
-              if (primaryGenre && equivalents.includes(primaryGenre)) {
-                console.log(`[RecCache] ✅ "${item.title || item.name}" matched ${genre} (primary: ${primaryGenre})`);
-                return true;
-              }
-
-              // Check secondary genre
-              if (secondaryGenre && equivalents.includes(secondaryGenre)) {
-                console.log(`[RecCache] ✅ "${item.title || item.name}" matched ${genre} (secondary: ${secondaryGenre})`);
-                return true;
-              }
-            }
-
-            // No match found in primary or secondary
-            console.log(`[RecCache] ❌ "${item.title || item.name}" excluded from ${genre} (genres: [${itemGenreIds.slice(0, 3).join(', ')}])`);
-            return false;
-          });
-
-          byGenre.set(genre, genreItems);
-          console.log('[RecCache] Genre ' + genre + ': ' + genreItems.length + ' items');
-        }
-
+        // PHASE 1: Return basic cache immediately for fast UI rendering
         const movies = validItems.filter(i => i.media_type === 'movie' || i.type === 'movie');
         const tv = validItems.filter(i => i.media_type === 'tv' || i.type === 'tv' || i.type === 'series');
 
+        // Set basic cache FIRST (UI renders immediately)
         setCache({
           all: validItems,
-          byGenre,
+          byGenre: new Map(), // Empty initially
           byMediaType: { movie: movies, tv },
           lastFetched: new Date(),
         });
+        setIsLoading(false); // ✅ UI IS NOW RESPONSIVE
 
-        console.log('[RecCache] Cache built: ' + validItems.length + ' total, ' + movies.length + ' movies, ' + tv.length + ' TV');
+        const dataLoadTime = Date.now() - startTime;
+        console.log('[RecCache] ✅ UI ready in ' + dataLoadTime + 'ms');
+
+        // PHASE 2: Build genre index in background (non-blocking)
+        console.log('[RecCache] Building genre index in background...');
+
+        // Use setTimeout to defer heavy work until after UI renders
+        setTimeout(() => {
+          const indexStart = Date.now();
+          const byGenre = new Map<string, UnifiedContent[]>();
+          const genreNames = Object.keys(GENRE_NAME_TO_ID);
+
+          // Initialize all genre buckets
+          for (const genre of genreNames) {
+            byGenre.set(genre, []);
+          }
+
+          // SINGLE PASS: Iterate items once, add to all matching genres
+          for (const item of validItems) {
+          // Extract item's genre IDs once
+          const itemGenreIds: number[] = [];
+          if (item.genre_ids && Array.isArray(item.genre_ids)) {
+            itemGenreIds.push(...item.genre_ids);
+          }
+          if (item.genres && Array.isArray(item.genres)) {
+            item.genres.forEach((g: any) => {
+              if (typeof g === 'number') itemGenreIds.push(g);
+              else if (g && g.id) itemGenreIds.push(g.id);
+            });
+          }
+
+          const primaryGenre = itemGenreIds[0];
+          const secondaryGenre = itemGenreIds[1];
+
+          // Check each genre once per item
+          for (const genre of genreNames) {
+            // Special handling for Anime and Animation
+            if (genre === 'Anime') {
+              if (isAnime(item)) {
+                byGenre.get(genre)!.push(item);
+              }
+              continue;
+            } else if (genre === 'Animation') {
+              if (isWesternAnimation(item)) {
+                byGenre.get(genre)!.push(item);
+              }
+              continue;
+            }
+
+            const targetIds = GENRE_NAME_TO_ID[genre];
+            let matched = false;
+
+            // Check if primary or secondary genre matches
+            for (const targetId of targetIds) {
+              const equivalents = GENRE_EQUIVALENTS[targetId] || [targetId];
+
+              if (primaryGenre && equivalents.includes(primaryGenre)) {
+                matched = true;
+                break;
+              }
+
+              if (secondaryGenre && equivalents.includes(secondaryGenre)) {
+                matched = true;
+                break;
+              }
+            }
+
+            if (matched) {
+              byGenre.get(genre)!.push(item);
+            }
+          }
+        }
+
+          // Log summary only (not every item)
+          for (const genre of genreNames) {
+            const count = byGenre.get(genre)!.length;
+            console.log('[RecCache] Genre ' + genre + ': ' + count + ' items');
+          }
+
+          // Update cache with genre index
+          setCache(prev => ({
+            ...prev!,
+            byGenre,
+          }));
+
+          const indexTime = Date.now() - indexStart;
+          const totalTime = Date.now() - startTime;
+          console.log('[RecCache] ✅ Genre index built in ' + indexTime + 'ms (background)');
+          console.log('[RecCache] ✅ Total cache time: ' + totalTime + 'ms (' + validItems.length + ' items, ' + movies.length + ' movies, ' + tv.length + ' TV)');
+        }, 50); // Defer 50ms to let UI render first
       } catch (err) {
         console.error('[RecCache] Error loading recommendations:', err);
         setError(err instanceof Error ? err : new Error('Unknown error'));
-      } finally {
         setIsLoading(false);
       }
     };
@@ -186,42 +223,26 @@ export const useRecommendationCache = (userId: string | undefined) => {
       return [];
     }
 
-    console.log('[RecCache] 🔍 getFiltered called: mediaType=' + mediaType + ', genre=' + genre);
-
     let results: UnifiedContent[];
 
     if (genre !== 'All') {
       results = cache.byGenre.get(genre) || [];
-      console.log('[RecCache] 📊 Genre "' + genre + '" base: ' + results.length + ' items');
-
-      // Log sample titles for debugging
-      if (results.length > 0 && results.length <= 5) {
-        const titles = results.map(r => r.title || r.name).join(', ');
-        console.log('[RecCache] 📝 Sample titles: ' + titles);
-      } else if (results.length > 5) {
-        const titles = results.slice(0, 3).map(r => r.title || r.name).join(', ');
-        console.log('[RecCache] 📝 First 3 titles: ' + titles + ' (+ ' + (results.length - 3) + ' more)');
-      }
 
       if (mediaType !== 'all') {
-        const beforeFilter = results.length;
         results = results.filter(item => {
           const itemType = item.media_type || item.type;
           return itemType === mediaType || (mediaType === 'tv' && itemType === 'series');
         });
-        console.log('[RecCache] 🎬 After media type filter (' + mediaType + '): ' + results.length + ' items (filtered out ' + (beforeFilter - results.length) + ')');
       }
     } else {
       if (mediaType !== 'all') {
         results = cache.byMediaType[mediaType] || [];
-        console.log('[RecCache] 📺 All content for mediaType=' + mediaType + ': ' + results.length + ' items');
       } else {
         results = cache.all;
-        console.log('[RecCache] 🌐 All content (no filters): ' + results.length + ' items');
       }
     }
 
-    console.log('[RecCache] ✅ Returning ' + results.length + ' filtered items');
+    console.log('[RecCache] Filtered: mediaType=' + mediaType + ', genre=' + genre + ' → ' + results.length + ' items');
     return results;
   }, [cache]);
 
