@@ -181,8 +181,17 @@ export const useTasteProfile = (userId: string | undefined): UseTasteProfileRetu
       const cachedProfile = await loadProfileFromCache();
 
       if (!cachedProfile) {
-        console.log('[TasteProfile] No cached profile, building new one...');
-        await refreshProfile();
+        console.log('[TasteProfile] No cached profile, building new one in background...');
+        // Don't await - build in background to avoid blocking UI
+        refreshProfile().catch(err => console.error('[TasteProfile] Background refresh failed:', err));
+
+        // Return immediately with loading state
+        setState({
+          profile: null,
+          isLoading: false, // Mark as not loading so UI can render
+          isStale: true,
+          lastUpdated: null,
+        });
         return;
       }
 
@@ -243,11 +252,12 @@ export const useTasteProfile = (userId: string | undefined): UseTasteProfileRetu
           lastUpdated: new Date(),
         }));
 
-        console.log('[TasteProfile] ✓ Profile rebuilt successfully:', {
+        console.log('[TasteProfile] ✅ Profile rebuilt successfully (background):', {
           watchedCount: newProfile.watchedCount,
           confidence: newProfile.confidence,
           signature: newProfile.tasteSignature,
         });
+        console.log('[TasteProfile] UI was NOT blocked during this rebuild');
       } else {
         console.warn('[TasteProfile] Profile rebuild returned null');
       }
@@ -271,9 +281,10 @@ export const useTasteProfile = (userId: string | undefined): UseTasteProfileRetu
     try {
       console.log(`[TasteProfile] Updating after ${interactionType} interaction for content:`, tmdbId);
 
-      // For now, just trigger a full refresh
-      // In the future, this could be optimized to do incremental updates
-      await refreshProfile();
+      // Trigger refresh in background - don't block UI
+      refreshProfile().catch(err =>
+        console.error('[TasteProfile] Background update failed:', err)
+      );
     } catch (error) {
       console.error('[TasteProfile] Error updating after interaction:', error);
     }
