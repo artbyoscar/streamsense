@@ -63,7 +63,25 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
 
 export const PickedForYouSection: React.FC = () => {
   const { data: lanes, isLoading } = useRecommendationLanes();
-  const { setActiveTab, setSelectedContent, setShowContentDetail } = useCustomNavigation();
+  const { setActiveTab, setSelectedContent, setShowContentDetail, selectedContent } = useCustomNavigation();
+
+  // Track items that have been added to watchlist
+  const [removedItemIds, setRemovedItemIds] = React.useState<Set<string>>(new Set());
+  const [previousSelectedContent, setPreviousSelectedContent] = React.useState<any>(null);
+
+  // Detect when modal closes and item might have been added
+  React.useEffect(() => {
+    // If selectedContent went from something to null, the modal closed
+    if (previousSelectedContent && !selectedContent) {
+      // Mark this item as potentially added (remove from view)
+      const itemId = previousSelectedContent.id?.toString() || previousSelectedContent.tmdb_id?.toString();
+      if (itemId) {
+        console.log('[PickedForYou] Removing item from view after modal close:', previousSelectedContent.title, 'ID:', itemId);
+        setRemovedItemIds(prev => new Set([...prev, itemId]));
+      }
+    }
+    setPreviousSelectedContent(selectedContent);
+  }, [selectedContent, previousSelectedContent]);
 
   // Get first lane with recommendations (Hidden Gems or Trending For You)
   const pickedForYou = lanes
@@ -79,7 +97,9 @@ export const PickedForYouSection: React.FC = () => {
         : undefined,
       matchScore: item.match_score ? Math.round(item.match_score * 100) : undefined,
       reason: item.reason || 'Based on your taste',
-    })) || [];
+    }))
+    .filter(item => !removedItemIds.has(item.id)) // Filter out removed items
+    || [];
 
   const handleItemPress = (item: any) => {
     console.log('[PickedForYou] Opening content detail with data:', {
@@ -111,6 +131,14 @@ export const PickedForYouSection: React.FC = () => {
   const handleViewAll = () => {
     setActiveTab('Watchlist');
   };
+
+  // Log removed items for debugging
+  React.useEffect(() => {
+    if (removedItemIds.size > 0) {
+      console.log('[PickedForYou] Filtered out', removedItemIds.size, 'removed items');
+      console.log('[PickedForYou] Showing', pickedForYou.length, 'items');
+    }
+  }, [removedItemIds.size, pickedForYou.length]);
 
   if (isLoading || pickedForYou.length === 0) {
     return null;
