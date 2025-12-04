@@ -311,6 +311,15 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
             rating: selectedStatus === 'watched' ? rating : null,
             streaming_services: streamingServices,
             priority: 'medium',
+            // Store metadata directly for instant display (no TMDb fetch needed)
+            tmdb_id: content.id,
+            media_type: contentType,
+            title: content.title || null,
+            poster_path: content.posterPath || null,
+            overview: content.overview || null,
+            vote_average: content.rating || null,
+            release_date: content.releaseDate || null,
+            backdrop_path: content.backdropPath || null,
           });
 
         if (insertError) throw insertError;
