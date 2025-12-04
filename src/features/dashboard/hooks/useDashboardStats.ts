@@ -77,37 +77,43 @@ export interface WatchingStats {
   watchedThisMonth: number;
   hoursWatched: number;
   avgCostPerHour: number;
+  isLoading: boolean;
 }
 
 export function useWatchingStats(): WatchingStats {
   const { monthlySpend } = useSubscriptionsData();
   const user = useAuthStore((state) => state.user);
+  const userId = user?.id; // Extract userId for dependency tracking
+
   const [stats, setStats] = useState<WatchingStats>({
     watchedThisMonth: 0,
     hoursWatched: 0,
     avgCostPerHour: 0,
+    isLoading: true,
   });
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user?.id) {
-        console.log('[DashboardStats] No user ID, skipping stats fetch');
+      if (!userId) {
+        console.log('[DashboardStats] ⏳ Waiting for user ID...');
+        setStats(prev => ({ ...prev, isLoading: true }));
         return;
       }
 
       const startTime = Date.now();
-      console.log('[DashboardStats] 📊 Fetching stats from database...');
+      console.log('[DashboardStats] 📊 Fetching stats for user:', userId);
 
       try {
         // Get count of ALL watched items (fast query - no hydration needed)
         const { count: totalWatchedCount, error: countError } = await supabase
           .from('watchlist_items')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('status', 'watched');
 
         if (countError) {
-          console.error('[DashboardStats] Error fetching watched count:', countError);
+          console.error('[DashboardStats] Error fetching total watched:', countError);
+          setStats(prev => ({ ...prev, isLoading: false }));
           return;
         }
 
@@ -118,7 +124,7 @@ export function useWatchingStats(): WatchingStats {
         const { count: thisMonthCount, error: monthError } = await supabase
           .from('watchlist_items')
           .select('*', { count: 'exact', head: true })
-          .eq('user_id', user.id)
+          .eq('user_id', userId)
           .eq('status', 'watched')
           .gte('updated_at', firstDayOfMonth);
 
@@ -128,33 +134,37 @@ export function useWatchingStats(): WatchingStats {
 
         // Use this month count if available, otherwise use total watched
         const watchedThisMonth = (thisMonthCount && thisMonthCount > 0) ? thisMonthCount : (totalWatchedCount || 0);
+        const totalWatched = totalWatchedCount || 0;
 
         // Calculate hours watched (estimate 1.5 hours per item on average)
-        const hoursWatched = Math.round(watchedThisMonth * 1.5);
+        const hoursWatched = Math.round(totalWatched * 1.5);
 
         // Cost per hour
-        const avgCostPerHour = hoursWatched > 0 ? monthlySpend / hoursWatched : 0;
+        const avgCostPerHour = hoursWatched > 0 ? parseFloat((monthlySpend / hoursWatched).toFixed(2)) : 0;
 
         const fetchTime = Date.now() - startTime;
         console.log('[DashboardStats] ✅ Stats fetched in ' + fetchTime + 'ms:', {
-          totalWatched: totalWatchedCount,
-          watchedThisMonth,
-          hoursWatched,
-          avgCostPerHour: avgCostPerHour.toFixed(2),
-        });
-
-        setStats({
+          totalWatched,
           watchedThisMonth,
           hoursWatched,
           avgCostPerHour,
+          monthlySpend,
+        });
+
+        setStats({
+          watchedThisMonth: totalWatched, // Show total watched count, not just this month
+          hoursWatched,
+          avgCostPerHour,
+          isLoading: false,
         });
       } catch (error) {
         console.error('[DashboardStats] ❌ Error fetching stats:', error);
+        setStats(prev => ({ ...prev, isLoading: false }));
       }
     };
 
     fetchStats();
-  }, [user?.id, monthlySpend]);
+  }, [userId, monthlySpend]); // Re-run when userId becomes available
 
   return stats;
 }

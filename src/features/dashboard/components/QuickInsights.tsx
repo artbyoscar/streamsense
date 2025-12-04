@@ -28,23 +28,23 @@ const InsightCard: React.FC<InsightCardProps> = ({ icon, value, label }) => {
 };
 
 export const QuickInsights: React.FC = () => {
-  const { watchedThisMonth, hoursWatched, avgCostPerHour } = useWatchingStats();
+  const { watchedThisMonth, hoursWatched, avgCostPerHour, isLoading } = useWatchingStats();
 
   return (
     <View style={styles.insightsRow}>
       <InsightCard
         icon={<Film size={20} color="#a78bfa" />}
-        value={watchedThisMonth}
+        value={isLoading ? '...' : watchedThisMonth}
         label="Watched"
       />
       <InsightCard
         icon={<Clock size={20} color="#60a5fa" />}
-        value={`${hoursWatched}h`}
+        value={isLoading ? '...' : `${hoursWatched}h`}
         label="Watch Time"
       />
       <InsightCard
         icon={<DollarSign size={20} color="#34d399" />}
-        value={`$${avgCostPerHour.toFixed(2)}`}
+        value={isLoading ? '...' : `$${avgCostPerHour.toFixed(2)}`}
         label="Cost/Hour"
       />
     </View>
