@@ -51,15 +51,22 @@ export const useRecommendationCache = (userId: string | undefined) => {
         console.log('[RecCache] Starting diverse cache pre-fetch...');
 
         // ✅ SINGLE FETCH - No sequential genre fetches (was causing 25+ second delays)
+        // NOTE: excludeSessionItems defaults to true, which enables watchlist exclusions
         const allRecs = await getSmartRecommendations({
           userId,
           limit: 150, // Increased from 100 to get more diversity in one call
           mediaType: 'mixed',
           forceRefresh: false,
+          excludeSessionItems: true, // ✅ Explicitly enable watchlist exclusions
         });
 
         const fetchTime = Date.now() - startTime;
         console.log('[RecCache] ✅ Single fetch: ' + allRecs.length + ' items in ' + fetchTime + 'ms');
+
+        // Debug: Log sample IDs to verify exclusions are working
+        if (allRecs.length > 0) {
+          console.log('[RecCache] Sample recommendation IDs:', allRecs.slice(0, 5).map(r => r.id));
+        }
 
         // Deduplicate (shouldn't have duplicates from single fetch, but just in case)
         const seenIds = new Set<number>();
