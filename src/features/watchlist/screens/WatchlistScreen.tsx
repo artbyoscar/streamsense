@@ -1,6 +1,10 @@
 /**
  * Watchlist Screen - Netflix Inspired
  * Complete redesign with tabs, genres, hero spotlight, and recommendation lanes
+ * 
+ * FIXES APPLIED (Session 13):
+ * 1. handleItemPress now correctly uses item.tmdb_id (flat structure) 
+ * 2. Genre filtering now checks genre_ids array and maps to genre names
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -20,6 +24,42 @@ import { ForYouContent } from '../components/ForYouContent';
 import { WatchlistContent } from '../components/WatchlistContent';
 
 // ============================================================================
+// GENRE ID MAPPING (TMDb genre IDs to names)
+// ============================================================================
+
+const GENRE_ID_MAP: Record<number, string> = {
+  // Movie genres
+  28: 'Action',
+  12: 'Adventure',
+  16: 'Animation',
+  35: 'Comedy',
+  80: 'Crime',
+  99: 'Documentary',
+  18: 'Drama',
+  10751: 'Family',
+  14: 'Fantasy',
+  36: 'History',
+  27: 'Horror',
+  10402: 'Music',
+  9648: 'Mystery',
+  10749: 'Romance',
+  878: 'Sci-Fi',
+  10770: 'TV Movie',
+  53: 'Thriller',
+  10752: 'War',
+  37: 'Western',
+  // TV genres
+  10759: 'Action', // Action & Adventure
+  10762: 'Kids',
+  10763: 'News',
+  10764: 'Reality',
+  10765: 'Sci-Fi', // Sci-Fi & Fantasy
+  10766: 'Soap',
+  10767: 'Talk',
+  10768: 'War', // War & Politics
+};
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -32,13 +72,24 @@ interface WatchlistItemWithContent {
   rating: number | null;
   streaming_services: any;
   added_at: string;
-  content: {
+  // Flat structure fields (from direct columns)
+  tmdb_id?: number;
+  media_type?: 'movie' | 'tv';
+  title?: string;
+  poster_path?: string;
+  overview?: string;
+  release_date?: string;
+  vote_average?: number;
+  genre_ids?: number[];
+  // Nested structure (from JOIN with content table)
+  content?: {
     id: string;
     tmdb_id: number;
     title: string;
     type: 'movie' | 'tv';
     poster_url: string | null;
     overview: string | null;
+    genres?: string[];
   };
 }
 
@@ -78,22 +129,86 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   // GENRE FILTERING FOR WATCHLIST TABS
   // ============================================================================
 
+  // Helper to extract genre name from various formats
+  const extractGenreName = useCallback((genre: any): string | null => {
+    if (!genre) return null;
+    
+    // Format 1: Already a string genre name
+    if (typeof genre === 'string') {
+      // Check if it's a JSON string like '{"id":10765,"name":"Sci-Fi & Fantasy"}'
+      if (genre.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(genre);
+          return parsed.name || null;
+        } catch {
+          return genre; // Return as-is if not valid JSON
+        }
+      }
+      // Check if it's a numeric string like "16"
+      const numId = parseInt(genre, 10);
+      if (!isNaN(numId) && GENRE_ID_MAP[numId]) {
+        return GENRE_ID_MAP[numId];
+      }
+      return genre; // Return as genre name
+    }
+    
+    // Format 2: Number (genre ID)
+    if (typeof genre === 'number') {
+      return GENRE_ID_MAP[genre] || null;
+    }
+    
+    // Format 3: Object with name property
+    if (typeof genre === 'object' && genre.name) {
+      return genre.name;
+    }
+    
+    return null;
+  }, []);
+
   // Filter watchlist items by selected genre
   const filterByGenre = useCallback((items: WatchlistItemWithContent[]) => {
     if (activeGenre === 'All') return items;
 
     return items.filter(item => {
-      const genres = item.content?.genres || item.genres || [];
-      if (Array.isArray(genres)) {
-        // Handle both genre names (string[]) and genre objects ({name: string}[])
-        return genres.some((g: any) => {
-          const genreName = typeof g === 'string' ? g : g.name || g;
-          return genreName.toLowerCase() === activeGenre.toLowerCase();
-        });
+      // Collect all possible genre sources
+      const allGenres: any[] = [];
+      
+      // Source 1: Direct genre_ids array (numbers)
+      if (item.genre_ids && Array.isArray(item.genre_ids)) {
+        allGenres.push(...item.genre_ids);
       }
-      return false;
+      
+      // Source 2: Nested content.genres (can be various formats)
+      if (item.content?.genres && Array.isArray(item.content.genres)) {
+        allGenres.push(...item.content.genres);
+      }
+      
+      // Source 3: Flat genres array on item
+      const flatGenres = (item as any).genres;
+      if (flatGenres && Array.isArray(flatGenres)) {
+        allGenres.push(...flatGenres);
+      }
+
+      // Check if any genre matches
+      return allGenres.some(g => {
+        const genreName = extractGenreName(g);
+        if (!genreName) return false;
+        
+        // Normalize for comparison
+        const normalizedGenre = genreName.toLowerCase().trim();
+        const normalizedActive = activeGenre.toLowerCase().trim();
+        
+        // Direct match
+        if (normalizedGenre === normalizedActive) return true;
+        
+        // Handle combined genres like "Sci-Fi & Fantasy" matching "Sci-Fi"
+        if (normalizedGenre.includes(normalizedActive)) return true;
+        if (normalizedActive.includes(normalizedGenre)) return true;
+        
+        return false;
+      });
     });
-  }, [activeGenre]);
+  }, [activeGenre, extractGenreName]);
 
   const filteredWantToWatch = useMemo(() => filterByGenre(wantToWatch), [wantToWatch, filterByGenre]);
   const filteredWatching = useMemo(() => filterByGenre(watching), [watching, filterByGenre]);
@@ -139,7 +254,9 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
         console.log('[Watchlist] Sample items:', data.slice(0, 3).map((item: any) => ({
           id: item.id,
           status: item.status,
-          title: item.content?.title || item.title || 'Unknown'
+          title: item.content?.title || item.title || 'Unknown',
+          tmdb_id: item.tmdb_id || item.content?.tmdb_id || 'missing',
+          media_type: item.media_type || item.content?.type || 'missing',
         })));
       }
 
@@ -212,25 +329,77 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     // Convert watchlist item to UnifiedContent if needed
     let content: UnifiedContent;
 
-    if ('content' in item && item.content) {
-      // It's a WatchlistItemWithContent
+    // Check if it's a WatchlistItemWithContent (has watchlist-specific fields)
+    const isWatchlistItem = 'status' in item || 'content_id' in item || 'added_at' in item;
+
+    if (isWatchlistItem) {
+      const watchlistItem = item as WatchlistItemWithContent;
+      
+      // PRIORITY ORDER for getting TMDb ID:
+      // 1. Direct tmdb_id on the item (from our batch update)
+      // 2. Nested content.tmdb_id (from JOIN)
+      // 3. Fall back to 0 (will cause error but at least won't crash)
+      const tmdbId = watchlistItem.tmdb_id 
+        || watchlistItem.content?.tmdb_id 
+        || 0;
+      
+      // PRIORITY ORDER for media type:
+      // 1. Direct media_type on the item
+      // 2. Nested content.type
+      // 3. Default to 'movie'
+      const mediaType = watchlistItem.media_type 
+        || watchlistItem.content?.type 
+        || 'movie';
+      
+      // PRIORITY ORDER for title:
+      // 1. Direct title on item
+      // 2. Nested content.title
+      // 3. 'Unknown Title'
+      const title = watchlistItem.title 
+        || watchlistItem.content?.title 
+        || 'Unknown Title';
+
+      // PRIORITY ORDER for poster:
+      // 1. Direct poster_path on item
+      // 2. Nested content.poster_url
+      // 3. null
+      const posterPath = watchlistItem.poster_path 
+        || watchlistItem.content?.poster_url 
+        || null;
+
+      // PRIORITY ORDER for overview:
+      // 1. Direct overview on item
+      // 2. Nested content.overview
+      // 3. empty string
+      const overview = watchlistItem.overview 
+        || watchlistItem.content?.overview 
+        || '';
+
+      // Log for debugging
+      console.log('[Watchlist] Opening item:', {
+        title,
+        tmdb_id: tmdbId,
+        media_type: mediaType,
+        source: watchlistItem.tmdb_id ? 'direct' : watchlistItem.content?.tmdb_id ? 'nested' : 'missing'
+      });
+
       content = {
-        id: item.content.tmdb_id || 0,
-        title: item.content.title || 'Unknown Title',
-        originalTitle: item.content.title || 'Unknown Title',
-        type: item.content.type || 'movie',
-        overview: item.content.overview || '',
-        posterPath: item.content.poster_url || null,
+        id: tmdbId,
+        title: title,
+        originalTitle: title,
+        type: mediaType,
+        overview: overview,
+        posterPath: posterPath,
         backdropPath: null,
-        releaseDate: null,
+        releaseDate: watchlistItem.release_date || null,
         genres: [],
-        rating: 0,
+        rating: watchlistItem.vote_average || 0,
         voteCount: 0,
         popularity: 0,
         language: '',
       };
     } else {
-      // It's already UnifiedContent
+      // It's already UnifiedContent (from recommendations)
       content = item as UnifiedContent;
     }
 
@@ -391,4 +560,3 @@ const styles = StyleSheet.create({
     height: 100,
   },
 });
-
