@@ -325,6 +325,29 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     return new Set(ids);
   }, [watching, wantToWatch, watched]);
 
+  // Clear recommendation cache when watchlist grows significantly
+  useEffect(() => {
+    const clearStaleCache = async () => {
+      // If watchlist grew significantly, invalidate recommendation cache
+      const lastWatchlistSize = await AsyncStorage.getItem('last_watchlist_size');
+      const currentSize = watchlistIds.size;
+
+      if (lastWatchlistSize) {
+        const delta = currentSize - parseInt(lastWatchlistSize);
+        if (delta >= 5) {
+          console.log('[ForYou] Watchlist grew by', delta, '- clearing stale cache');
+          await AsyncStorage.removeItem('foryou_recommendations_cache');
+          setCachedRecommendations([]); // Clear local cache state too
+        }
+      }
+      await AsyncStorage.setItem('last_watchlist_size', currentSize.toString());
+    };
+
+    if (watchlistIds.size > 0) {
+      clearStaleCache();
+    }
+  }, [watchlistIds.size]);
+
   // ============================================================================
   // FETCH RECOMMENDATIONS
   // ============================================================================
