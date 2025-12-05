@@ -234,7 +234,16 @@ export const useRecommendationCache = (userId: string | undefined) => {
     }
   };
 
-  // Get filtered results
+  // Helper function to check if item has specific genre ID
+  const hasGenreId = (item: UnifiedContent, targetId: number): boolean => {
+    const genres = item.genres || (item as any).genre_ids || [];
+    return genres.some((g: any) => {
+      const id = typeof g === 'number' ? g : g?.id;
+      return id === targetId;
+    });
+  };
+
+  // Get filtered results with genre scoring
   const getFiltered = useCallback((mediaType: 'all' | 'movie' | 'tv', genre: string): UnifiedContent[] => {
     if (!cache) {
       console.log('[RecCache] getFiltered: cache not ready');
@@ -243,20 +252,60 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
     let results: UnifiedContent[];
 
-    if (genre !== 'All') {
-      results = cache.byGenre.get(genre) || [];
-
-      if (mediaType !== 'all') {
-        results = results.filter(item => {
-          const itemType = (item as any).media_type || item.type;
-          return itemType === mediaType || (mediaType === 'tv' && itemType === 'series');
-        });
-      }
+    // Start with all items or media-filtered items
+    if (mediaType !== 'all') {
+      results = cache.byMediaType[mediaType] || [];
     } else {
-      if (mediaType !== 'all') {
-        results = cache.byMediaType[mediaType] || [];
+      results = cache.all;
+    }
+
+    // Apply genre filter with scoring
+    if (genre !== 'All') {
+      const genreIdList = GENRE_NAME_TO_ID[genre];
+      if (!genreIdList) {
+        console.log('[RecCache] Unknown genre:', genre);
+        return results;
+      }
+
+      const primaryGenreId = genreIdList[0]; // Use first ID as primary
+
+      // Special case: Anime needs Japanese origin
+      if (genre === 'Anime') {
+        results = results.filter(item => {
+          const hasAnimation = hasGenreId(item, 16);
+          const isJapanese = (item as any).original_language === 'ja';
+          return hasAnimation && isJapanese;
+        });
       } else {
-        results = cache.all;
+        // Score items by how well they match the genre
+        const scored = results.map(item => {
+          const genres = item.genres || (item as any).genre_ids || [];
+          const genreIds = genres.map((g: any) => typeof g === 'number' ? g : g?.id);
+
+          let score = 0;
+
+          // Check if primary genre matches (highest score)
+          if (genreIds[0] === primaryGenreId) {
+            score = 100;
+          }
+          // Check if any genre ID in our list matches
+          else if (genreIdList.some(gid => genreIds.includes(gid))) {
+            // If it's in position 1 (secondary), higher score than later positions
+            if (genreIds[1] && genreIdList.includes(genreIds[1])) {
+              score = 50;
+            } else {
+              score = 25;
+            }
+          }
+
+          return { item, score };
+        });
+
+        // Filter and sort by score
+        results = scored
+          .filter(s => s.score > 0)
+          .sort((a, b) => b.score - a.score)
+          .map(s => s.item);
       }
     }
 
