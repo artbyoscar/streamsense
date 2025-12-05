@@ -111,11 +111,18 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     };
   }, [setOnContentAdded]);
 
-  // Handle add to list with removal from view
+  // Handle add to list with IMMEDIATE removal from view
   const handleAddToList = useCallback((item: UnifiedContent) => {
+    const itemId = item.id || (item as any).tmdb_id;
+
+    // IMMEDIATELY add to removedItemIds so hero/lists update
+    setRemovedItemIds(prev => new Set([...prev, itemId]));
+    console.log('[ForYou] Immediately removing item:', itemId);
+
+    // Then call parent callbacks
     onAddToList(item);
     if (onRemoveItem) {
-      onRemoveItem(item.id);
+      onRemoveItem(itemId);
     }
   }, [onAddToList, onRemoveItem]);
 
