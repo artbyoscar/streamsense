@@ -9,6 +9,7 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '@/features/auth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { getWatchlist } from '../services/watchlistService';
@@ -125,17 +126,56 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   } = useRecommendationCache(user?.id);
 
   const [recommendations, setRecommendations] = useState<UnifiedContent[]>([]);
+  const [cachedRecommendations, setCachedRecommendations] = useState<UnifiedContent[]>([]);
   const [heroStreamingServices, setHeroStreamingServices] = useState<string[]>([]);
+
+  // ============================================================================
+  // INSTANT LOAD - CACHED RECOMMENDATIONS
+  // ============================================================================
+
+  // Load cached recommendations IMMEDIATELY on mount
+  useEffect(() => {
+    const loadCached = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('foryou_recommendations_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.items && parsed.items.length > 0) {
+            console.log('[ForYou] Loaded cached recommendations:', parsed.items.length);
+            setCachedRecommendations(parsed.items);
+          }
+        }
+      } catch (e) {
+        console.log('[ForYou] No cached recommendations available');
+      }
+    };
+    loadCached();
+  }, []);
+
+  // Save to cache whenever fresh recommendations arrive
+  useEffect(() => {
+    if (recommendations && recommendations.length > 0) {
+      AsyncStorage.setItem('foryou_recommendations_cache', JSON.stringify({
+        items: recommendations,
+        timestamp: Date.now()
+      })).catch(() => {});
+    }
+  }, [recommendations]);
+
+  // Use cached while loading fresh
+  const displayRecommendations = (loadingRecommendations && cachedRecommendations.length > 0)
+    ? cachedRecommendations
+    : recommendations;
 
   // ============================================================================
   // HERO ITEM CALCULATION & STREAMING SERVICES
   // ============================================================================
 
-  // Calculate hero item (first recommendation)
+  // Calculate hero item (first recommendation from display)
   const heroItem = useMemo(() => {
-    if (!recommendations || recommendations.length === 0) return null;
-    return recommendations[0];
-  }, [recommendations]);
+    if (!displayRecommendations || displayRecommendations.length === 0) return null;
+    return displayRecommendations[0];
+  }, [displayRecommendations]);
 
   // Fetch streaming services for hero item
   useEffect(() => {
@@ -161,19 +201,19 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     fetchStreaming();
   }, [heroItem?.id]);
 
-  // Enrich recommendations with hero streaming services
+  // Enrich display recommendations with hero streaming services
   const enrichedRecommendations = useMemo(() => {
-    if (!recommendations || recommendations.length === 0) return [];
-    if (!heroItem || heroStreamingServices.length === 0) return recommendations;
+    if (!displayRecommendations || displayRecommendations.length === 0) return [];
+    if (!heroItem || heroStreamingServices.length === 0) return displayRecommendations;
 
-    return recommendations.map((item, index) => {
+    return displayRecommendations.map((item, index) => {
       // Enrich only the first item (hero)
       if (index === 0) {
         return { ...item, streaming_services: heroStreamingServices };
       }
       return item;
     });
-  }, [recommendations, heroItem, heroStreamingServices]);
+  }, [displayRecommendations, heroItem, heroStreamingServices]);
 
   // ============================================================================
   // GENRE FILTERING FOR WATCHLIST TABS
@@ -540,7 +580,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
         {activeTab === 'forYou' && (
           <ForYouContent
             recommendations={enrichedRecommendations}
-            isLoading={loadingRecommendations}
+            isLoading={loadingRecommendations && cachedRecommendations.length === 0}
             onItemPress={handleItemPress}
             onAddToList={handleAddToList}
             onOpenDiscover={handleOpenDiscover}
