@@ -3,7 +3,7 @@
  * Preview of personalized recommendations
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
 import { Sparkles, Star, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
@@ -77,7 +77,7 @@ export const PickedForYouSection: React.FC = () => {
   const pendingItemIdRef = useRef<string | null>(null);
 
   // Register callback for when content is added to watchlist
-  React.useEffect(() => {
+  useEffect(() => {
     const handleContentAdded = () => {
       if (pendingItemIdRef.current) {
         console.log('[PickedForYou] Removing item after watchlist add:', pendingItemIdRef.current);
@@ -86,11 +86,10 @@ export const PickedForYouSection: React.FC = () => {
       }
     };
 
-    // Set the callback in navigation context
-    setOnContentAdded?.(handleContentAdded);
+    setOnContentAdded(handleContentAdded);
 
     return () => {
-      setOnContentAdded?.(null);
+      setOnContentAdded(null);
     };
   }, [setOnContentAdded]);
 
