@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
@@ -59,6 +60,40 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   const [removedItemIds, setRemovedItemIds] = useState<Set<number>>(new Set());
   const pendingItemIdRef = useRef<number | null>(null);
 
+  // Instant load - cached recommendations for immediate display
+  const [cachedRecommendations, setCachedRecommendations] = useState<UnifiedContent[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Load cached recommendations immediately on mount
+  useEffect(() => {
+    const loadCached = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('recommendations_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.items && parsed.items.length > 0) {
+            console.log('[ForYou] Loaded', parsed.items.length, 'cached recommendations');
+            setCachedRecommendations(parsed.items);
+            setIsInitialLoad(false);
+          }
+        }
+      } catch (e) {
+        console.log('[ForYou] No cached recommendations available');
+      }
+    };
+    loadCached();
+  }, []);
+
+  // Save recommendations to cache when they change
+  useEffect(() => {
+    if (recommendations && recommendations.length > 0) {
+      AsyncStorage.setItem('recommendations_cache', JSON.stringify({
+        items: recommendations,
+        timestamp: Date.now(),
+      })).catch(err => console.error('[ForYou] Failed to cache recommendations:', err));
+    }
+  }, [recommendations]);
+
   // Register callback for when content is added to watchlist
   useEffect(() => {
     const handleContentAdded = () => {
@@ -98,12 +133,17 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     onItemPress(item);
   }, [onItemPress]);
 
+  // Use cached data while loading fresh recommendations
+  const displayRecommendations = isLoading && cachedRecommendations.length > 0
+    ? cachedRecommendations
+    : recommendations;
+
   // Hero item - reactive to genre selection AND removed items
   const heroItem = useMemo(() => {
-    if (!recommendations || recommendations.length === 0) return null;
+    if (!displayRecommendations || displayRecommendations.length === 0) return null;
 
     // Filter out removed items FIRST
-    const availableItems = recommendations.filter(item => {
+    const availableItems = displayRecommendations.filter(item => {
       const itemId = item.id || (item as any).tmdb_id;
       return !removedItemIds.has(itemId);
     });
@@ -137,18 +177,19 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     });
 
     return anyMatch || availableItems[0];
-  }, [recommendations, selectedGenre, removedItemIds]); // Added removedItemIds dependency
+  }, [displayRecommendations, selectedGenre, removedItemIds]);
 
   // Filter out removed items
   const visibleRecommendations = useMemo(() => {
-    if (!recommendations) return [];
-    return recommendations.filter(item => {
+    if (!displayRecommendations) return [];
+    return displayRecommendations.filter(item => {
       const itemId = item.id || (item as any).tmdb_id;
       return !removedItemIds.has(itemId);
     });
-  }, [recommendations, removedItemIds]);
+  }, [displayRecommendations, removedItemIds]);
 
-  if (isLoading) {
+  // Show loading only if no cached data available
+  if (isLoading && cachedRecommendations.length === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#a78bfa" />
@@ -156,7 +197,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     );
   }
 
-  if (!recommendations || recommendations.length === 0) {
+  if (!displayRecommendations || displayRecommendations.length === 0) {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyText}>No recommendations yet</Text>
