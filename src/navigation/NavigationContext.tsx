@@ -3,7 +3,7 @@
  * Provides tab switching and screen navigation without react-navigation
  */
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import type { UnifiedContent } from '@/types';
 
 type TabName = 'Home' | 'Watchlist' | 'Discover' | 'Tips' | 'Settings';
@@ -32,8 +32,10 @@ interface NavigationContextType {
   setShowSubscriptionsManage: (show: boolean) => void;
   refreshKey: number;
   triggerRefresh: () => void;
+  // New: callback for when content is added to watchlist
   onContentAdded: (() => void) | null;
   setOnContentAdded: (callback: (() => void) | null) => void;
+  notifyContentAdded: () => void;
 }
 
 const defaultContext: NavigationContextType = {
@@ -61,7 +63,8 @@ const defaultContext: NavigationContextType = {
   refreshKey: 0,
   triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
   onContentAdded: null,
-  setOnContentAdded: () => console.log('[Navigation] Would set onContentAdded callback'),
+  setOnContentAdded: () => console.log('[Navigation] Would set content added callback'),
+  notifyContentAdded: () => console.log('[Navigation] Would notify content added'),
 };
 
 const NavigationContext = createContext<NavigationContextType>(defaultContext);
@@ -87,11 +90,23 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedSubscription, setSelectedSubscription] = useState<any | null>(null);
   const [showSubscriptionsManage, setShowSubscriptionsManage] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
-  const [onContentAdded, setOnContentAdded] = useState<(() => void) | null>(null);
+
+  // New: callback ref for content added notifications
+  const onContentAddedRef = useRef<(() => void) | null>(null);
 
   const triggerRefresh = () => {
     setRefreshKey((prev) => prev + 1);
   };
+
+  const setOnContentAdded = useCallback((callback: (() => void) | null) => {
+    onContentAddedRef.current = callback;
+  }, []);
+
+  const notifyContentAdded = useCallback(() => {
+    if (onContentAddedRef.current) {
+      onContentAddedRef.current();
+    }
+  }, []);
 
   const navigateToScreen = (screen: string, params?: any) => {
     console.log('[Navigation] Navigate to screen:', screen, params);
@@ -152,8 +167,9 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowSubscriptionsManage,
         refreshKey,
         triggerRefresh,
-        onContentAdded,
+        onContentAdded: onContentAddedRef.current,
         setOnContentAdded,
+        notifyContentAdded,
       }}
     >
       {children}

@@ -78,7 +78,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
-  const { onContentAdded } = useCustomNavigation();
+  const { notifyContentAdded } = useCustomNavigation();
 
   const [selectedStatus, setSelectedStatus] = useState<WatchlistStatus>('want_to_watch');
   const [rating, setRating] = useState<number>(0);
@@ -374,7 +374,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
       onAddedToWatchlist?.();
 
       // Trigger navigation context callback for recommendation removal
-      onContentAdded?.();
+      notifyContentAdded();
 
       // Close the modal after a short delay to show success
       setTimeout(() => {
