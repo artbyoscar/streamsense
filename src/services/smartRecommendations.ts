@@ -19,11 +19,15 @@ import { getTasteProfile } from './tasteProfile';
 const SESSION_CACHE_KEY = 'streamsense_session_shown';
 const WATCHLIST_CACHE_KEY = 'streamsense_watchlist_ids';
 const SESSION_EXCLUSIONS_KEY = 'streamsense_session_exclusions'; // 🆕 NEW: Persist skipped items
+const SHOWN_ITEMS_KEY = 'smartrecs_shown_items'; // 🆕 NEW: Track shown items across sessions
 
 let sessionShownIds: Set<number> = new Set();
 let watchlistTmdbIds: Set<number> = new Set();
 let sessionExclusionIds: Set<number> = new Set(); // 🆕 NEW: Separate set for session exclusions (skips)
+let recentlyShownIds: Set<number> = new Set(); // 🆕 NEW: Recently shown items (7-day window)
 let cacheInitialized = false;
+
+const SHOWN_ITEMS_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ============================================================================
 // GLOBAL EXCLUSION SYSTEM - FIXED VERSION
@@ -80,6 +84,65 @@ const saveSessionExclusions = async (): Promise<void> => {
     }));
   } catch (error) {
     console.error('[SmartRecs] Error saving session exclusions:', error);
+  }
+};
+
+/**
+ * 🆕 NEW: Load recently shown items from storage (7-day window)
+ * Returns Set of item IDs that were shown in the last 7 days
+ */
+const loadRecentlyShownItems = async (): Promise<Set<number>> => {
+  try {
+    const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
+    if (!stored) return new Set();
+
+    const data = JSON.parse(stored);
+    const now = Date.now();
+
+    // Filter out items older than 7 days
+    const recent = Object.entries(data)
+      .filter(([_, timestamp]) => now - (timestamp as number) < SHOWN_ITEMS_MAX_AGE)
+      .map(([id, _]) => parseInt(id, 10));
+
+    console.log('[SmartRecs] Loaded', recent.length, 'recently shown items (7-day window)');
+    return new Set(recent);
+  } catch (error) {
+    console.error('[SmartRecs] Error loading shown items:', error);
+    return new Set();
+  }
+};
+
+/**
+ * 🆕 NEW: Mark item as shown with current timestamp
+ */
+const markAsShown = async (itemId: number): Promise<void> => {
+  try {
+    const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
+    const data = stored ? JSON.parse(stored) : {};
+    data[itemId] = Date.now();
+    await AsyncStorage.setItem(SHOWN_ITEMS_KEY, JSON.stringify(data));
+  } catch (error) {
+    console.error('[SmartRecs] Error marking item as shown:', error);
+  }
+};
+
+/**
+ * 🆕 NEW: Mark multiple items as shown (batch operation)
+ */
+const markBatchAsShown = async (itemIds: number[]): Promise<void> => {
+  try {
+    const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
+    const data = stored ? JSON.parse(stored) : {};
+    const now = Date.now();
+
+    itemIds.forEach(id => {
+      data[id] = now;
+    });
+
+    await AsyncStorage.setItem(SHOWN_ITEMS_KEY, JSON.stringify(data));
+    console.log('[SmartRecs] Marked', itemIds.length, 'items as shown');
+  } catch (error) {
+    console.error('[SmartRecs] Error marking batch as shown:', error);
   }
 };
 
@@ -212,6 +275,9 @@ const initializeCaches = async (userId: string) => {
     // 🆕 Load session exclusions (skipped items)
     await loadSessionExclusions();
 
+    // 🆕 Load recently shown items (7-day window)
+    recentlyShownIds = await loadRecentlyShownItems();
+
     // Load FRESH watchlist IDs safely
     const ids = await getWatchlistIds(userId);
     watchlistTmdbIds = new Set();
@@ -268,16 +334,20 @@ const shouldExclude = (tmdbId: number, excludeSessionItems: boolean = true): boo
   // 🔧 FIX: Check unified global exclusions (includes watchlist + session exclusions)
   const isGloballyExcluded = globalExcludeIds.has(tmdbId);
 
+  // 🆕 Check if shown in last 7 days (persistent across sessions)
+  const recentlyShown = recentlyShownIds.has(tmdbId);
+
   // For infinite feeds (Discover), don't exclude based on "shown" - use pagination instead
   const alreadyShown = excludeSessionItems ? sessionShownIds.has(tmdbId) : false;
 
-  const excluded = isGloballyExcluded || alreadyShown;
+  const excluded = isGloballyExcluded || recentlyShown || alreadyShown;
 
   if (excluded) {
     console.log(`[SmartRecs] Excluding ${tmdbId}:`, {
       inGlobalExclusions: isGloballyExcluded,
       inWatchlist: watchlistTmdbIds.has(tmdbId),
       inSessionExclusions: sessionExclusionIds.has(tmdbId),
+      recentlyShown,
       alreadyShown,
     });
   }
@@ -760,6 +830,11 @@ export const getSmartRecommendations = async (
 
       trackBatchImpressions(userId, results.map(r => r.id)).catch(err =>
         console.error('[SmartRecs] Error tracking fatigue impressions:', err)
+      );
+
+      // 🆕 Mark items as shown (7-day persistence)
+      markBatchAsShown(results.map(r => r.id)).catch(err =>
+        console.error('[SmartRecs] Error marking items as shown:', err)
       );
     }
 
