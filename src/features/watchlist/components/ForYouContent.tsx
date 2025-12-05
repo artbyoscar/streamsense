@@ -41,6 +41,7 @@ interface ForYouContentProps {
   onRemoveItem?: (itemId: number) => void;
   isLoadingMore?: boolean;
   selectedGenre?: string;
+  watchlistIds?: Set<number>;
 }
 
 export const ForYouContent: React.FC<ForYouContentProps> = ({
@@ -53,6 +54,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   onRemoveItem,
   isLoadingMore = false,
   selectedGenre = 'All',
+  watchlistIds,
 }) => {
   const { setOnContentAdded } = useCustomNavigation();
 
@@ -196,13 +198,16 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     return anyMatch || availableItems[0];
   }, [displayRecommendations, selectedGenre, removedItemIds]);
 
-  // Filter by both removed items AND selected genre
+  // Filter by removed items, watchlist, AND selected genre
   const visibleRecommendations = useMemo(() => {
     if (!displayRecommendations) return [];
 
     let filtered = displayRecommendations.filter(item => {
       const itemId = item.id || (item as any).tmdb_id;
-      return !removedItemIds.has(itemId);
+      // Check both local removals AND watchlist
+      if (removedItemIds.has(itemId)) return false;
+      if (watchlistIds?.has(itemId)) return false;
+      return true;
     });
 
     // If a specific genre is selected, filter to that genre
@@ -220,7 +225,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     }
 
     return filtered;
-  }, [displayRecommendations, removedItemIds, selectedGenre]);
+  }, [displayRecommendations, removedItemIds, selectedGenre, watchlistIds]);
 
   // Show loading only if no cached data available
   if (isLoading && cachedRecommendations.length === 0) {
