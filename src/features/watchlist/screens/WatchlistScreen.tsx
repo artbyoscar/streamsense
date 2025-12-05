@@ -162,59 +162,6 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     }
   }, [recommendations]);
 
-  // Use cached while loading fresh
-  const displayRecommendations = (loadingRecommendations && cachedRecommendations.length > 0)
-    ? cachedRecommendations
-    : recommendations;
-
-  // ============================================================================
-  // HERO ITEM CALCULATION & STREAMING SERVICES
-  // ============================================================================
-
-  // Calculate hero item (first recommendation from display)
-  const heroItem = useMemo(() => {
-    if (!displayRecommendations || displayRecommendations.length === 0) return null;
-    return displayRecommendations[0];
-  }, [displayRecommendations]);
-
-  // Fetch streaming services for hero item
-  useEffect(() => {
-    if (!heroItem || !heroItem.id) {
-      setHeroStreamingServices([]);
-      return;
-    }
-
-    const fetchStreaming = async () => {
-      try {
-        const mediaType = heroItem.type || (heroItem as any).media_type || 'movie';
-        const response = await tmdbApi.get(`/${mediaType}/${heroItem.id}/watch/providers`);
-        const usProviders = response.data.results?.US?.flatrate || [];
-        const services = usProviders.map((p: any) => p.provider_name);
-        setHeroStreamingServices(services);
-        console.log('[Watchlist] Fetched hero streaming services:', services);
-      } catch (e) {
-        console.log('[Watchlist] Could not fetch hero streaming services');
-        setHeroStreamingServices([]);
-      }
-    };
-
-    fetchStreaming();
-  }, [heroItem?.id]);
-
-  // Enrich display recommendations with hero streaming services
-  const enrichedRecommendations = useMemo(() => {
-    if (!displayRecommendations || displayRecommendations.length === 0) return [];
-    if (!heroItem || heroStreamingServices.length === 0) return displayRecommendations;
-
-    return displayRecommendations.map((item, index) => {
-      // Enrich only the first item (hero)
-      if (index === 0) {
-        return { ...item, streaming_services: heroStreamingServices };
-      }
-      return item;
-    });
-  }, [displayRecommendations, heroItem, heroStreamingServices]);
-
   // ============================================================================
   // GENRE FILTERING FOR WATCHLIST TABS
   // ============================================================================
@@ -347,6 +294,79 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
       clearStaleCache();
     }
   }, [watchlistIds.size]);
+
+  // ============================================================================
+  // DISPLAY RECOMMENDATIONS WITH WATCHLIST FILTERING
+  // ============================================================================
+
+  // Use cached while loading fresh, but always filter through watchlistIds
+  const displayRecommendations = useMemo(() => {
+    const base = (loadingRecommendations && cachedRecommendations.length > 0)
+      ? cachedRecommendations
+      : recommendations;
+
+    if (!base || base.length === 0) return [];
+
+    // Always filter through watchlistIds if available
+    if (watchlistIds && watchlistIds.size > 0) {
+      const filtered = base.filter(item => {
+        const id = item.id || (item as any).tmdb_id;
+        return !watchlistIds.has(id);
+      });
+      console.log('[ForYou] Pre-filtered', base.length - filtered.length, 'watchlist items from display');
+      return filtered;
+    }
+
+    return base;
+  }, [loadingRecommendations, cachedRecommendations, recommendations, watchlistIds]);
+
+  // ============================================================================
+  // HERO ITEM CALCULATION & STREAMING SERVICES
+  // ============================================================================
+
+  // Calculate hero item (first recommendation from display)
+  const heroItem = useMemo(() => {
+    if (!displayRecommendations || displayRecommendations.length === 0) return null;
+    return displayRecommendations[0];
+  }, [displayRecommendations]);
+
+  // Fetch streaming services for hero item
+  useEffect(() => {
+    if (!heroItem || !heroItem.id) {
+      setHeroStreamingServices([]);
+      return;
+    }
+
+    const fetchStreaming = async () => {
+      try {
+        const mediaType = heroItem.type || (heroItem as any).media_type || 'movie';
+        const response = await tmdbApi.get(`/${mediaType}/${heroItem.id}/watch/providers`);
+        const usProviders = response.data.results?.US?.flatrate || [];
+        const services = usProviders.map((p: any) => p.provider_name);
+        setHeroStreamingServices(services);
+        console.log('[Watchlist] Fetched hero streaming services:', services);
+      } catch (e) {
+        console.log('[Watchlist] Could not fetch hero streaming services');
+        setHeroStreamingServices([]);
+      }
+    };
+
+    fetchStreaming();
+  }, [heroItem?.id]);
+
+  // Enrich display recommendations with hero streaming services
+  const enrichedRecommendations = useMemo(() => {
+    if (!displayRecommendations || displayRecommendations.length === 0) return [];
+    if (!heroItem || heroStreamingServices.length === 0) return displayRecommendations;
+
+    return displayRecommendations.map((item, index) => {
+      // Enrich only the first item (hero)
+      if (index === 0) {
+        return { ...item, streaming_services: heroStreamingServices };
+      }
+      return item;
+    });
+  }, [displayRecommendations, heroItem, heroStreamingServices]);
 
   // ============================================================================
   // FETCH RECOMMENDATIONS
