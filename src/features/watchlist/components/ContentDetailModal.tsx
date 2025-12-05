@@ -181,8 +181,8 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
       return content.genres.map((g: any) => g.id);
     }
 
-    // Already an array of numbers
-    return content.genres as number[];
+    // Already an array of numbers - cast through unknown for type safety
+    return content.genres as unknown as number[];
   };
 
   // Add or update watchlist item
