@@ -279,6 +279,27 @@ const initializeCaches = async (userId: string) => {
     // 🆕 Load recently shown items (7-day window)
     recentlyShownIds = await loadRecentlyShownItems();
 
+    // 🆕 Seed recently shown from session exclusions (backfill for pre-tracking items)
+    if (sessionExclusionIds.size > 0) {
+      let addedCount = 0;
+      const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
+      const data = stored ? JSON.parse(stored) : {};
+      const now = Date.now();
+
+      sessionExclusionIds.forEach(id => {
+        if (!recentlyShownIds.has(id)) {
+          data[id] = now;
+          recentlyShownIds.add(id);
+          addedCount++;
+        }
+      });
+
+      if (addedCount > 0) {
+        await AsyncStorage.setItem(SHOWN_ITEMS_KEY, JSON.stringify(data));
+        console.log('[SmartRecs] Seeded', addedCount, 'items from session exclusions into 7-day tracking');
+      }
+    }
+
     // Load FRESH watchlist IDs safely
     const ids = await getWatchlistIds(userId);
     watchlistTmdbIds = new Set();
