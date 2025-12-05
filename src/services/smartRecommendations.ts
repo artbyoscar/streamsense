@@ -445,8 +445,11 @@ export const getSmartRecommendations = async (
   if (forceRefresh) {
     cacheInitialized = false;
     sessionShownIds.clear();
-    // 🔧 FIX: Do NOT clear sessionExclusionIds on force refresh - those are user decisions
+    sessionExclusionIds.clear(); // Also clear session exclusions on force refresh
     await AsyncStorage.removeItem(SESSION_CACHE_KEY);
+    await AsyncStorage.removeItem(SESSION_EXCLUSIONS_KEY);
+    rebuildGlobalExclusions(); // Rebuild to reflect cleared session exclusions
+    console.log('[SmartRecs] Force refresh - cleared session cache and session exclusions');
   }
 
   // Initialize caches
