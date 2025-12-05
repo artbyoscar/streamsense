@@ -129,14 +129,17 @@ const markAsShown = async (itemId: number): Promise<void> => {
 /**
  * 🆕 NEW: Mark multiple items as shown (batch operation)
  */
-const markBatchAsShown = async (itemIds: number[]): Promise<void> => {
+const markBatchAsShown = async (itemIds: (number | string)[]): Promise<void> => {
   try {
     const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
     const data = stored ? JSON.parse(stored) : {};
     const now = Date.now();
 
-    itemIds.forEach(id => {
-      data[id] = now;
+    itemIds.forEach(rawId => {
+      const id = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+      if (!isNaN(id)) {
+        data[id] = now;
+      }
     });
 
     await AsyncStorage.setItem(SHOWN_ITEMS_KEY, JSON.stringify(data));
