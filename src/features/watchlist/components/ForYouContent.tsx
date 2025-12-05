@@ -58,7 +58,8 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
 
   // Track removed item IDs for fade-out effect
   const [removedItemIds, setRemovedItemIds] = useState<Set<number>>(new Set());
-  const pendingItemIdRef = useRef<number | null>(null);
+  // Track ALL pending item IDs (not just one)
+  const pendingItemIdsRef = useRef<Set<number>>(new Set());
 
   // Instant load - cached recommendations for immediate display
   const [cachedRecommendations, setCachedRecommendations] = useState<UnifiedContent[]>([]);
@@ -97,10 +98,17 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   // Register callback for when content is added to watchlist
   useEffect(() => {
     const handleContentAdded = () => {
-      if (pendingItemIdRef.current) {
-        console.log('[ForYou] Removing item after watchlist add:', pendingItemIdRef.current);
-        setRemovedItemIds(prev => new Set([...prev, pendingItemIdRef.current!]));
-        pendingItemIdRef.current = null;
+      if (pendingItemIdsRef.current.size > 0) {
+        const pendingIds = Array.from(pendingItemIdsRef.current);
+        console.log('[ForYou] Processing pending items:', pendingIds);
+
+        setRemovedItemIds(prev => {
+          const newSet = new Set(prev);
+          pendingIds.forEach(id => newSet.add(id));
+          return newSet;
+        });
+
+        pendingItemIdsRef.current.clear();
       }
     };
 
@@ -135,8 +143,10 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
 
   // Handle item press with pending ID tracking
   const handleItemPress = useCallback((item: UnifiedContent) => {
-    // Store the item ID for potential removal if added to watchlist
-    pendingItemIdRef.current = item.id;
+    // Track this item ID for potential removal if added to watchlist
+    const itemId = item.id || (item as any).tmdb_id;
+    pendingItemIdsRef.current.add(itemId);
+    console.log('[ForYou] Tracking pending item:', itemId);
     onItemPress(item);
   }, [onItemPress]);
 
