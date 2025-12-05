@@ -150,6 +150,59 @@ const markBatchAsShown = async (itemIds: (number | string)[]): Promise<void> => 
 };
 
 /**
+ * 🆕 Load watchlist IDs with robust normalization and validation
+ * Ensures all IDs are stored as numbers, with diagnostic logging
+ */
+const loadWatchlistIds = async (userId: string): Promise<void> => {
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.log('[SmartRecs] No valid user ID, skipping watchlist load');
+    return;
+  }
+
+  try {
+    const ids = await getWatchlistIds(userId);
+    watchlistTmdbIds.clear();
+    let skippedCount = 0;
+
+    ids.forEach(rawId => {
+      // CRITICAL: Normalize ID to number (handles string/number mismatch from DB)
+      const id = typeof rawId === 'string' ? parseInt(rawId, 10) : Number(rawId);
+
+      if (id && !isNaN(id)) {
+        watchlistTmdbIds.add(id);
+      } else {
+        // Try parsing "tv-123" or "movie-123" format as fallback
+        if (typeof rawId === 'string') {
+          const match = rawId.match(/^(tv|movie)-(\d+)$/);
+          if (match) {
+            const parsed = parseInt(match[2], 10);
+            if (!isNaN(parsed)) {
+              watchlistTmdbIds.add(parsed);
+              return;
+            }
+          }
+        }
+        skippedCount++;
+        console.warn('[SmartRecs] Invalid tmdb_id skipped:', rawId, typeof rawId);
+      }
+    });
+
+    console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
+    if (skippedCount > 0) {
+      console.warn('[SmartRecs] ⚠️  Skipped invalid IDs:', skippedCount);
+    }
+
+    // Debug: Log sample to verify types
+    const sample = Array.from(watchlistTmdbIds).slice(0, 5);
+    console.log('[SmartRecs] Sample watchlist IDs (should all be numbers):', sample);
+    console.log('[SmartRecs] Sample types:', sample.map(id => typeof id));
+
+  } catch (err) {
+    console.error('[SmartRecs] Exception loading watchlist IDs:', err);
+  }
+};
+
+/**
  * Initialize global exclusions from watchlist AND restore session exclusions
  * Call this when user logs in or app starts
  */
@@ -164,22 +217,8 @@ export const initializeExclusions = async (userId: string) => {
     // 1. Load persisted session exclusions first
     await loadSessionExclusions();
 
-    // 2. Load watchlist IDs from database
-    const ids = await getWatchlistIds(userId);
-    watchlistTmdbIds = new Set();
-
-    ids.forEach(id => {
-      let num = Number(id);
-      if (!isNaN(num)) {
-        watchlistTmdbIds.add(num);
-      } else {
-        const match = id.match(/^(tv|movie)-(\d+)$/);
-        if (match) {
-          num = parseInt(match[2], 10);
-          watchlistTmdbIds.add(num);
-        }
-      }
-    });
+    // 2. Load watchlist IDs from database with normalization
+    await loadWatchlistIds(userId);
 
     // 3. Rebuild combined exclusions
     rebuildGlobalExclusions();
@@ -318,24 +357,8 @@ const initializeCaches = async (userId: string) => {
       }
     }
 
-    // Load FRESH watchlist IDs safely
-    const ids = await getWatchlistIds(userId);
-    watchlistTmdbIds = new Set();
-    
-    ids.forEach(id => {
-      let num = Number(id);
-      if (!isNaN(num)) {
-        watchlistTmdbIds.add(num);
-      } else {
-        const match = id.match(/^(tv|movie)-(\d+)$/);
-        if (match) {
-          num = parseInt(match[2], 10);
-          watchlistTmdbIds.add(num);
-        }
-      }
-    });
-
-    console.log('[SmartRecs] Loaded watchlist IDs:', watchlistTmdbIds.size, 'items');
+    // Load FRESH watchlist IDs with normalization
+    await loadWatchlistIds(userId);
 
     // 🔧 FIX: Rebuild global exclusions (combines watchlist + session)
     rebuildGlobalExclusions();
@@ -570,22 +593,7 @@ export const getSmartRecommendations = async (
   await initializeCaches(userId);
 
   // 🔧 FIX: Update watchlist IDs WITHOUT clearing session exclusions
-  const ids = await getWatchlistIds(userId);
-  watchlistTmdbIds = new Set(); // Only clear watchlist set
-  // ❌ REMOVED: globalExcludeIds = new Set(); // DON'T clear this!
-
-  ids.forEach(id => {
-    let num = Number(id);
-    if (!isNaN(num)) {
-      watchlistTmdbIds.add(num);
-    } else {
-      const match = id.match(/^(tv|movie)-(\d+)$/);
-      if (match) {
-        num = parseInt(match[2], 10);
-        watchlistTmdbIds.add(num);
-      }
-    }
-  });
+  await loadWatchlistIds(userId);
 
   // 🔧 FIX: Rebuild global exclusions (preserves session exclusions)
   rebuildGlobalExclusions();
@@ -904,22 +912,8 @@ export const refreshWatchlistCache = async (userId: string): Promise<void> => {
     return;
   }
 
-  const ids = await getWatchlistIds(userId);
-  watchlistTmdbIds = new Set(); // Only clear watchlist
-  // ❌ REMOVED: globalExcludeIds = new Set(); // DON'T clear session exclusions!
-
-  ids.forEach(id => {
-    let num = Number(id);
-    if (!isNaN(num)) {
-      watchlistTmdbIds.add(num);
-    } else {
-      const match = id.match(/^(tv|movie)-(\d+)$/);
-      if (match) {
-        num = parseInt(match[2], 10);
-        watchlistTmdbIds.add(num);
-      }
-    }
-  });
+  // Load watchlist IDs with normalization
+  await loadWatchlistIds(userId);
 
   // 🔧 FIX: Rebuild global exclusions (combines watchlist + session)
   rebuildGlobalExclusions();
