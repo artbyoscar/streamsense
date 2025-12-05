@@ -228,10 +228,19 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     if (!displayRecommendations) return [];
 
     let filtered = displayRecommendations.filter(item => {
-      const itemId = item.id || (item as any).tmdb_id;
-      // Check both local removals AND watchlist
-      if (removedItemIds.has(itemId)) return false;
-      if (watchlistIds?.has(itemId)) return false;
+      // Normalize item ID to number for consistent matching
+      const rawId = item.id || (item as any).tmdb_id;
+      const itemId = typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+
+      // Check all exclusion sources
+      if (removedItemIds.has(itemId)) {
+        console.log('[ForYou] Filtering removed:', itemId);
+        return false;
+      }
+      if (watchlistIds?.has(itemId)) {
+        console.log('[ForYou] Filtering watchlist:', itemId);
+        return false;
+      }
       return true;
     });
 
@@ -249,7 +258,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       }
     }
 
-    console.log('[ForYou] Visible:', filtered.length, 'removed:', removedItemIds.size, 'watchlist:', watchlistIds?.size || 0);
+    console.log('[ForYou] Visible:', filtered.length, 'filtered out:', displayRecommendations.length - filtered.length);
     return filtered;
   }, [displayRecommendations, removedItemIds, selectedGenre, watchlistIds]);
 
