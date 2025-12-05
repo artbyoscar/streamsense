@@ -87,6 +87,23 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     loadCached();
   }, []);
 
+  // Load persisted exclusions on mount
+  useEffect(() => {
+    const loadPersistedExclusions = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('foryou_removed_items');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          console.log('[ForYou] Loaded persisted exclusions:', ids.length);
+          setRemovedItemIds(new Set(ids));
+        }
+      } catch (e) {
+        console.log('[ForYou] Could not load persisted exclusions');
+      }
+    };
+    loadPersistedExclusions();
+  }, []);
+
   // Save recommendations to cache when they change
   useEffect(() => {
     if (recommendations && recommendations.length > 0) {
@@ -96,6 +113,14 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       })).catch(err => console.error('[ForYou] Failed to cache recommendations:', err));
     }
   }, [recommendations]);
+
+  // Save removed items whenever they change
+  useEffect(() => {
+    if (removedItemIds.size > 0) {
+      AsyncStorage.setItem('foryou_removed_items', JSON.stringify([...removedItemIds]))
+        .catch(() => console.log('[ForYou] Could not save removed items'));
+    }
+  }, [removedItemIds]);
 
   // Register callback for when content is added to watchlist
   useEffect(() => {
