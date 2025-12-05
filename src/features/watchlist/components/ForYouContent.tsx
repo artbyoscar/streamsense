@@ -2,7 +2,7 @@
  * For You Content Component
  * Main recommendation view with hero spotlight and multiple lanes
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-native';
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
@@ -11,6 +11,25 @@ import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watc
 import { useAuth } from '@/hooks/useAuth';
 import { ChevronDown } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
+
+// Genre name to TMDb ID mapping
+const GENRE_NAME_TO_ID: Record<string, number> = {
+  'Action': 28,
+  'Adventure': 12,
+  'Animation': 16,
+  'Comedy': 35,
+  'Crime': 80,
+  'Documentary': 99,
+  'Drama': 18,
+  'Family': 10751,
+  'Fantasy': 14,
+  'Horror': 27,
+  'Mystery': 9648,
+  'Romance': 10749,
+  'Sci-Fi': 878,
+  'Thriller': 53,
+  'Anime': 16,
+};
 
 interface ForYouContentProps {
   recommendations: UnifiedContent[];
@@ -21,6 +40,7 @@ interface ForYouContentProps {
   onLoadMore?: () => Promise<UnifiedContent[]>;
   onRemoveItem?: (itemId: number) => void;
   isLoadingMore?: boolean;
+  selectedGenre?: string;
 }
 
 export const ForYouContent: React.FC<ForYouContentProps> = ({
@@ -32,6 +52,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   onLoadMore,
   onRemoveItem,
   isLoadingMore = false,
+  selectedGenre = 'All',
 }) => {
   const { user } = useAuth();
   const [serviceBadges, setServiceBadges] = useState<Map<number, { name: string; color: string; initial: string }>>(new Map());
@@ -94,8 +115,40 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     );
   }
 
-  // Hero item is the first item
-  const heroItem = recommendations[0];
+  // Hero item - reactive to genre selection
+  const heroItem = useMemo(() => {
+    if (!recommendations || recommendations.length === 0) return null;
+
+    // If "All" genre, use first item
+    if (selectedGenre === 'All') {
+      return recommendations[0];
+    }
+
+    const genreId = GENRE_NAME_TO_ID[selectedGenre];
+    if (!genreId) return recommendations[0];
+
+    // Find item where selected genre is PRIMARY (first in genres list)
+    const primaryMatch = recommendations.find(item => {
+      const genres = item.genres || (item as any).genre_ids || [];
+      if (genres.length === 0) return false;
+
+      const firstGenreId = typeof genres[0] === 'number' ? genres[0] : genres[0]?.id;
+      return firstGenreId === genreId;
+    });
+
+    if (primaryMatch) return primaryMatch;
+
+    // Fallback: any item with this genre
+    const anyMatch = recommendations.find(item => {
+      const genres = item.genres || (item as any).genre_ids || [];
+      return genres.some((g: any) => {
+        const gId = typeof g === 'number' ? g : g?.id;
+        return gId === genreId;
+      });
+    });
+
+    return anyMatch || recommendations[0];
+  }, [recommendations, selectedGenre]);
 
   // Create lanes from recommendations with more items each
   const lanes = [
