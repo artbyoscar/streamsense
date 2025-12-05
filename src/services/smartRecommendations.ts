@@ -192,17 +192,24 @@ export const initializeExclusions = async (userId: string) => {
  * 🔧 FIX: Add a single item to exclusions AND persist
  * Call this when user skips or adds content
  */
-export const addToExclusions = async (tmdbId: number): Promise<void> => {
+export const addToExclusions = async (tmdbId: number | string): Promise<void> => {
+  // Normalize to number
+  const id = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+  if (isNaN(id)) {
+    console.warn('[SmartRecs] Invalid tmdbId:', tmdbId);
+    return;
+  }
+
   // Add to session exclusions (persisted)
-  sessionExclusionIds.add(tmdbId);
-  
+  sessionExclusionIds.add(id);
+
   // Update global set
-  globalExcludeIds.add(tmdbId);
-  
-  console.log(`[SmartRecs] Added to exclusions: ${tmdbId}. Total: ${globalExcludeIds.size} (session: ${sessionExclusionIds.size})`);
-  
+  globalExcludeIds.add(id);
+
+  console.log(`[SmartRecs] Added to exclusions: ${id}. Total: ${globalExcludeIds.size} (session: ${sessionExclusionIds.size})`);
+
   // Persist in background (don't await to keep UI snappy)
-  saveSessionExclusions().catch(err => 
+  saveSessionExclusions().catch(err =>
     console.error('[SmartRecs] Error persisting exclusion:', err)
   );
 };
