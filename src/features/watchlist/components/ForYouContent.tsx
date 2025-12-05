@@ -2,13 +2,14 @@
  * For You Content Component
  * Main recommendation view with hero spotlight and multiple lanes
  */
-import React, { useState, useEffect } from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-native';
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
 import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watchProviders';
 import { useAuth } from '@/hooks/useAuth';
+import { RefreshCw, ChevronDown } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
 
 interface ForYouContentProps {
@@ -17,6 +18,9 @@ interface ForYouContentProps {
   onItemPress: (item: UnifiedContent) => void;
   onAddToList: (item: UnifiedContent) => void;
   onOpenDiscover: () => void;
+  onLoadMore?: () => Promise<UnifiedContent[]>;
+  onRemoveItem?: (itemId: number) => void;
+  isLoadingMore?: boolean;
 }
 
 export const ForYouContent: React.FC<ForYouContentProps> = ({
@@ -25,13 +29,16 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   onItemPress,
   onAddToList,
   onOpenDiscover,
+  onLoadMore,
+  onRemoveItem,
+  isLoadingMore = false,
 }) => {
   const { user } = useAuth();
   const [serviceBadges, setServiceBadges] = useState<Map<number, { name: string; color: string; initial: string }>>(new Map());
   const [badgesLoading, setBadgesLoading] = useState(false);
 
   // Fetch service badges for trending items
-  useEffect(() => {
+  React.useEffect(() => {
     const fetchBadges = async () => {
       if (!user?.id || recommendations.length < 12) return;
 
@@ -43,11 +50,9 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
           return;
         }
 
-        // Get badges for trending items (slice 11-21)
         const trendingItems = recommendations.slice(11, 21);
         const badges = await batchGetServiceBadges(trendingItems, subscriptions);
         setServiceBadges(badges);
-        console.log('[ForYou] Fetched service badges:', badges.size);
       } catch (error) {
         console.log('[ForYou] Error fetching badges:', error);
       }
@@ -57,13 +62,20 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     fetchBadges();
   }, [user?.id, recommendations.length]);
 
-  // Log hero changes for debugging
-  useEffect(() => {
-    const heroItem = recommendations[0];
-    if (heroItem) {
-      console.log('[ForYou] 🎬 Hero updated:', heroItem.title || heroItem.name, '(ID:', heroItem.id || heroItem.tmdb_id, ')');
+  // Handle add to list with removal from view
+  const handleAddToList = useCallback((item: UnifiedContent) => {
+    onAddToList(item);
+    if (onRemoveItem) {
+      onRemoveItem(item.id);
     }
-  }, [recommendations]);
+  }, [onAddToList, onRemoveItem]);
+
+  // Handle load more
+  const handleLoadMore = useCallback(async () => {
+    if (onLoadMore) {
+      await onLoadMore();
+    }
+  }, [onLoadMore]);
 
   if (isLoading) {
     return (
@@ -85,13 +97,13 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   // Hero item is the first item
   const heroItem = recommendations[0];
 
-  // Create lanes from recommendations
+  // Create lanes from recommendations with more items each
   const lanes = [
     {
       id: 'top_picks',
       title: 'Top Picks For You',
       subtitle: 'Personalized based on your taste',
-      items: recommendations.slice(1, 11),
+      items: recommendations.slice(1, 16), // 15 items
       showMatchScore: true,
       showServiceBadge: false,
     },
@@ -99,14 +111,14 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       id: 'trending',
       title: 'Trending on Your Services',
       subtitle: 'Popular now on your subscriptions',
-      items: recommendations.slice(11, 21),
+      items: recommendations.slice(16, 31), // 15 items
       showServiceBadge: true,
     },
     {
       id: 'hidden_gems',
       title: 'Hidden Gems',
       subtitle: 'Under-the-radar picks for you',
-      items: recommendations.slice(21, 31),
+      items: recommendations.slice(31, 46), // 15 items
       showMatchScore: true,
       showServiceBadge: false,
     },
@@ -114,7 +126,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       id: 'more_like',
       title: 'Because You Liked Similar Content',
       subtitle: 'Similar tone and themes',
-      items: recommendations.slice(31, 41),
+      items: recommendations.slice(46, 61), // 15 items
       showMatchScore: false,
       showServiceBadge: false,
     },
@@ -127,7 +139,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
         <HeroSpotlight
           key={heroItem.id || heroItem.tmdb_id || heroItem.title}
           item={heroItem}
-          onAddToList={() => onAddToList(heroItem)}
+          onAddToList={() => handleAddToList(heroItem)}
           onViewDetails={() => onItemPress(heroItem)}
         />
       )}
@@ -145,9 +157,28 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
             showServiceBadge={lane.showServiceBadge}
             showMatchScore={lane.showMatchScore}
             onItemPress={onItemPress}
+            onAddToList={handleAddToList}
           />
         );
       })}
+
+      {/* Load More Button */}
+      {onLoadMore && (
+        <Pressable
+          style={[styles.loadMoreButton, isLoadingMore && styles.loadMoreButtonDisabled]}
+          onPress={handleLoadMore}
+          disabled={isLoadingMore}
+        >
+          {isLoadingMore ? (
+            <ActivityIndicator size="small" color="#a78bfa" />
+          ) : (
+            <>
+              <ChevronDown size={20} color="#a78bfa" />
+              <Text style={styles.loadMoreText}>Load More Recommendations</Text>
+            </>
+          )}
+        </Pressable>
+      )}
 
       {/* Exploration CTA */}
       <ExplorationCTA onPress={onOpenDiscover} />
@@ -180,6 +211,25 @@ const styles = StyleSheet.create({
     color: '#9ca3af',
     textAlign: 'center',
   },
+  loadMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginVertical: 20,
+    paddingVertical: 16,
+    backgroundColor: 'rgba(167, 139, 250, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+  },
+  loadMoreButtonDisabled: {
+    opacity: 0.6,
+  },
+  loadMoreText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#a78bfa',
+  },
 });
-
-
