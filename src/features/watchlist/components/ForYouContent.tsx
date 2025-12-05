@@ -98,24 +98,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     }
   }, [onLoadMore]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#a78bfa" />
-      </View>
-    );
-  }
-
-  if (!recommendations || recommendations.length === 0) {
-    return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyText}>No recommendations yet</Text>
-        <Text style={styles.emptySubtext}>Add items to your watchlist to get personalized picks</Text>
-      </View>
-    );
-  }
-
-  // Hero item - reactive to genre selection
+  // Hero item - reactive to genre selection (MUST be before early returns)
   const heroItem = useMemo(() => {
     if (!recommendations || recommendations.length === 0) return null;
 
@@ -149,6 +132,23 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
 
     return anyMatch || recommendations[0];
   }, [recommendations, selectedGenre]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#a78bfa" />
+      </View>
+    );
+  }
+
+  if (!recommendations || recommendations.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No recommendations yet</Text>
+        <Text style={styles.emptySubtext}>Add items to your watchlist to get personalized picks</Text>
+      </View>
+    );
+  }
 
   // Create lanes from recommendations with more items each
   const lanes = [
