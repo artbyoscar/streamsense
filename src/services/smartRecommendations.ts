@@ -359,23 +359,27 @@ const addToSessionCache = (id: number) => {
 };
 
 // Check if item should be excluded
-const shouldExclude = (tmdbId: number, excludeSessionItems: boolean = true): boolean => {
+const shouldExclude = (tmdbId: number | string, excludeSessionItems: boolean = true): boolean => {
+  // Normalize to number
+  const id = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+  if (isNaN(id)) return false;
+
   // 🔧 FIX: Check unified global exclusions (includes watchlist + session exclusions)
-  const isGloballyExcluded = globalExcludeIds.has(tmdbId);
+  const isGloballyExcluded = globalExcludeIds.has(id);
 
   // 🆕 Check if shown in last 7 days (persistent across sessions)
-  const recentlyShown = recentlyShownIds.has(tmdbId);
+  const recentlyShown = recentlyShownIds.has(id);
 
   // For infinite feeds (Discover), don't exclude based on "shown" - use pagination instead
-  const alreadyShown = excludeSessionItems ? sessionShownIds.has(tmdbId) : false;
+  const alreadyShown = excludeSessionItems ? sessionShownIds.has(id) : false;
 
   const excluded = isGloballyExcluded || recentlyShown || alreadyShown;
 
   if (excluded) {
-    console.log(`[SmartRecs] Excluding ${tmdbId}:`, {
+    console.log(`[SmartRecs] Excluding ${id}:`, {
       inGlobalExclusions: isGloballyExcluded,
-      inWatchlist: watchlistTmdbIds.has(tmdbId),
-      inSessionExclusions: sessionExclusionIds.has(tmdbId),
+      inWatchlist: watchlistTmdbIds.has(id),
+      inSessionExclusions: sessionExclusionIds.has(id),
       recentlyShown,
       alreadyShown,
     });
