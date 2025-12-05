@@ -5,12 +5,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserTopGenres } from './genreAffinity';
 import { getAdaptiveRecommendationParams } from './userBehavior';
 import { getNegativeSignals, filterByNegativeSignals, trackContentImpression } from './implicitSignals';
-import { contentDNAService } from './contentDNA';
 import { mixCollaborativeRecommendations } from './collaborativeFiltering';
 import { getImpressionHistory, applyFatigueFilter, trackBatchImpressions } from './recommendationFatigue';
 import { getUserProviderIds } from './watchProviders';
 import { getSVDRecommendations, type Prediction } from './matrixFactorization';
 import { convertGenreIdsToObjects } from '@/utils/genreUtils';
+import { getTasteProfile } from './tasteProfile';
 
 // ============================================================================
 // CACHE KEYS & STATE
@@ -662,12 +662,14 @@ export const getSmartRecommendations = async (
     // Note: DNA ranking is computed via taste profile, not direct DNA comparison
     let dnaRanked = diversified;
     try {
-      const userTasteProfile = await contentDNAService.buildUserTasteProfile(userId);
+      const userTasteProfile = await getTasteProfile(userId);
       if (userTasteProfile) {
+        const topTone = Object.entries(userTasteProfile.preferences?.tone || {})
+          .sort((a, b) => (b[1] as number) - (a[1] as number))[0];
+
         console.log('[SmartRecs] User taste profile:', {
           signature: userTasteProfile.tasteSignature,
-          topTone: Object.entries(userTasteProfile.preferredTone)
-            .sort((a, b) => b[1] - a[1])[0],
+          topTone: topTone ? `${topTone[0]}: ${topTone[1]}` : 'none',
           confidence: userTasteProfile.confidence,
         });
         // TODO: Implement DNA-based re-ranking using taste profile
