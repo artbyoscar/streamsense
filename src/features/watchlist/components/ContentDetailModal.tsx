@@ -413,9 +413,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Backdrop/Poster */}
-          {backdropUrl || posterUrl ? (
+          {(backdropUrl || posterUrl) ? (
             <Image
-              source={{ uri: backdropUrl || posterUrl }}
+              source={{ uri: (backdropUrl || posterUrl) as string }}
               style={styles.backdrop}
               resizeMode="cover"
             />
