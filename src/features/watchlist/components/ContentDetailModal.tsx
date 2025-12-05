@@ -86,6 +86,11 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [watchProviders, setWatchProviders] = useState<WatchProvider[]>([]);
   const [existingWatchlistItem, setExistingWatchlistItem] = useState<any>(null);
+  const [fullDetails, setFullDetails] = useState<{
+    overview?: string;
+    releaseDate?: string;
+    rating?: number;
+  } | null>(null);
 
   // Reset state when content changes
   useEffect(() => {
@@ -93,8 +98,10 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
       setSelectedStatus('want_to_watch');
       setRating(0);
       setWatchProviders([]);
+      setFullDetails(null);
       fetchWatchProviders();
       checkExistingWatchlistItem();
+      fetchFullDetails();
     }
   }, [content?.id, visible]);
 
@@ -168,6 +175,40 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
     } catch (error) {
       // Not in watchlist, which is fine
       console.log('[ContentDetail] Content not in watchlist');
+    }
+  };
+
+  // Fetch full content details if overview is missing
+  const fetchFullDetails = async () => {
+    if (!content) return;
+
+    // Skip if we already have overview
+    if (content.overview && content.overview.length > 0) return;
+
+    try {
+      const contentType = getContentType(content);
+      const tmdbApiKey = process.env.EXPO_PUBLIC_TMDB_API_KEY;
+
+      console.log('[ContentDetail] Fetching full details for:', content.title);
+
+      const response = await fetch(
+        `https://api.themoviedb.org/3/${contentType}/${content.id}?api_key=${tmdbApiKey}`
+      );
+      const data = await response.json();
+
+      if (data) {
+        setFullDetails({
+          overview: data.overview || '',
+          releaseDate: data.release_date || data.first_air_date || '',
+          rating: data.vote_average || 0,
+        });
+        console.log('[ContentDetail] Fetched full details:', {
+          hasOverview: !!data.overview,
+          releaseDate: data.release_date || data.first_air_date,
+        });
+      }
+    } catch (error) {
+      console.log('[ContentDetail] Error fetching full details:', error);
     }
   };
 
@@ -393,7 +434,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
   const contentType = getContentType(content);
   const backdropUrl = getBackdropUrl(content.backdropPath, 'large');
   const posterUrl = getPosterUrl(content.posterPath, 'large');
-  const year = content.releaseDate?.split('-')[0] || 'Unknown';
+  const year = (fullDetails?.releaseDate || content.releaseDate)?.split('-')[0] || 'Unknown';
+  const displayOverview = fullDetails?.overview || content.overview;
+  const displayRating = fullDetails?.rating || content.rating;
 
   return (
     <Modal
@@ -435,25 +478,25 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
                   {contentType === 'movie' ? 'Movie' : 'TV Show'}
                 </Text>
               </View>
-              {content.rating > 0 && (
+              {displayRating > 0 && (
                 <View style={styles.ratingContainer}>
                   <MaterialCommunityIcons name="star" size={16} color={COLORS.warning} />
                   <Text style={[styles.voteAverage, { color: colors.textSecondary }]}>
-                    {content.rating.toFixed(1)}
+                    {displayRating.toFixed(1)}
                   </Text>
                 </View>
               )}
             </View>
 
             {/* Overview */}
-            {content.overview && (
+            {displayOverview ? (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>Overview</Text>
                 <Text style={[styles.overview, { color: colors.textSecondary }]}>
-                  {content.overview}
+                  {displayOverview}
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {/* Where to Watch */}
             <View style={styles.section}>
