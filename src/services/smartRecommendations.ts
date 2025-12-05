@@ -250,7 +250,10 @@ export const isExcluded = (tmdbId: number | string): boolean => {
  * Filter array of items to remove excluded ones
  */
 export const filterExcluded = (items: any[]): any[] => {
-  return items.filter(item => !globalExcludeIds.has(item.id));
+  return items.filter(item => {
+    const id = typeof item.id === 'string' ? parseInt(item.id, 10) : item.id;
+    return !isNaN(id) && !globalExcludeIds.has(id);
+  });
 };
 
 /**
