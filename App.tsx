@@ -16,7 +16,6 @@ import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/The
 import { initializeExclusions, getGlobalExclusionIds } from './src/services/smartRecommendations';
 import { getPileOfShame } from './src/services/pileOfShame';
 import { tipsCache } from './src/services/tipsCache';
-import { supabase } from './src/config/supabase';
 import { recommendationOrchestrator } from './src/services/recommendationOrchestrator';
 import { dnaComputationQueue } from './src/services/dnaComputationQueue';
 
@@ -48,25 +47,6 @@ const AuthScreenContext = React.createContext<{
 });
 
 export const useAuthScreen = () => React.useContext(AuthScreenContext);
-
-/**
- * Clear all recommendation caches for a fresh start
- * This helps prevent stale data issues across sessions
- */
-const clearAllRecommendationCaches = async () => {
-  try {
-    await AsyncStorage.multiRemove([
-      'foryou_recommendations_cache',
-      'foryou_removed_items',
-      'smartrecs_session_cache',
-      'smartrecs_session_exclusions',
-      'recommendations_cache',
-    ]);
-    console.log('[App] Cleared all recommendation caches for fresh start');
-  } catch (e) {
-    console.log('[App] Error clearing caches:', e);
-  }
-};
 
 /**
  * Preload Tips page data in the background
@@ -154,27 +134,21 @@ function AppContent() {
     }
   }, [isAuthenticated, user?.id]);
 
-  // Clear all recommendation caches once per day for fresh data
+  // ALWAYS clear recommendation caches on app start for fresh content
   useEffect(() => {
-    const checkFreshStart = async () => {
+    const clearSessionCaches = async () => {
       try {
-        const lastClear = await AsyncStorage.getItem('last_cache_clear');
-        const now = Date.now();
-        const hoursSinceClear = lastClear ? (now - parseInt(lastClear)) / (1000 * 60 * 60) : 999;
-
-        if (hoursSinceClear >= 24) {
-          console.log('[App] Cache clearing: Last clear was', hoursSinceClear.toFixed(1), 'hours ago');
-          await clearAllRecommendationCaches();
-          await AsyncStorage.setItem('last_cache_clear', now.toString());
-        } else {
-          console.log('[App] Cache fresh:', hoursSinceClear.toFixed(1), 'hours since last clear');
-        }
+        // Always clear session-related caches for variety
+        await AsyncStorage.multiRemove([
+          'smartrecs_session_cache',        // OLD recommendations
+          'foryou_recommendations_cache',   // Cached display data
+        ]);
+        console.log('[App] Cleared session caches for fresh recommendations');
       } catch (e) {
-        console.log('[App] Error checking cache freshness:', e);
+        console.log('[App] Error clearing session caches:', e);
       }
     };
-
-    checkFreshStart();
+    clearSessionCaches();
   }, []); // Run once on app start
 
   // Show loading while initializing
