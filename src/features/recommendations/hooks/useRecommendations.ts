@@ -54,7 +54,7 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
         limit: 20,
         mediaType: 'mixed',
         forceRefresh: false,
-        excludeSessionItems: false,
+        excludeSessionItems: true, // 🔧 FIX: Exclude session items to prevent duplicates
       });
 
       // Transform UnifiedContent to RecommendationItem format
