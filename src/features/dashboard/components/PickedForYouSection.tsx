@@ -1,20 +1,22 @@
 /**
  * Picked For You Section
  * Preview of personalized recommendations
- * Drives users to the "For You" recommendations tab
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Image } from 'react-native';
-import { Sparkles, Star, TrendingUp } from 'lucide-react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
+import { Sparkles, Star, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { useRecommendationLanes } from '../../recommendations/hooks/useRecommendations';
+import { loadMoreRecommendations } from '@/services/smartRecommendations';
+import { useAuth } from '@/hooks/useAuth';
 
 interface PickedForYouCardProps {
   title: string;
   posterUrl?: string;
   matchScore?: number;
   reason?: string;
+  year?: string;
   onPress: () => void;
 }
 
@@ -23,11 +25,11 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
   posterUrl,
   matchScore,
   reason,
+  year,
   onPress,
 }) => {
   return (
     <Pressable style={styles.pickedCard} onPress={onPress}>
-      {/* Poster */}
       <View style={styles.posterContainer}>
         {posterUrl ? (
           <Image source={{ uri: posterUrl }} style={styles.poster} />
@@ -37,7 +39,6 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
           </View>
         )}
 
-        {/* Match Score Badge */}
         {matchScore && matchScore >= 80 && (
           <View style={styles.matchBadge}>
             <Star size={10} color="#fbbf24" fill="#fbbf24" />
@@ -46,12 +47,14 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
         )}
       </View>
 
-      {/* Title */}
       <Text style={styles.pickedTitle} numberOfLines={2}>
         {title}
       </Text>
 
-      {/* Reason */}
+      {year && (
+        <Text style={styles.pickedYear}>{year}</Text>
+      )}
+
       {reason && (
         <Text style={styles.pickedReason} numberOfLines={1}>
           {reason}
@@ -62,55 +65,52 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
 };
 
 export const PickedForYouSection: React.FC = () => {
-  const { data: lanes, isLoading } = useRecommendationLanes();
+  const { user } = useAuth();
+  const { data: lanes, isLoading, refetch } = useRecommendationLanes();
   const { setActiveTab, setSelectedContent, setShowContentDetail, selectedContent } = useCustomNavigation();
 
-  // Track items that have been added to watchlist
-  const [removedItemIds, setRemovedItemIds] = React.useState<Set<string>>(new Set());
-  const [previousSelectedContent, setPreviousSelectedContent] = React.useState<any>(null);
+  const [removedItemIds, setRemovedItemIds] = useState<Set<string>>(new Set());
+  const [additionalItems, setAdditionalItems] = useState<any[]>([]);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [previousSelectedContent, setPreviousSelectedContent] = useState<any>(null);
 
   // Detect when modal closes and item might have been added
   React.useEffect(() => {
-    // If selectedContent went from something to null, the modal closed
     if (previousSelectedContent && !selectedContent) {
-      // Mark this item as potentially added (remove from view)
       const itemId = previousSelectedContent.id?.toString() || previousSelectedContent.tmdb_id?.toString();
       if (itemId) {
-        console.log('[PickedForYou] Removing item from view after modal close:', previousSelectedContent.title, 'ID:', itemId);
+        console.log('[PickedForYou] Removing item after modal close:', previousSelectedContent.title);
         setRemovedItemIds(prev => new Set([...prev, itemId]));
       }
     }
     setPreviousSelectedContent(selectedContent);
   }, [selectedContent, previousSelectedContent]);
 
-  // Get first lane with recommendations (Hidden Gems or Trending For You)
-  const pickedForYou = lanes
-    ?.flatMap(lane => lane.items)
-    .slice(0, 10)
+  // Combine lane items with additional loaded items
+  const allItems = React.useMemo(() => {
+    const laneItems = lanes
+      ?.flatMap(lane => lane.items)
+      .slice(0, 15) || [];
+
+    return [...laneItems, ...additionalItems];
+  }, [lanes, additionalItems]);
+
+  // Filter and format items
+  const pickedForYou = allItems
     .map(item => ({
-      // Preserve ALL original item data for content detail
       ...item,
-      // Add display-specific fields
       id: item.tmdb_id?.toString() || item.id?.toString(),
       posterUrl: item.poster_path
         ? `https://image.tmdb.org/t/p/w342${item.poster_path}`
         : undefined,
       matchScore: item.match_score ? Math.round(item.match_score * 100) : undefined,
       reason: item.reason || 'Based on your taste',
+      year: (item.releaseDate || item.release_date)?.split('-')[0],
     }))
-    .filter(item => !removedItemIds.has(item.id)) // Filter out removed items
-    || [];
+    .filter(item => !removedItemIds.has(item.id))
+    .slice(0, 20); // Show up to 20 items
 
   const handleItemPress = (item: any) => {
-    console.log('[PickedForYou] Opening content detail with data:', {
-      id: item.id,
-      title: item.title,
-      hasOverview: !!item.overview,
-      hasGenres: !!item.genres?.length,
-      hasRating: !!item.rating,
-    });
-
-    // Navigate to content detail modal with full metadata
     const content = {
       id: item.tmdb_id || item.id,
       title: item.title,
@@ -132,13 +132,29 @@ export const PickedForYouSection: React.FC = () => {
     setActiveTab('Watchlist');
   };
 
-  // Log removed items for debugging
-  React.useEffect(() => {
-    if (removedItemIds.size > 0) {
-      console.log('[PickedForYou] Filtered out', removedItemIds.size, 'removed items');
-      console.log('[PickedForYou] Showing', pickedForYou.length, 'items');
+  const handleLoadMore = useCallback(async () => {
+    if (!user?.id || isLoadingMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const currentCount = allItems.length;
+      const newItems = await loadMoreRecommendations({
+        userId: user.id,
+        currentCount,
+        mediaType: 'mixed',
+        limit: 10,
+      });
+
+      if (newItems.length > 0) {
+        setAdditionalItems(prev => [...prev, ...newItems]);
+        console.log('[PickedForYou] Loaded', newItems.length, 'more items');
+      }
+    } catch (error) {
+      console.error('[PickedForYou] Error loading more:', error);
+    } finally {
+      setIsLoadingMore(false);
     }
-  }, [removedItemIds.size, pickedForYou.length]);
+  }, [user?.id, allItems.length, isLoadingMore]);
 
   if (isLoading || pickedForYou.length === 0) {
     return null;
@@ -177,9 +193,28 @@ export const PickedForYouSection: React.FC = () => {
             posterUrl={item.posterUrl}
             matchScore={item.matchScore}
             reason={item.reason}
+            year={item.year}
             onPress={() => handleItemPress(item)}
           />
         ))}
+
+        {/* Load More Button in scroll */}
+        <Pressable
+          style={styles.loadMoreCard}
+          onPress={handleLoadMore}
+          disabled={isLoadingMore}
+        >
+          {isLoadingMore ? (
+            <ActivityIndicator size="small" color="#a78bfa" />
+          ) : (
+            <>
+              <View style={styles.loadMoreIconContainer}>
+                <ChevronRight size={24} color="#a78bfa" />
+              </View>
+              <Text style={styles.loadMoreCardText}>Load More</Text>
+            </>
+          )}
+        </Pressable>
       </ScrollView>
 
       {/* CTA to For You Tab */}
@@ -280,13 +315,43 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#ffffff',
-    marginBottom: 4,
+    marginBottom: 2,
     lineHeight: 16,
+  },
+  pickedYear: {
+    fontSize: 11,
+    color: '#888',
+    marginBottom: 2,
   },
   pickedReason: {
     fontSize: 11,
     color: '#a78bfa',
     fontStyle: 'italic',
+  },
+  loadMoreCard: {
+    width: 120,
+    height: 180,
+    borderRadius: 12,
+    backgroundColor: 'rgba(167, 139, 250, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(167, 139, 250, 0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderStyle: 'dashed',
+  },
+  loadMoreIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(167, 139, 250, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  loadMoreCardText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#a78bfa',
   },
   ctaButton: {
     marginHorizontal: 16,
@@ -307,9 +372,3 @@ const styles = StyleSheet.create({
     color: '#a78bfa',
   },
 });
-
-
-
-
-
-
