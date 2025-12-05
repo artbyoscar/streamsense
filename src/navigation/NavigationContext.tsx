@@ -32,6 +32,8 @@ interface NavigationContextType {
   setShowSubscriptionsManage: (show: boolean) => void;
   refreshKey: number;
   triggerRefresh: () => void;
+  onContentAdded: (() => void) | null;
+  setOnContentAdded: (callback: (() => void) | null) => void;
 }
 
 const defaultContext: NavigationContextType = {
@@ -58,6 +60,8 @@ const defaultContext: NavigationContextType = {
   setShowSubscriptionsManage: () => console.log('[Navigation] Would show subscriptions manage'),
   refreshKey: 0,
   triggerRefresh: () => console.log('[Navigation] Would trigger refresh'),
+  onContentAdded: null,
+  setOnContentAdded: () => console.log('[Navigation] Would set onContentAdded callback'),
 };
 
 const NavigationContext = createContext<NavigationContextType>(defaultContext);
@@ -83,6 +87,7 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [selectedSubscription, setSelectedSubscription] = useState<any | null>(null);
   const [showSubscriptionsManage, setShowSubscriptionsManage] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [onContentAdded, setOnContentAdded] = useState<(() => void) | null>(null);
 
   const triggerRefresh = () => {
     setRefreshKey((prev) => prev + 1);
@@ -147,6 +152,8 @@ export const NavigationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         setShowSubscriptionsManage,
         refreshKey,
         triggerRefresh,
+        onContentAdded,
+        setOnContentAdded,
       }}
     >
       {children}

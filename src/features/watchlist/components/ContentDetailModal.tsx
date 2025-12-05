@@ -19,6 +19,7 @@ import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/features/auth';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { supabase } from '@/config/supabase';
 import { getBackdropUrl, getPosterUrl, getUSWatchProviders } from '@/services/tmdb';
 import { trackGenreInteraction } from '@/services/genreAffinity';
@@ -77,6 +78,7 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 }) => {
   const { colors } = useTheme();
   const { user } = useAuth();
+  const { onContentAdded } = useCustomNavigation();
 
   const [selectedStatus, setSelectedStatus] = useState<WatchlistStatus>('want_to_watch');
   const [rating, setRating] = useState<number>(0);
@@ -370,6 +372,9 @@ export const ContentDetailModal: React.FC<ContentDetailModalProps> = ({
 
       // Notify parent
       onAddedToWatchlist?.();
+
+      // Trigger navigation context callback for recommendation removal
+      onContentAdded?.();
 
       // Close the modal after a short delay to show success
       setTimeout(() => {

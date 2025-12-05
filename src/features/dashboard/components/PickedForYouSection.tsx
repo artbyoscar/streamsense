@@ -3,7 +3,7 @@
  * Preview of personalized recommendations
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
 import { Sparkles, Star, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
@@ -67,24 +67,32 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
 export const PickedForYouSection: React.FC = () => {
   const { user } = useAuth();
   const { data: lanes, isLoading, refetch } = useRecommendationLanes();
-  const { setActiveTab, setSelectedContent, setShowContentDetail, selectedContent } = useCustomNavigation();
+  const { setActiveTab, setSelectedContent, setShowContentDetail, setOnContentAdded } = useCustomNavigation();
 
   const [removedItemIds, setRemovedItemIds] = useState<Set<string>>(new Set());
   const [additionalItems, setAdditionalItems] = useState<any[]>([]);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [previousSelectedContent, setPreviousSelectedContent] = useState<any>(null);
 
-  // Detect when modal closes and item might have been added
+  // Track the currently selected item ID for removal after add
+  const pendingItemIdRef = useRef<string | null>(null);
+
+  // Register callback for when content is added to watchlist
   React.useEffect(() => {
-    if (previousSelectedContent && !selectedContent) {
-      const itemId = previousSelectedContent.id?.toString() || previousSelectedContent.tmdb_id?.toString();
-      if (itemId) {
-        console.log('[PickedForYou] Removing item after modal close:', previousSelectedContent.title);
-        setRemovedItemIds(prev => new Set([...prev, itemId]));
+    const handleContentAdded = () => {
+      if (pendingItemIdRef.current) {
+        console.log('[PickedForYou] Removing item after watchlist add:', pendingItemIdRef.current);
+        setRemovedItemIds(prev => new Set([...prev, pendingItemIdRef.current!]));
+        pendingItemIdRef.current = null;
       }
-    }
-    setPreviousSelectedContent(selectedContent);
-  }, [selectedContent, previousSelectedContent]);
+    };
+
+    // Set the callback in navigation context
+    setOnContentAdded?.(handleContentAdded);
+
+    return () => {
+      setOnContentAdded?.(null);
+    };
+  }, [setOnContentAdded]);
 
   // Combine lane items with additional loaded items
   const allItems = React.useMemo(() => {
@@ -111,6 +119,9 @@ export const PickedForYouSection: React.FC = () => {
     .slice(0, 20); // Show up to 20 items
 
   const handleItemPress = (item: any) => {
+    // Store the item ID for potential removal ONLY if added to watchlist
+    pendingItemIdRef.current = item.id;
+
     const content = {
       id: item.tmdb_id || item.id,
       title: item.title,
