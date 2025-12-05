@@ -240,8 +240,10 @@ export const removeFromExclusions = async (tmdbId: number | string): Promise<voi
 /**
  * Check if an item is excluded
  */
-export const isExcluded = (tmdbId: number): boolean => {
-  return globalExcludeIds.has(tmdbId);
+export const isExcluded = (tmdbId: number | string): boolean => {
+  const id = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+  if (isNaN(id)) return false;
+  return globalExcludeIds.has(id);
 };
 
 /**
