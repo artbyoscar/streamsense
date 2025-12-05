@@ -4,7 +4,7 @@
  */
 
 import { contentDNAService } from './contentDNA';
-import type { UserTasteProfile } from './contentDNAService';
+import type { UserTasteProfile } from './contentDNA';
 
 // ============================================================================
 // TASTE PROFILE CACHING
