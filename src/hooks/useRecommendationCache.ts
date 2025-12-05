@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, useCallback, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getSmartRecommendations, fetchGenreSpecificContent, loadMoreRecommendations, addToExclusions } from '@/services/smartRecommendations';
 import { UnifiedContent } from '@/types';
 import { isAnime, isWesternAnimation, GENRE_EQUIVALENTS } from '@/utils/genreUtils';
@@ -24,6 +25,26 @@ const GENRE_NAME_TO_ID: Record<string, number[]> = {
 
 // Minimum items per genre - if below this, fetch more
 const MIN_ITEMS_PER_GENRE = 8;
+
+// Check if recommendations need a forced refresh (12 hours)
+const shouldForceRefresh = async (): Promise<boolean> => {
+  try {
+    const lastRefresh = await AsyncStorage.getItem('recs_last_refresh');
+    if (!lastRefresh) return true;
+
+    const hoursSince = (Date.now() - parseInt(lastRefresh)) / (1000 * 60 * 60);
+    const shouldRefresh = hoursSince >= 12;
+
+    if (shouldRefresh) {
+      console.log('[RecCache] Force refresh: Last refresh was', hoursSince.toFixed(1), 'hours ago');
+    }
+
+    return shouldRefresh;
+  } catch (e) {
+    console.log('[RecCache] Could not check refresh time, defaulting to refresh');
+    return true;
+  }
+};
 
 interface RecommendationCache {
   all: UnifiedContent[];
@@ -107,13 +128,19 @@ export const useRecommendationCache = (userId: string | undefined) => {
         const startTime = Date.now();
         console.log('[RecCache] Starting cache pre-fetch...');
 
+        // Check if we should force a fresh fetch
+        const needsRefresh = await shouldForceRefresh();
+
         const allRecs = await getSmartRecommendations({
           userId,
           limit: 150,
           mediaType: 'mixed',
-          forceRefresh: false,
+          forceRefresh: needsRefresh,
           excludeSessionItems: true,
         });
+
+        // Update last refresh timestamp
+        await AsyncStorage.setItem('recs_last_refresh', Date.now().toString());
 
         console.log('[RecCache] Initial fetch:', allRecs.length, 'items in', Date.now() - startTime, 'ms');
 
