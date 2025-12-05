@@ -221,12 +221,15 @@ export const addToExclusions = async (tmdbId: number | string): Promise<void> =>
  * Remove an item from exclusions
  * Call this when user removes content from watchlist
  */
-export const removeFromExclusions = async (tmdbId: number): Promise<void> => {
-  watchlistTmdbIds.delete(tmdbId);
-  sessionExclusionIds.delete(tmdbId);
-  globalExcludeIds.delete(tmdbId);
-  
-  console.log(`[SmartRecs] Removed from exclusions: ${tmdbId}. Total: ${globalExcludeIds.size}`);
+export const removeFromExclusions = async (tmdbId: number | string): Promise<void> => {
+  const id = typeof tmdbId === 'string' ? parseInt(tmdbId, 10) : tmdbId;
+  if (isNaN(id)) return;
+
+  watchlistTmdbIds.delete(id);
+  sessionExclusionIds.delete(id);
+  globalExcludeIds.delete(id);
+
+  console.log(`[SmartRecs] Removed from exclusions: ${id}. Total: ${globalExcludeIds.size}`);
   
   // Persist in background
   saveSessionExclusions().catch(err => 
