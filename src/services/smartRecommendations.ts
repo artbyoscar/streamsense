@@ -578,9 +578,10 @@ export const getSmartRecommendations = async (
 
       let movies: any[] = [];
       let attempts = 0;
-      const maxAttempts = 5;
+      const maxAttempts = 10;
+      const targetMovieCount = mediaType === 'movie' ? 50 : 40;
 
-      while (movies.length < 5 && attempts < maxAttempts) {
+      while (movies.length < targetMovieCount && attempts < maxAttempts) {
         const movieResponse = await tmdbApi.get('/discover/movie', {
           params: {
             with_genres: movieGenreQuery,
@@ -599,7 +600,7 @@ export const getSmartRecommendations = async (
         movies = [...movies, ...filteredMovies];
         attempts++;
 
-        if (movies.length >= (mediaType === 'movie' ? 10 : 5)) break;
+        if (movies.length >= targetMovieCount) break;
       }
 
       if (mediaType === 'mixed') {
@@ -621,9 +622,10 @@ export const getSmartRecommendations = async (
 
       let tvShows: any[] = [];
       let attempts = 0;
-      const maxAttempts = 5;
+      const maxAttempts = 10;
+      const targetTVCount = mediaType === 'tv' ? 50 : 40;
 
-      while (tvShows.length < 5 && attempts < maxAttempts) {
+      while (tvShows.length < targetTVCount && attempts < maxAttempts) {
         const tvResponse = await tmdbApi.get('/discover/tv', {
           params: {
             with_genres: genreQuery,
@@ -642,7 +644,7 @@ export const getSmartRecommendations = async (
         tvShows = [...tvShows, ...filteredTV];
         attempts++;
 
-        if (tvShows.length >= (mediaType === 'tv' ? 10 : 5)) break;
+        if (tvShows.length >= targetTVCount) break;
       }
 
       if (mediaType === 'mixed') {
@@ -979,6 +981,176 @@ export const getGenreRecommendations = async ({
     return results;
   } catch (error) {
     console.error('[SmartRecs] Error fetching genre recommendations:', error);
+    return [];
+  }
+};
+
+// ============================================================================
+// GENRE-SPECIFIC CONTENT FETCHING (FOR EMPTY CATEGORIES)
+// ============================================================================
+
+/**
+ * Fetch content specifically for a genre that has low/no results
+ * This bypasses the normal recommendation flow and fetches directly from TMDb
+ */
+export const fetchGenreSpecificContent = async ({
+  userId,
+  genre,
+  mediaType = 'mixed',
+  limit = 20,
+  page = 1,
+}: {
+  userId: string;
+  genre: string;
+  mediaType?: 'movie' | 'tv' | 'mixed';
+  limit?: number;
+  page?: number;
+}): Promise<any[]> => {
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    console.warn('[SmartRecs] fetchGenreSpecificContent called with invalid userId');
+    return [];
+  }
+
+  console.log(`[SmartRecs] Fetching specific content for genre: ${genre}, page: ${page}`);
+
+  const results: any[] = [];
+
+  try {
+    // Get user's streaming providers
+    const userProviderIds = await getUserProviderIds(userId);
+    const providerQuery = userProviderIds.length > 0 ? userProviderIds.join('|') : null;
+
+    // Ensure exclusions are loaded
+    await initializeCaches(userId);
+
+    if (mediaType === 'movie' || mediaType === 'mixed') {
+      const movieGenreIds = MOVIE_GENRE_IDS[genre];
+      if (movieGenreIds && movieGenreIds.length > 0) {
+        const response = await tmdbApi.get('/discover/movie', {
+          params: {
+            with_genres: movieGenreIds.join('|'),
+            ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 50,
+            'vote_average.gte': 5.5,
+            ...(genre === 'Anime' && { with_original_language: 'ja' }),
+          },
+        });
+
+        const movies = (response.data?.results || [])
+          .filter((item: any) => !shouldExclude(item.id, false))
+          .map((item: any) => normalizeContentItem(item, 'movie'));
+
+        results.push(...movies);
+      }
+    }
+
+    if (mediaType === 'tv' || mediaType === 'mixed') {
+      const tvGenreIds = TV_GENRE_IDS[genre];
+      if (tvGenreIds && tvGenreIds.length > 0) {
+        const response = await tmdbApi.get('/discover/tv', {
+          params: {
+            with_genres: tvGenreIds.join('|'),
+            ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),
+            page,
+            sort_by: 'popularity.desc',
+            'vote_count.gte': 20,
+            'vote_average.gte': 5.5,
+            ...(genre === 'Anime' && { with_original_language: 'ja' }),
+          },
+        });
+
+        const tvShows = (response.data?.results || [])
+          .filter((item: any) => !shouldExclude(item.id, false))
+          .map((item: any) => normalizeContentItem(item, 'tv'));
+
+        results.push(...tvShows);
+      }
+    }
+
+    // Shuffle and limit
+    const shuffled = results.sort(() => Math.random() - 0.5);
+    console.log(`[SmartRecs] Fetched ${shuffled.length} items for genre ${genre}`);
+    return shuffled.slice(0, limit);
+  } catch (error) {
+    console.error(`[SmartRecs] Error fetching genre ${genre}:`, error);
+    return [];
+  }
+};
+
+/**
+ * Load more recommendations (for pagination)
+ */
+export const loadMoreRecommendations = async ({
+  userId,
+  currentCount,
+  mediaType = 'mixed',
+  limit = 20,
+}: {
+  userId: string;
+  currentCount: number;
+  mediaType?: 'movie' | 'tv' | 'mixed';
+  limit?: number;
+}): Promise<any[]> => {
+  if (!userId || userId === 'undefined' || userId === 'null') {
+    return [];
+  }
+
+  console.log(`[SmartRecs] Loading more recommendations (current: ${currentCount}, limit: ${limit})`);
+
+  // Calculate which page to fetch based on current count
+  const page = Math.floor(currentCount / 20) + 2; // +2 because page 1 was already fetched
+
+  try {
+    const userProviderIds = await getUserProviderIds(userId);
+    const providerQuery = userProviderIds.length > 0 ? userProviderIds.join('|') : null;
+
+    await initializeCaches(userId);
+
+    const results: any[] = [];
+
+    if (mediaType === 'movie' || mediaType === 'mixed') {
+      const response = await tmdbApi.get('/discover/movie', {
+        params: {
+          ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 50,
+          'vote_average.gte': 6.0,
+        },
+      });
+
+      const movies = (response.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id, false))
+        .map((item: any) => normalizeContentItem(item, 'movie'));
+
+      results.push(...movies);
+    }
+
+    if (mediaType === 'tv' || mediaType === 'mixed') {
+      const response = await tmdbApi.get('/discover/tv', {
+        params: {
+          ...(providerQuery && { with_watch_providers: providerQuery, watch_region: 'US' }),
+          page,
+          sort_by: 'popularity.desc',
+          'vote_count.gte': 30,
+          'vote_average.gte': 6.0,
+        },
+      });
+
+      const tvShows = (response.data?.results || [])
+        .filter((item: any) => !shouldExclude(item.id, false))
+        .map((item: any) => normalizeContentItem(item, 'tv'));
+
+      results.push(...tvShows);
+    }
+
+    const shuffled = results.sort(() => Math.random() - 0.5);
+    console.log(`[SmartRecs] Loaded ${shuffled.length} more recommendations`);
+    return shuffled.slice(0, limit);
+  } catch (error) {
+    console.error('[SmartRecs] Error loading more:', error);
     return [];
   }
 };
