@@ -123,8 +123,11 @@ export const PickedForYouSection: React.FC = () => {
       genres: item.genres || [],
       backdropPath: item.backdropPath || item.backdrop_path || null,
       voteCount: item.voteCount || item.vote_count || 0,
+      originalTitle: item.originalTitle || item.original_title || item.title,
+      popularity: item.popularity || 0,
+      language: item.language || item.original_language || 'en',
     };
-    setSelectedContent(content);
+    setSelectedContent(content as any);
     setShowContentDetail(true);
   };
 
