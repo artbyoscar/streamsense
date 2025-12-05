@@ -9,7 +9,7 @@ import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
 import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watchProviders';
 import { useAuth } from '@/hooks/useAuth';
-import { RefreshCw, ChevronDown } from 'lucide-react-native';
+import { ChevronDown } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
 
 interface ForYouContentProps {
@@ -137,7 +137,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       {/* Hero Spotlight */}
       {heroItem && (
         <HeroSpotlight
-          key={heroItem.id || heroItem.tmdb_id || heroItem.title}
+          key={heroItem.id || heroItem.title}
           item={heroItem}
           onAddToList={() => handleAddToList(heroItem)}
           onViewDetails={() => onItemPress(heroItem)}
@@ -157,7 +157,6 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
             showServiceBadge={lane.showServiceBadge}
             showMatchScore={lane.showMatchScore}
             onItemPress={onItemPress}
-            onAddToList={handleAddToList}
           />
         );
       })}
