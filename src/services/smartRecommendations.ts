@@ -259,19 +259,20 @@ const initializeCaches = async (userId: string) => {
     return;
   }
 
+  // 🆕 ALWAYS clear session cache on first init for fresh recommendations
+  if (!cacheInitialized) {
+    try {
+      await AsyncStorage.removeItem(SESSION_CACHE_KEY);
+      sessionShownIds = new Set();
+      console.log('[SmartRecs] Cleared session cache for fresh recommendations');
+    } catch (e) {
+      console.log('[SmartRecs] Error clearing session cache:', e);
+    }
+  }
+
   if (cacheInitialized) return;
 
   try {
-    // Load session shown items from storage
-    const sessionData = await AsyncStorage.getItem(SESSION_CACHE_KEY);
-    if (sessionData) {
-      const parsed = JSON.parse(sessionData);
-      if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
-        sessionShownIds = new Set(parsed.ids);
-        console.log('[SmartRecs] Restored session cache:', sessionShownIds.size, 'items');
-      }
-    }
-
     // 🆕 Load session exclusions (skipped items)
     await loadSessionExclusions();
 
