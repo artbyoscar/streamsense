@@ -7,8 +7,6 @@ import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-nati
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
-import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watchProviders';
-import { useAuth } from '@/hooks/useAuth';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { ChevronDown } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
@@ -55,10 +53,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   isLoadingMore = false,
   selectedGenre = 'All',
 }) => {
-  const { user } = useAuth();
   const { setOnContentAdded } = useCustomNavigation();
-  const [serviceBadges, setServiceBadges] = useState<Map<number, { name: string; color: string; initial: string }>>(new Map());
-  const [badgesLoading, setBadgesLoading] = useState(false);
 
   // Track removed item IDs for fade-out effect
   const [removedItemIds, setRemovedItemIds] = useState<Set<number>>(new Set());
@@ -80,31 +75,6 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       setOnContentAdded(null);
     };
   }, [setOnContentAdded]);
-
-  // Fetch service badges for trending items
-  React.useEffect(() => {
-    const fetchBadges = async () => {
-      if (!user?.id || recommendations.length < 12) return;
-
-      setBadgesLoading(true);
-      try {
-        const subscriptions = await getUserSubscriptionNames(user.id);
-        if (subscriptions.length === 0) {
-          setBadgesLoading(false);
-          return;
-        }
-
-        const trendingItems = recommendations.slice(11, 21);
-        const badges = await batchGetServiceBadges(trendingItems, subscriptions);
-        setServiceBadges(badges);
-      } catch (error) {
-        console.log('[ForYou] Error fetching badges:', error);
-      }
-      setBadgesLoading(false);
-    };
-
-    fetchBadges();
-  }, [user?.id, recommendations.length]);
 
   // Handle add to list with removal from view
   const handleAddToList = useCallback((item: UnifiedContent) => {
@@ -204,7 +174,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       title: 'Trending on Your Services',
       subtitle: 'Popular now on your subscriptions',
       items: visibleRecommendations.slice(16, 31), // 15 items
-      showServiceBadge: true,
+      showServiceBadge: false, // Hide stale badges - modal shows fresh TMDb data
     },
     {
       id: 'hidden_gems',
@@ -245,7 +215,6 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
             title={lane.title}
             subtitle={lane.subtitle || undefined}
             items={lane.items}
-            serviceBadges={lane.showServiceBadge ? serviceBadges : undefined}
             showServiceBadge={lane.showServiceBadge}
             showMatchScore={lane.showMatchScore}
             onItemPress={handleItemPress}
