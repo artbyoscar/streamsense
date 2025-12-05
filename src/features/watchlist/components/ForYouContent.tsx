@@ -98,23 +98,29 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     onItemPress(item);
   }, [onItemPress]);
 
-  // Hero item - reactive to genre selection (MUST be before early returns)
+  // Hero item - reactive to genre selection AND removed items
   const heroItem = useMemo(() => {
     if (!recommendations || recommendations.length === 0) return null;
 
-    // If "All" genre, use first item
+    // Filter out removed items FIRST
+    const availableItems = recommendations.filter(item => {
+      const itemId = item.id || item.tmdb_id;
+      return !removedItemIds.has(itemId);
+    });
+
+    if (availableItems.length === 0) return null;
+
     if (selectedGenre === 'All') {
-      return recommendations[0];
+      return availableItems[0];
     }
 
     const genreId = GENRE_NAME_TO_ID[selectedGenre];
-    if (!genreId) return recommendations[0];
+    if (!genreId) return availableItems[0];
 
-    // Find item where selected genre is PRIMARY (first in genres list)
-    const primaryMatch = recommendations.find(item => {
+    // Find item where selected genre is PRIMARY (first genre)
+    const primaryMatch = availableItems.find(item => {
       const genres = item.genres || (item as any).genre_ids || [];
       if (genres.length === 0) return false;
-
       const firstGenreId = typeof genres[0] === 'number' ? genres[0] : genres[0]?.id;
       return firstGenreId === genreId;
     });
@@ -122,7 +128,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     if (primaryMatch) return primaryMatch;
 
     // Fallback: any item with this genre
-    const anyMatch = recommendations.find(item => {
+    const anyMatch = availableItems.find(item => {
       const genres = item.genres || (item as any).genre_ids || [];
       return genres.some((g: any) => {
         const gId = typeof g === 'number' ? g : g?.id;
@@ -130,8 +136,8 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       });
     });
 
-    return anyMatch || recommendations[0];
-  }, [recommendations, selectedGenre]);
+    return anyMatch || availableItems[0];
+  }, [recommendations, selectedGenre, removedItemIds]); // Added removedItemIds dependency
 
   // Filter out removed items
   const visibleRecommendations = useMemo(() => {
