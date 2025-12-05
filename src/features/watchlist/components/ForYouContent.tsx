@@ -224,6 +224,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       }
     }
 
+    console.log('[ForYou] Visible:', filtered.length, 'removed:', removedItemIds.size, 'watchlist:', watchlistIds?.size || 0);
     return filtered;
   }, [displayRecommendations, removedItemIds, selectedGenre, watchlistIds]);
 

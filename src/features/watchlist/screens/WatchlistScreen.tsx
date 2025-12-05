@@ -305,6 +305,27 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   const filteredWatched = useMemo(() => filterByGenre(watched), [watched, filterByGenre]);
 
   // ============================================================================
+  // WATCHLIST IDS FOR EXCLUSION
+  // ============================================================================
+
+  // Calculate all watchlist IDs to exclude from recommendations
+  const watchlistIds = useMemo(() => {
+    const allItems = [...watching, ...wantToWatch, ...watched];
+    if (allItems.length === 0) return new Set<number>();
+
+    const ids = allItems.map(item => {
+      // PRIORITY ORDER for getting TMDb ID:
+      // 1. Direct tmdb_id on the item
+      // 2. Nested content.tmdb_id
+      // 3. Skip if missing
+      return item.tmdb_id || item.content?.tmdb_id || null;
+    }).filter((id): id is number => id !== null);
+
+    console.log('[Watchlist] Excluding', ids.length, 'watchlist items from recommendations');
+    return new Set(ids);
+  }, [watching, wantToWatch, watched]);
+
+  // ============================================================================
   // FETCH RECOMMENDATIONS
   // ============================================================================
 
@@ -584,6 +605,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
             onItemPress={handleItemPress}
             onAddToList={handleAddToList}
             onOpenDiscover={handleOpenDiscover}
+            watchlistIds={watchlistIds}
           />
         )}
 
