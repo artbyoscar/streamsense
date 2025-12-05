@@ -104,7 +104,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
 
     // Filter out removed items FIRST
     const availableItems = recommendations.filter(item => {
-      const itemId = item.id || item.tmdb_id;
+      const itemId = item.id || (item as any).tmdb_id;
       return !removedItemIds.has(itemId);
     });
 
@@ -143,7 +143,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   const visibleRecommendations = useMemo(() => {
     if (!recommendations) return [];
     return recommendations.filter(item => {
-      const itemId = item.id;
+      const itemId = item.id || (item as any).tmdb_id;
       return !removedItemIds.has(itemId);
     });
   }, [recommendations, removedItemIds]);
