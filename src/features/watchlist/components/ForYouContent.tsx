@@ -179,14 +179,31 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     return anyMatch || availableItems[0];
   }, [displayRecommendations, selectedGenre, removedItemIds]);
 
-  // Filter out removed items
+  // Filter by both removed items AND selected genre
   const visibleRecommendations = useMemo(() => {
     if (!displayRecommendations) return [];
-    return displayRecommendations.filter(item => {
+
+    let filtered = displayRecommendations.filter(item => {
       const itemId = item.id || (item as any).tmdb_id;
       return !removedItemIds.has(itemId);
     });
-  }, [displayRecommendations, removedItemIds]);
+
+    // If a specific genre is selected, filter to that genre
+    if (selectedGenre && selectedGenre !== 'All') {
+      const genreId = GENRE_NAME_TO_ID[selectedGenre];
+      if (genreId) {
+        filtered = filtered.filter(item => {
+          const genres = item.genres || (item as any).genre_ids || [];
+          return genres.some((g: any) => {
+            const gId = typeof g === 'number' ? g : g?.id;
+            return gId === genreId;
+          });
+        });
+      }
+    }
+
+    return filtered;
+  }, [displayRecommendations, removedItemIds, selectedGenre]);
 
   // Show loading only if no cached data available
   if (isLoading && cachedRecommendations.length === 0) {
