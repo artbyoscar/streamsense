@@ -261,14 +261,14 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     if (allItems.length === 0) return new Set<number>();
 
     const ids = allItems.map(item => {
-      // PRIORITY ORDER for getting TMDb ID:
-      // 1. Direct tmdb_id on the item
-      // 2. Nested content.tmdb_id
-      // 3. Skip if missing
-      return item.tmdb_id || item.content?.tmdb_id || null;
-    }).filter((id): id is number => id !== null);
+      // Get ID from multiple possible sources
+      const rawId = item.tmdb_id || item.content?.tmdb_id || (item as any).id;
+      // FORCE to number for consistent matching
+      return typeof rawId === 'string' ? parseInt(rawId, 10) : rawId;
+    }).filter((id): id is number => id !== null && !isNaN(id));
 
     console.log('[Watchlist] Excluding', ids.length, 'watchlist items from recommendations');
+    console.log('[Watchlist] Sample watchlist IDs:', ids.slice(0, 5));
     return new Set(ids);
   }, [watching, wantToWatch, watched]);
 
