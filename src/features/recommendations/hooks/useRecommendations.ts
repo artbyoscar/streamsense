@@ -4,9 +4,12 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../hooks/useAuth';
 import { getSmartRecommendations } from '../../../services/smartRecommendations';
 import type { UnifiedContent } from '../../../types';
+
+const RECS_CACHE_KEY = 'picked_for_you_cache';
 
 export interface RecommendationItem {
   tmdb_id: number;
@@ -46,9 +49,20 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
     }
 
     try {
-      setIsLoading(true);
-      setError(null);
+      // 1. INSTANT: Load cached recommendations first
+      const cached = await AsyncStorage.getItem(RECS_CACHE_KEY);
+      if (cached) {
+        const { lanes, timestamp } = JSON.parse(cached);
+        // Show cached if less than 1 hour old
+        if (Date.now() - timestamp < 60 * 60 * 1000) {
+          setData(lanes);
+          setIsLoading(false);
+          console.log('[PickedForYou] Showing cached recommendations instantly');
+        }
+      }
 
+      // 2. BACKGROUND: Fetch fresh recommendations
+      setError(null);
       const recommendations = await getSmartRecommendations({
         userId: user.id,
         limit: 20,
@@ -77,6 +91,14 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
       ];
 
       setData(lanes);
+
+      // 3. Cache for next launch
+      await AsyncStorage.setItem(RECS_CACHE_KEY, JSON.stringify({
+        lanes,
+        timestamp: Date.now(),
+      }));
+      console.log('[PickedForYou] Cached', items.length, 'recommendations');
+
     } catch (err) {
       console.error('[useRecommendationLanes] Error:', err);
       setError(err instanceof Error ? err : new Error('Failed to fetch recommendations'));
