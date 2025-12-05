@@ -664,7 +664,7 @@ export const getSmartRecommendations = async (
     try {
       const userTasteProfile = await getTasteProfile(userId);
       if (userTasteProfile) {
-        const topTone = Object.entries(userTasteProfile.preferences?.tone || {})
+        const topTone = Object.entries(userTasteProfile.preferredTone || {})
           .sort((a, b) => (b[1] as number) - (a[1] as number))[0];
 
         console.log('[SmartRecs] User taste profile:', {
