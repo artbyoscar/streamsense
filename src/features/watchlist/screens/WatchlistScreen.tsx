@@ -272,6 +272,22 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     return new Set(ids);
   }, [watching, wantToWatch, watched]);
 
+  // DEBUG: Log watchlist item structure to diagnose TMDb ID extraction
+  useEffect(() => {
+    if (watching.length > 0) {
+      const sample = watching[0];
+      console.log('[DEBUG] Watchlist item structure:', JSON.stringify({
+        id: sample.id,
+        content_id: sample.content_id,
+        tmdb_id: sample.tmdb_id,
+        content: sample.content,
+        metadata: (sample as any).metadata,
+        stored_metadata: (sample as any).stored_metadata,
+        keys: Object.keys(sample)
+      }, null, 2));
+    }
+  }, [watching]);
+
   // Clear recommendation cache when watchlist grows significantly
   useEffect(() => {
     const clearStaleCache = async () => {
