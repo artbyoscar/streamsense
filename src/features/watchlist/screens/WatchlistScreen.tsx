@@ -14,6 +14,7 @@ import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { getWatchlist } from '../services/watchlistService';
 import { useRecommendationCache } from '@/hooks/useRecommendationCache';
 import { getUserTopGenres } from '@/services/genreAffinity';
+import { tmdbApi } from '@/services/tmdb';
 import type { UnifiedContent, WatchlistStatus } from '@/types';
 
 // Components
@@ -124,6 +125,55 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
   } = useRecommendationCache(user?.id);
 
   const [recommendations, setRecommendations] = useState<UnifiedContent[]>([]);
+  const [heroStreamingServices, setHeroStreamingServices] = useState<string[]>([]);
+
+  // ============================================================================
+  // HERO ITEM CALCULATION & STREAMING SERVICES
+  // ============================================================================
+
+  // Calculate hero item (first recommendation)
+  const heroItem = useMemo(() => {
+    if (!recommendations || recommendations.length === 0) return null;
+    return recommendations[0];
+  }, [recommendations]);
+
+  // Fetch streaming services for hero item
+  useEffect(() => {
+    if (!heroItem || !heroItem.id) {
+      setHeroStreamingServices([]);
+      return;
+    }
+
+    const fetchStreaming = async () => {
+      try {
+        const mediaType = heroItem.type || (heroItem as any).media_type || 'movie';
+        const response = await tmdbApi.get(`/${mediaType}/${heroItem.id}/watch/providers`);
+        const usProviders = response.data.results?.US?.flatrate || [];
+        const services = usProviders.map((p: any) => p.provider_name);
+        setHeroStreamingServices(services);
+        console.log('[Watchlist] Fetched hero streaming services:', services);
+      } catch (e) {
+        console.log('[Watchlist] Could not fetch hero streaming services');
+        setHeroStreamingServices([]);
+      }
+    };
+
+    fetchStreaming();
+  }, [heroItem?.id]);
+
+  // Enrich recommendations with hero streaming services
+  const enrichedRecommendations = useMemo(() => {
+    if (!recommendations || recommendations.length === 0) return [];
+    if (!heroItem || heroStreamingServices.length === 0) return recommendations;
+
+    return recommendations.map((item, index) => {
+      // Enrich only the first item (hero)
+      if (index === 0) {
+        return { ...item, streaming_services: heroStreamingServices };
+      }
+      return item;
+    });
+  }, [recommendations, heroItem, heroStreamingServices]);
 
   // ============================================================================
   // GENRE FILTERING FOR WATCHLIST TABS
@@ -489,7 +539,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
         {/* Tab Content */}
         {activeTab === 'forYou' && (
           <ForYouContent
-            recommendations={recommendations}
+            recommendations={enrichedRecommendations}
             isLoading={loadingRecommendations}
             onItemPress={handleItemPress}
             onAddToList={handleAddToList}
