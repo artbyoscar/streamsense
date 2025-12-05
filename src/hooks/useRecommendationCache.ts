@@ -50,8 +50,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
     for (const item of items) {
       const itemGenreIds: number[] = [];
-      if (item.genre_ids && Array.isArray(item.genre_ids)) {
-        itemGenreIds.push(...item.genre_ids);
+      if ((item as any).genre_ids && Array.isArray((item as any).genre_ids)) {
+        itemGenreIds.push(...(item as any).genre_ids);
       }
       if (item.genres && Array.isArray(item.genres)) {
         item.genres.forEach((g: any) => {
@@ -134,8 +134,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         console.log('[RecCache] Valid items:', validItems.length);
 
-        const movies = validItems.filter(i => i.media_type === 'movie' || i.type === 'movie');
-        const tv = validItems.filter(i => i.media_type === 'tv' || i.type === 'tv');
+        const movies = validItems.filter(i => (i as any).media_type === 'movie' || i.type === 'movie');
+        const tv = validItems.filter(i => (i as any).media_type === 'tv' || i.type === 'tv');
 
         // Build initial genre index
         const byGenre = buildGenreIndex(validItems);
@@ -219,8 +219,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
         const updatedAll = [...prev.all, ...newItems];
         const updatedByGenre = buildGenreIndex(updatedAll);
-        const movies = updatedAll.filter(i => i.media_type === 'movie' || i.type === 'movie');
-        const tv = updatedAll.filter(i => i.media_type === 'tv' || i.type === 'tv');
+        const movies = updatedAll.filter(i => (i as any).media_type === 'movie' || i.type === 'movie');
+        const tv = updatedAll.filter(i => (i as any).media_type === 'tv' || i.type === 'tv');
 
         console.log('[RecCache] Updated cache with', newItems.length, 'new items. Total:', updatedAll.length);
 
@@ -248,7 +248,7 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
       if (mediaType !== 'all') {
         results = results.filter(item => {
-          const itemType = item.media_type || item.type;
+          const itemType = (item as any).media_type || item.type;
           return itemType === mediaType || (mediaType === 'tv' && itemType === 'series');
         });
       }
@@ -290,8 +290,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
             const updatedAll = [...prev.all, ...uniqueNew];
             const updatedByGenre = buildGenreIndex(updatedAll);
-            const movies = updatedAll.filter(i => i.media_type === 'movie' || i.type === 'movie');
-            const tv = updatedAll.filter(i => i.media_type === 'tv' || i.type === 'tv');
+            const movies = updatedAll.filter(i => (i as any).media_type === 'movie' || i.type === 'movie');
+            const tv = updatedAll.filter(i => (i as any).media_type === 'tv' || i.type === 'tv');
 
             return {
               all: updatedAll,
@@ -338,8 +338,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
             const updatedAll = [...prev.all, ...uniqueNew];
             const updatedByGenre = buildGenreIndex(updatedAll);
-            const movies = updatedAll.filter(i => i.media_type === 'movie' || i.type === 'movie');
-            const tv = updatedAll.filter(i => i.media_type === 'tv' || i.type === 'tv');
+            const movies = updatedAll.filter(i => (i as any).media_type === 'movie' || i.type === 'movie');
+            const tv = updatedAll.filter(i => (i as any).media_type === 'tv' || i.type === 'tv');
 
             return {
               all: updatedAll,
@@ -376,8 +376,8 @@ export const useRecommendationCache = (userId: string | undefined) => {
 
       const updatedAll = prev.all.filter(item => item.id !== itemId);
       const updatedByGenre = buildGenreIndex(updatedAll);
-      const movies = updatedAll.filter(i => i.media_type === 'movie' || i.type === 'movie');
-      const tv = updatedAll.filter(i => i.media_type === 'tv' || i.type === 'tv');
+      const movies = updatedAll.filter(i => (i as any).media_type === 'movie' || i.type === 'movie');
+      const tv = updatedAll.filter(i => (i as any).media_type === 'tv' || i.type === 'tv');
 
       console.log('[RecCache] Removed item', itemId, 'from cache. Remaining:', updatedAll.length);
 
