@@ -2,13 +2,14 @@
  * For You Content Component
  * Main recommendation view with hero spotlight and multiple lanes
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-native';
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
 import { ExplorationCTA } from './ExplorationCTA';
 import { batchGetServiceBadges, getUserSubscriptionNames } from '@/services/watchProviders';
 import { useAuth } from '@/hooks/useAuth';
+import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { ChevronDown } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
 
@@ -55,8 +56,30 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
   selectedGenre = 'All',
 }) => {
   const { user } = useAuth();
+  const { setOnContentAdded } = useCustomNavigation();
   const [serviceBadges, setServiceBadges] = useState<Map<number, { name: string; color: string; initial: string }>>(new Map());
   const [badgesLoading, setBadgesLoading] = useState(false);
+
+  // Track removed item IDs for fade-out effect
+  const [removedItemIds, setRemovedItemIds] = useState<Set<number>>(new Set());
+  const pendingItemIdRef = useRef<number | null>(null);
+
+  // Register callback for when content is added to watchlist
+  useEffect(() => {
+    const handleContentAdded = () => {
+      if (pendingItemIdRef.current) {
+        console.log('[ForYou] Removing item after watchlist add:', pendingItemIdRef.current);
+        setRemovedItemIds(prev => new Set([...prev, pendingItemIdRef.current!]));
+        pendingItemIdRef.current = null;
+      }
+    };
+
+    setOnContentAdded(handleContentAdded);
+
+    return () => {
+      setOnContentAdded(null);
+    };
+  }, [setOnContentAdded]);
 
   // Fetch service badges for trending items
   React.useEffect(() => {
@@ -98,6 +121,13 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     }
   }, [onLoadMore]);
 
+  // Handle item press with pending ID tracking
+  const handleItemPress = useCallback((item: UnifiedContent) => {
+    // Store the item ID for potential removal if added to watchlist
+    pendingItemIdRef.current = item.id;
+    onItemPress(item);
+  }, [onItemPress]);
+
   // Hero item - reactive to genre selection (MUST be before early returns)
   const heroItem = useMemo(() => {
     if (!recommendations || recommendations.length === 0) return null;
@@ -133,6 +163,15 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     return anyMatch || recommendations[0];
   }, [recommendations, selectedGenre]);
 
+  // Filter out removed items
+  const visibleRecommendations = useMemo(() => {
+    if (!recommendations) return [];
+    return recommendations.filter(item => {
+      const itemId = item.id;
+      return !removedItemIds.has(itemId);
+    });
+  }, [recommendations, removedItemIds]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -156,7 +195,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       id: 'top_picks',
       title: 'Top Picks For You',
       subtitle: 'Personalized based on your taste',
-      items: recommendations.slice(1, 16), // 15 items
+      items: visibleRecommendations.slice(1, 16), // 15 items
       showMatchScore: true,
       showServiceBadge: false,
     },
@@ -164,14 +203,14 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       id: 'trending',
       title: 'Trending on Your Services',
       subtitle: 'Popular now on your subscriptions',
-      items: recommendations.slice(16, 31), // 15 items
+      items: visibleRecommendations.slice(16, 31), // 15 items
       showServiceBadge: true,
     },
     {
       id: 'hidden_gems',
       title: 'Hidden Gems',
       subtitle: 'Under-the-radar picks for you',
-      items: recommendations.slice(31, 46), // 15 items
+      items: visibleRecommendations.slice(31, 46), // 15 items
       showMatchScore: true,
       showServiceBadge: false,
     },
@@ -179,7 +218,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
       id: 'more_like',
       title: 'Because You Liked Similar Content',
       subtitle: 'Similar tone and themes',
-      items: recommendations.slice(46, 61), // 15 items
+      items: visibleRecommendations.slice(46, 61), // 15 items
       showMatchScore: false,
       showServiceBadge: false,
     },
@@ -193,7 +232,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
           key={heroItem.id || heroItem.title}
           item={heroItem}
           onAddToList={() => handleAddToList(heroItem)}
-          onViewDetails={() => onItemPress(heroItem)}
+          onViewDetails={() => handleItemPress(heroItem)}
         />
       )}
 
@@ -209,7 +248,7 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
             serviceBadges={lane.showServiceBadge ? serviceBadges : undefined}
             showServiceBadge={lane.showServiceBadge}
             showMatchScore={lane.showMatchScore}
-            onItemPress={onItemPress}
+            onItemPress={handleItemPress}
           />
         );
       })}
