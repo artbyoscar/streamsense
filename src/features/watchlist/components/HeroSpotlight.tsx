@@ -6,7 +6,7 @@
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Plus, Info, Star } from 'lucide-react-native';
+import { Plus, Star } from 'lucide-react-native';
 import type { UnifiedContent } from '@/types';
 
 interface HeroSpotlightProps {
@@ -25,13 +25,17 @@ export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({
     : null;
 
   const title = item.title || item.name || 'Unknown Title';
-  const matchScore = item.matchScore || item.match_score || 0.85;
   const rating = item.rating || item.vote_average || 0;
-  const year = item.releaseDate?.split('-')[0] || item.release_date?.split('-')[0] || 'N/A';
+  const year = item.releaseDate?.split('-')[0] || item.release_date?.split('-')[0] || '';
   const mediaType = item.type || item.media_type || 'movie';
+  const streamingServices = item.streaming_services || [];
 
   return (
-    <View style={styles.heroContainer}>
+    <TouchableOpacity
+      style={styles.heroContainer}
+      onPress={onViewDetails}
+      activeOpacity={0.95}
+    >
       {/* Backdrop Image */}
       {backdropUrl && (
         <Image source={{ uri: backdropUrl }} style={styles.heroBackdrop} />
@@ -46,11 +50,6 @@ export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({
 
       {/* Content */}
       <View style={styles.heroContent}>
-        {/* Match Badge */}
-        <View style={styles.matchBadge}>
-          <Text style={styles.matchPercentage}>{Math.round(matchScore * 100)}% Match</Text>
-        </View>
-
         {/* Title */}
         <Text style={styles.heroTitle} numberOfLines={2}>
           {title}
@@ -58,38 +57,55 @@ export const HeroSpotlight: React.FC<HeroSpotlightProps> = ({
 
         {/* Meta Row */}
         <View style={styles.heroMeta}>
-          <View style={styles.ratingBadge}>
-            <Star size={12} color="#fbbf24" fill="#fbbf24" />
-            <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
-          </View>
-          <Text style={styles.metaDot}>•</Text>
-          <Text style={styles.heroMetaText}>{year}</Text>
-          <Text style={styles.metaDot}>•</Text>
+          {rating > 0 && (
+            <>
+              <View style={styles.ratingBadge}>
+                <Star size={12} color="#fbbf24" fill="#fbbf24" />
+                <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+              </View>
+              <Text style={styles.metaDot}>•</Text>
+            </>
+          )}
+          {year && (
+            <>
+              <Text style={styles.heroMetaText}>{year}</Text>
+              <Text style={styles.metaDot}>•</Text>
+            </>
+          )}
           <Text style={styles.heroMetaText}>{mediaType === 'tv' ? 'Series' : 'Movie'}</Text>
         </View>
 
-        {/* Service Availability (placeholder) */}
-        <View style={styles.serviceRow}>
-          <View style={[styles.serviceBadge, { backgroundColor: '#E50914' }]}>
-            <Text style={styles.serviceBadgeText}>Netflix</Text>
+        {/* Streaming Services - Show real data */}
+        {streamingServices.length > 0 && (
+          <View style={styles.serviceRow}>
+            {streamingServices.slice(0, 3).map((service: string, index: number) => (
+              <View key={index} style={styles.serviceBadge}>
+                <Text style={styles.serviceBadgeText}>{service}</Text>
+              </View>
+            ))}
+            {streamingServices.length > 3 && (
+              <Text style={styles.moreServices}>
+                +{streamingServices.length - 3} more
+              </Text>
+            )}
           </View>
-          <Text style={styles.includedText}>Included in your subscription</Text>
-        </View>
+        )}
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Only Add to List */}
         <View style={styles.heroActions}>
-          <TouchableOpacity style={styles.primaryButton} onPress={onAddToList}>
+          <TouchableOpacity
+            style={styles.primaryButton}
+            onPress={(e) => {
+              e.stopPropagation();
+              onAddToList();
+            }}
+          >
             <Plus size={20} color="#000" />
-            <Text style={styles.primaryButtonText}>My List</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.secondaryButton} onPress={onViewDetails}>
-            <Info size={20} color="#fff" />
-            <Text style={styles.secondaryButtonText}>Details</Text>
+            <Text style={styles.primaryButtonText}>Add to List</Text>
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -119,19 +135,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     paddingHorizontal: 16,
-  },
-  matchBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginBottom: 8,
-  },
-  matchPercentage: {
-    color: '#22c55e',
-    fontSize: 13,
-    fontWeight: '700',
+    paddingBottom: 20,
   },
   heroTitle: {
     fontSize: 32,
@@ -165,23 +169,26 @@ const styles = StyleSheet.create({
   },
   serviceRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
   },
   serviceBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 4,
   },
   serviceBadgeText: {
     color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
   },
-  includedText: {
-    color: '#22c55e',
-    fontSize: 12,
+  moreServices: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    alignSelf: 'center',
   },
   heroActions: {
     flexDirection: 'row',
@@ -192,27 +199,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
     borderRadius: 8,
   },
   primaryButtonText: {
     color: '#000',
     fontSize: 15,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  secondaryButtonText: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 });
