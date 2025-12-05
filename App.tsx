@@ -12,7 +12,7 @@ import { ToastProvider } from './src/components/Toast';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { useAuthStore } from './src/features/auth/store/authStore';
 import { ThemeProvider, useTheme, getNavigationTheme } from './src/providers/ThemeProvider';
-import { initializeExclusions } from './src/services/smartRecommendations';
+import { initializeExclusions, getGlobalExclusionIds } from './src/services/smartRecommendations';
 import { getPileOfShame } from './src/services/pileOfShame';
 import { tipsCache } from './src/services/tipsCache';
 import { supabase } from './src/config/supabase';
@@ -56,20 +56,17 @@ const preloadTipsData = async (userId: string) => {
   try {
     console.log('[Preload] Starting tips data preload...');
 
-    // Load watchlist IDs for exclusions
-    const { data: watchlistItems } = await supabase
-      .from('watchlist_items')
-      .select('content(tmdb_id)')
-      .eq('user_id', userId);
+    // Ensure exclusions are initialized first
+    await initializeExclusions(userId);
 
-    const watchlistIds = watchlistItems
-      ?.filter(item => item.content)
-      .map(item => (item.content as any).tmdb_id) || [];
+    // Get actual global exclusions (watchlist + session items)
+    const globalExclusions = getGlobalExclusionIds();
+    const exclusionIds = Array.from(globalExclusions);
 
-    console.log('[Preload] Fetching blindspots with', watchlistIds.length, 'exclusions');
+    console.log('[Preload] Fetching blindspots with', exclusionIds.length, 'exclusions (watchlist + session)');
 
     // Load blindspots (Worth Discovering)
-    const blindspots = await getPileOfShame(userId, 12, watchlistIds);
+    const blindspots = await getPileOfShame(userId, 12, exclusionIds);
 
     // Cache them
     tipsCache.set('blindspots', blindspots);

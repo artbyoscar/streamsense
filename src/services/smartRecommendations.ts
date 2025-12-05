@@ -840,6 +840,14 @@ export const getExclusionStats = () => ({
   sessionExclusionsSample: Array.from(sessionExclusionIds).slice(0, 10),
 });
 
+/**
+ * Get global exclusion IDs (watchlist + session exclusions)
+ * Used by blindspot recommendations to avoid showing already-seen content
+ */
+export const getGlobalExclusionIds = (): Set<number> => {
+  return new Set(globalExcludeIds);
+};
+
 // ============================================================================
 // CONTENT NORMALIZATION
 // ============================================================================
