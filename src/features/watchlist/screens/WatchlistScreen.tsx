@@ -392,9 +392,10 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     const fetchFilteredResults = async () => {
       if (activeTab !== 'forYou') return;
 
+      console.log('[Watchlist] Fetching filtered recommendations for genre:', activeGenre);
       try {
         const results = await getFilteredRecommendations('all', activeGenre);
-        console.log('[Watchlist] Filtered recommendations: ' + results.length + ' items');
+        console.log('[Watchlist] Filtered recommendations:', results.length, 'items for genre:', activeGenre);
         setRecommendations(results);
       } catch (error) {
         console.error('[Watchlist] Error filtering recommendations:', error);
@@ -596,6 +597,11 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
     }
   };
 
+  const handleGenreChange = (genre: string) => {
+    console.log('[Watchlist] Genre filter changed:', genre);
+    setActiveGenre(genre);
+  };
+
   // ============================================================================
   // GET CURRENT TAB CONTENT
   // ============================================================================
@@ -645,7 +651,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
 
       {/* Genre Filter Chips - Sticky (on all tabs) */}
       <View style={styles.stickyFilters}>
-        <GenreFilterChips activeGenre={activeGenre} onGenreChange={setActiveGenre} />
+        <GenreFilterChips activeGenre={activeGenre} onGenreChange={handleGenreChange} />
       </View>
 
       {/* Content Area */}
@@ -664,6 +670,7 @@ export const WatchlistScreen: React.FC<{ isFocused?: boolean }> = ({ isFocused =
             onItemPress={handleItemPress}
             onAddToList={handleAddToList}
             onOpenDiscover={handleOpenDiscover}
+            selectedGenre={activeGenre}
             watchlistIds={watchlistIds}
           />
         )}
