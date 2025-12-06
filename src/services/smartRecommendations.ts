@@ -846,13 +846,20 @@ export const getSmartRecommendations = async (
     const impressionHistory = await getImpressionHistory(userId);
     const fatigueFiltered = applyFatigueFilter(withCollaborative, impressionHistory);
 
+    // 🆕 CRITICAL: Fallback if fatigue filter is too aggressive
+    let finalCandidates = fatigueFiltered;
+    if (finalCandidates.length === 0 && diversified.length > 0) {
+      console.log('[SmartRecs] Fatigue filter too aggressive, using diversified candidates');
+      finalCandidates = diversified;
+    }
+
     await saveSessionCache();
 
-    let results = fatigueFiltered.slice(0, limit);
+    let results = finalCandidates.slice(0, limit);
 
-    // Fallback for empty results
-    if (!excludeSessionItems && results.length === 0) {
-      console.log('[SmartRecs] Loading trending fallback');
+    // 🆕 CRITICAL: Ultimate fallback - always load trending if no results
+    if (results.length === 0) {
+      console.log('[SmartRecs] No results after all filters, loading trending fallback');
       try {
         const trendingResponse = await tmdbApi.get('/trending/all/week', {
           params: { page: Math.floor(Math.random() * 5) + 1 },
