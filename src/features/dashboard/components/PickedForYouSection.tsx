@@ -17,6 +17,7 @@ interface PickedForYouCardProps {
   matchScore?: number;
   reason?: string;
   year?: string;
+  overview?: string;
   onPress: () => void;
 }
 
@@ -26,6 +27,7 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
   matchScore,
   reason,
   year,
+  overview,
   onPress,
 }) => {
   return (
@@ -53,6 +55,12 @@ const PickedForYouCard: React.FC<PickedForYouCardProps> = ({
 
       {year && (
         <Text style={styles.pickedYear}>{year}</Text>
+      )}
+
+      {overview && (
+        <Text style={styles.pickedOverview} numberOfLines={2}>
+          {overview}
+        </Text>
       )}
 
       {reason && (
@@ -113,6 +121,7 @@ export const PickedForYouSection: React.FC = () => {
       matchScore: item.match_score ? Math.round(item.match_score * 100) : undefined,
       reason: item.reason || 'Based on your taste',
       year: (item.releaseDate || item.release_date)?.split('-')[0],
+      overview: item.overview || undefined,
     }))
     .filter(item => !removedItemIds.has(item.id))
     .slice(0, 20); // Show up to 20 items
@@ -207,6 +216,7 @@ export const PickedForYouSection: React.FC = () => {
             matchScore={item.matchScore}
             reason={item.reason}
             year={item.year}
+            overview={item.overview}
             onPress={() => handleItemPress(item)}
           />
         ))}
@@ -335,6 +345,12 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#888',
     marginBottom: 2,
+  },
+  pickedOverview: {
+    fontSize: 10,
+    color: '#999',
+    lineHeight: 13,
+    marginBottom: 3,
   },
   pickedReason: {
     fontSize: 11,
