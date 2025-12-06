@@ -321,9 +321,14 @@ const initializeCaches = async (userId: string) => {
     try {
       await AsyncStorage.removeItem(SESSION_CACHE_KEY);
       sessionShownIds = new Set();
-      console.log('[SmartRecs] Cleared session cache for fresh recommendations');
+
+      // 🆕 FIX: Also clear recently shown items for fresh start
+      await AsyncStorage.removeItem(SHOWN_ITEMS_KEY);
+      recentlyShownIds = new Set();
+
+      console.log('[SmartRecs] Cleared session cache AND recently shown for fresh recommendations');
     } catch (e) {
-      console.log('[SmartRecs] Error clearing session cache:', e);
+      console.log('[SmartRecs] Error clearing caches:', e);
     }
   }
 
