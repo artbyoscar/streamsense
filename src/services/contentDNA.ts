@@ -220,7 +220,7 @@ export class ContentDNAService {
       runtime?: number;
       episode_run_time?: number[];
     }
-  ): Promise<ContentDNA> {
+  ): Promise<ContentDNA | null> {
     const timer = new PerformanceTimer('DNA computation', { tmdbId, mediaType });
 
     try {
@@ -287,8 +287,15 @@ export class ContentDNAService {
         collections: details.belongs_to_collection ? [details.belongs_to_collection.name] : [],
         similarTitles: details.similar?.results?.slice(0, 10).map((s: any) => s.id) || [],
       };
-    } catch (error) {
+    } catch (error: any) {
       timer.end();
+
+      // Handle 404s gracefully - content removed from TMDb
+      if (error?.response?.status === 404) {
+        console.warn(`[ContentDNA] Content not found on TMDb: ${mediaType} ${tmdbId} - skipping`);
+        return null;
+      }
+
       console.error(`[ContentDNA] Error computing DNA for ${mediaType} ${tmdbId}:`, error);
       throw error;
     }
@@ -630,6 +637,12 @@ export class ContentDNAService {
             mediaType,
             batchResult?.details || undefined
           );
+
+          // Skip if DNA computation failed (e.g., 404 from TMDb)
+          if (!dna) {
+            console.warn(`[TasteProfile] Skipping item ${item.tmdb_id} - DNA computation failed`);
+            continue;
+          }
 
           // Calculate weight based on recency, rating, and completion
           const weight = this.calculateItemWeight(item);

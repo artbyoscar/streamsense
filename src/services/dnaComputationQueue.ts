@@ -33,6 +33,7 @@ const RETRY_DELAY_MS = 2000; // Wait 2s before retrying
 class DNAComputationQueue {
   private queue: QueueItem[] = [];
   private processing = new Set<string>(); // Track currently processing items
+  private permanentlyFailed = new Set<string>(); // Track items that 404'd (don't retry)
   private isProcessing = false;
   private processingPromise: Promise<void> | null = null;
 
@@ -68,6 +69,12 @@ class DNAComputationQueue {
    */
   async enqueue(tmdbId: number, mediaType: 'movie' | 'tv'): Promise<void> {
     const key = `${mediaType}-${tmdbId}`;
+
+    // Skip if permanently failed (404'd)
+    if (this.permanentlyFailed.has(key)) {
+      console.log(`[DNAQueue] Skipping permanently failed item: ${key}`);
+      return;
+    }
 
     // Skip if already in queue or processing
     if (this.processing.has(key)) {
@@ -121,11 +128,21 @@ class DNAComputationQueue {
         this.processing.delete(key);
         return true;
       } else {
-        console.warn(`[DNAQueue] ✗ Failed to compute DNA for ${key} (returned null)`);
+        // DNA computation returned null (likely 404)
+        console.warn(`[DNAQueue] ✗ Failed to compute DNA for ${key} (returned null) - marking as permanently failed`);
+        this.permanentlyFailed.add(key);
         this.processing.delete(key);
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Check if this is a 404 error
+      if (error?.response?.status === 404) {
+        console.warn(`[DNAQueue] ✗ Content not found (404) for ${key} - marking as permanently failed`);
+        this.permanentlyFailed.add(key);
+        this.processing.delete(key);
+        return false;
+      }
+
       console.error(`[DNAQueue] ✗ Error computing DNA for ${key}:`, error);
       this.processing.delete(key);
       return false;
@@ -157,10 +174,16 @@ class DNAComputationQueue {
       for (let i = 0; i < batch.length; i++) {
         const item = batch[i];
         const success = results[i];
+        const key = `${item.mediaType}-${item.tmdbId}`;
+
+        // Don't retry permanently failed items (404'd)
+        if (!success && this.permanentlyFailed.has(key)) {
+          console.log(`[DNAQueue] ✗ Item ${key} permanently failed (404), not retrying`);
+          continue;
+        }
 
         if (!success && item.retryCount < MAX_RETRIES) {
           // Retry failed item
-          const key = `${item.mediaType}-${item.tmdbId}`;
           console.log(`[DNAQueue] Scheduling retry for ${key} in ${RETRY_DELAY_MS}ms`);
 
           setTimeout(() => {
@@ -208,6 +231,7 @@ class DNAComputationQueue {
   clear(): void {
     this.queue = [];
     this.processing.clear();
+    this.permanentlyFailed.clear();
     console.log('[DNAQueue] Queue cleared');
   }
 
@@ -272,6 +296,12 @@ class DNAComputationQueue {
           return false;
         }
         const key = `${item.media_type}-${item.tmdb_id}`;
+
+        // Skip permanently failed items (404'd)
+        if (this.permanentlyFailed.has(key)) {
+          return false;
+        }
+
         return !existingDNASet.has(key);
       });
 

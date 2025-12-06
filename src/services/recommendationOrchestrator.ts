@@ -97,6 +97,13 @@ export class RecommendationOrchestrator {
       const dna = await contentDNAService.computeDNA(tmdbId, mediaType);
       this.stats.dnaComputations++;
 
+      // If DNA computation failed (e.g., 404), return null
+      if (!dna) {
+        console.warn(`[Orchestrator] ⚠️ DNA computation returned null for ${mediaType} ${tmdbId}`);
+        timer.end();
+        return null;
+      }
+
       // Save to Supabase cache
       await this.saveDNAToCache(tmdbId, mediaType, dna);
 
