@@ -4,6 +4,7 @@
  */
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, ActivityIndicator, Text, StyleSheet, Pressable } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HeroSpotlight } from './HeroSpotlight';
 import { RecommendationLane } from './RecommendationLane';
@@ -319,27 +320,37 @@ export const ForYouContent: React.FC<ForYouContentProps> = ({
     <View>
       {/* Hero Spotlight */}
       {heroItem && (
-        <HeroSpotlight
-          key={heroItem.id || heroItem.title}
-          item={heroItem}
-          onAddToList={() => handleAddToList(heroItem)}
-          onViewDetails={() => handleItemPress(heroItem)}
-        />
+        <Animated.View
+          key={`hero-${heroItem.id || heroItem.title}`}
+          entering={FadeIn.duration(400)}
+          exiting={FadeOut.duration(250)}
+        >
+          <HeroSpotlight
+            item={heroItem}
+            onAddToList={() => handleAddToList(heroItem)}
+            onViewDetails={() => handleItemPress(heroItem)}
+          />
+        </Animated.View>
       )}
 
       {/* Recommendation Lanes */}
       {lanes.map((lane) => {
         if (!lane.items || lane.items.length === 0) return null;
         return (
-          <RecommendationLane
+          <Animated.View
             key={lane.id}
-            title={lane.title}
-            subtitle={lane.subtitle || undefined}
-            items={lane.items}
-            showServiceBadge={lane.showServiceBadge}
-            showMatchScore={lane.showMatchScore}
-            onItemPress={handleItemPress}
-          />
+            entering={FadeIn.duration(400)}
+            exiting={FadeOut.duration(250)}
+          >
+            <RecommendationLane
+              title={lane.title}
+              subtitle={lane.subtitle || undefined}
+              items={lane.items}
+              showServiceBadge={lane.showServiceBadge}
+              showMatchScore={lane.showMatchScore}
+              onItemPress={handleItemPress}
+            />
+          </Animated.View>
         );
       })}
 

@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { ChevronRight } from 'lucide-react-native';
 import { ContentCard } from './ContentCard';
 import type { UnifiedContent } from '@/types';
@@ -57,14 +58,19 @@ export const RecommendationLane: React.FC<RecommendationLaneProps> = ({
         snapToInterval={132} // Card width + gap
       >
         {items.map((item, index) => (
-          <ContentCard
+          <Animated.View
             key={`${item.id}-${index}`}
-            item={item}
-            serviceBadge={serviceBadges?.get(item.id) || null}
-            showServiceBadge={showServiceBadge}
-            showMatchScore={showMatchScore}
-            onPress={() => onItemPress(item)}
-          />
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+          >
+            <ContentCard
+              item={item}
+              serviceBadge={serviceBadges?.get(item.id) || null}
+              showServiceBadge={showServiceBadge}
+              showMatchScore={showMatchScore}
+              onPress={() => onItemPress(item)}
+            />
+          </Animated.View>
         ))}
       </ScrollView>
     </View>

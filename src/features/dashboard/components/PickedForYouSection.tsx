@@ -5,6 +5,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Pressable, Image, ActivityIndicator } from 'react-native';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { Sparkles, Star, TrendingUp, ChevronRight, RefreshCw } from 'lucide-react-native';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { useRecommendationLanes } from '../../recommendations/hooks/useRecommendations';
@@ -209,16 +210,21 @@ export const PickedForYouSection: React.FC = () => {
         snapToInterval={140}
       >
         {pickedForYou.map((item) => (
-          <PickedForYouCard
+          <Animated.View
             key={item.id}
-            title={item.title}
-            posterUrl={item.posterUrl}
-            matchScore={item.matchScore}
-            reason={item.reason}
-            year={item.year}
-            overview={item.overview}
-            onPress={() => handleItemPress(item)}
-          />
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+          >
+            <PickedForYouCard
+              title={item.title}
+              posterUrl={item.posterUrl}
+              matchScore={item.matchScore}
+              reason={item.reason}
+              year={item.year}
+              overview={item.overview}
+              onPress={() => handleItemPress(item)}
+            />
+          </Animated.View>
         ))}
 
         {/* Load More Button in scroll */}
