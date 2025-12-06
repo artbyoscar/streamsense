@@ -6,451 +6,231 @@ StreamSense helps users optimize their streaming spending while discovering pers
 
 ---
 
-## 🎨 Design Philosophy
-
-StreamSense draws inspiration from three industry leaders, combining the best patterns from each:
-
-| Inspiration | What We Borrow | Where It Appears |
-|-------------|----------------|------------------|
-| **Rocket Money** | Value-first dashboard, hero metrics, grouped cards, annual projections | Home Screen |
-| **Tinder** | Swipe-based discovery, satisfying gestures, clear binary actions | Discover Screen |
-| **Netflix** | Multi-lane browsing, contextual labels, hero spotlight, progressive disclosure | Watchlist/For You |
-
-### Core Design Principles
-
-1. **Value First**: Every screen communicates financial value alongside entertainment
-2. **Glanceable Metrics**: Key numbers visible without scrolling or tapping
-3. **Contextual Intelligence**: Explain WHY something is recommended
-4. **Service Awareness**: Always show which streaming service has the content
-5. **Satisfying Interactions**: Haptic feedback, smooth animations, clear state changes
-6. **Progressive Disclosure**: Show summary first, details on demand
-
----
-
-## 📱 Screen Designs
-
-### Home Screen (Rocket Money Inspired) ✅ Implemented
-
-The dashboard communicates value at a glance with a hero spending card and quick insights.
-
-```
-┌────────────────────────────────────────────┐
-│ Good evening, Oscar                   ⚙️  │
-│ Friday, December 6                         │
-├────────────────────────────────────────────┤
-│ ┌────────────────────────────────────────┐ │
-│ │ MONTHLY STREAMING      ✓ Great Value  │ │
-│ │         $27.98                         │ │
-│ │ 📅 $336/year across 2 services        │ │
-│ └────────────────────────────────────────┘ │
-│ ┌──────────┐ ┌──────────┐ ┌──────────┐    │
-│ │ 303      │ │ 455h     │ │ $0.00    │    │
-│ │ WATCHED  │ │WATCH TIME│ │COST/HOUR │    │
-│ └──────────┘ └──────────┘ └──────────┘    │
-│ Your Services                    Manage All│
-│ ┌────────────────────────────────────────┐ │
-│ │ N  Netflix               $15.49/mo  > │ │
-│ │    ✓ Great Value                      │ │
-│ ├────────────────────────────────────────┤ │
-│ │ CR Crunchyroll           $7.99/mo   > │ │
-│ │    ✓ Great Value                      │ │
-│ └────────────────────────────────────────┘ │
-│ Picked For You                    View All │
-│ [Training Day] [Lord of Mysteries] [...]  │
-└────────────────────────────────────────────┘
-```
-
-**Status:** ✅ Dashboard stats load instantly (~350ms), year/overview now displayed on cards
-
-### Discover Screen (Tinder Inspired) ✅ Implemented
-
-Swipe-based content discovery with satisfying gestures and clear actions.
-
-**Status:** ✅ Swipe gestures working, optimistic UI for instant feedback, rating modal with half-star support
-
-### Watchlist/For You Screen (Netflix Inspired) ✅ Implemented
-
-Multi-lane browsing with contextual recommendation labels.
-
-**Status:** ✅ Core UI complete, **load time reduced from 30s to 600ms**, instant cached display, genre filters working, fade animations
-
-### Tips and Insights Screen ✅ Implemented
-
-**Status:** ✅ Working, needs content variety improvements
-
----
-
-## 🧠 Recommendation Intelligence Architecture
-
-StreamSense implements a **6-layer recommendation intelligence system** inspired by Netflix, Spotify, and Amazon.
-
-### Layer Overview
-
-| Layer | Purpose | Status |
-|-------|---------|--------|
-| **Content DNA** | Deep content attributes beyond genres | ✅ **406 rows populated** |
-| **User Taste Profile** | Aggregated preferences from behavior | ✅ Working ("Quirky Comedies Fan") |
-| **Multi-Lane Recommendations** | Parallel recommendation strategies | ✅ Implemented with provider filtering |
-| **Interest Graph** | Maps connections between interests | ✅ 707 nodes, 356 edges |
-| **LLM Personalization** | Claude Haiku integration | ⏳ Planned |
-| **Contextual Intelligence** | Time-of-day, mood awareness | ⏳ Planned |
-
-### Content DNA Schema (Session 19)
-
-The Content DNA table now includes comprehensive attribute tracking:
-
-```sql
--- Tone attributes (0-1 scale)
-tone_dark, tone_humorous, tone_suspenseful, tone_heartfelt, 
-tone_intense, tone_lighthearted, tone_cerebral, tone_visceral
-
--- Aesthetic attributes (0-1 scale)
-aesthetic_gritty, aesthetic_polished, aesthetic_minimalist, aesthetic_stylized,
-aesthetic_naturalistic, aesthetic_surreal, aesthetic_visual, aesthetic_dark,
-aesthetic_bright, aesthetic_colorful, aesthetic_muted, aesthetic_retro,
-aesthetic_modern, aesthetic_cinematic, aesthetic_documentary, aesthetic_animated
-
--- Theme attributes (0-1 scale)
-theme_family, theme_friendship, theme_romance, theme_revenge,
-theme_survival, theme_identity, theme_justice, theme_power,
-theme_redemption, theme_coming_of_age, theme_good_vs_evil, theme_loss
-
--- Narrative attributes
-narrative_nonlinear, narrative_twist
-
--- Content ratings
-content_violence, content_mature
-
--- Production metadata
-production_budget, production_era, origin_countries
-```
-
-### Current Recommendation Features
-
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Genre Affinity Learning | ✅ Working | 22 genres tracked, temporal decay |
-| Smart Recommendations | ✅ Working | Personalized picks, multi-layer exclusion |
-| Provider Filtering | ✅ Working | Only shows content from subscribed services |
-| Blindspot Discovery | ✅ Working | Hidden gems, classic gaps, unexplored genres |
-| Session Exclusion | ✅ Working | 62 items persisted with 7-day retention |
-| 7-Day Shown Tracking | ✅ Working | 525 items tracked across sessions |
-| ID Type Normalization | ✅ Working | String/number mismatches resolved |
-| Multi-Layer Fallback | ✅ Working | Diversified → Trending fallback chain |
-| Instant Cached Display | ✅ Working | Shows cached recs while loading fresh |
-| Negative Filtering | ✅ Working | Skipped content excluded |
-| Real Service Badges | ✅ Working | Fetches actual provider data per item |
-| Taste Profile | ✅ Working | Builds signature from 100 watchlist items |
-| Always-Include Genres | ✅ Working | Romance, Horror, Anime, Documentary always fetched |
-| Content DNA | ✅ **Populated** | 406 rows with full attribute extraction |
-| 404 Error Handling | ✅ **Fixed** | Graceful skip for removed TMDb content |
-| Half-Star Ratings | ✅ Fixed | Split touch targets for 0.5 increments |
-| Genre Filter Re-render | ✅ Fixed | Proper prop connection to ForYouContent |
-| Fade Animations | ✅ Working | Smooth transitions on add/remove |
-| SVD Matrix Factorization | ⚠️ Limited | Single-user generates 0 predictions |
-| Collaborative Filtering | ⚠️ Blocked | Needs multiple users |
-
----
-
 ## 📊 Project Status
 
-### Overall Completion: **91%**
+### Overall Completion: **85%**
+
+> ⚠️ **Critical Note:** Plaid bank integration has NOT been tested in production. We are running in Expo development mode, which cannot fully test native Plaid SDK functionality. A production build is required for real-world validation of the core value proposition.
 
 | Category | Status | Completion | Notes |
 |----------|--------|------------|-------|
-| Core Infrastructure | ✅ Complete | 100% | Expo SDK 54, EAS Build |
-| Authentication | ✅ Complete | 100% | Supabase Auth |
-| Subscription Management | ✅ Complete | 100% | Manage All modal, add/edit/delete |
-| Watchlist System | ✅ Complete | 100% | 423 items tracked, all have media_type |
-| Genre Affinity Learning | ✅ Complete | 100% | Real-time tracking |
-| Provider Filtering | ✅ Complete | 100% | Filters by subscribed services |
-| Service Badges | ✅ Complete | 100% | Real provider data displayed |
-| Basic Recommendations | ✅ Complete | 100% | Genre-based + always-include genres |
-| Exclusion System | ⚠️ Needs Tuning | 80% | Too aggressive, choking recommendations |
-| For You Tab | ✅ Complete | 100% | Instant display + proper exclusions |
-| Home Screen UI | ✅ Fixed | 100% | Year/overview now displayed |
-| Discover Screen UI | ✅ Complete | 100% | Swipe working, half-star ratings fixed |
-| Watchlist Screen UI | ✅ Fixed | 100% | Metadata displayed, genre filters working |
-| Tips and Insights | ✅ Complete | 85% | Content variety needed |
-| Error Handling | ✅ Complete | 100% | 404s handled gracefully, no red popups |
-| TypeScript Fixes | ✅ Complete | 100% | All import/type errors resolved |
-| Content DNA System | ✅ **Populated** | 100% | 406 rows with full schema |
-| User Taste Profiles | ✅ Working | 100% | Signature: "Quirky Comedies Fan" |
-| Fade Animations | ✅ Working | 100% | Smooth add/remove transitions |
-| Recommendation Quality | ⚠️ **Needs Work** | 60% | Feels generic, exclusions too aggressive |
-| LLM Integration | ⏳ Planned | 0% | Claude Haiku |
+| **Core Infrastructure** | ✅ Complete | 100% | Expo SDK 54, EAS Build configured |
+| **Authentication** | ✅ Complete | 100% | Supabase Auth working |
+| **Manual Subscription Entry** | ✅ Complete | 100% | Add/edit/delete services manually |
+| **Plaid Integration** | ⚠️ **UNTESTED** | 40% | Credentials configured, SDK integrated, **needs production build** |
+| **Automatic Bill Detection** | ⚠️ **UNTESTED** | 0% | Depends on Plaid working in production |
+| **Watchlist System** | ✅ Complete | 100% | 423 items tracked |
+| **Content Discovery** | ✅ Complete | 100% | TMDb API integration |
+| **Genre Affinity Learning** | ✅ Complete | 100% | Real-time tracking |
+| **Provider Filtering** | ✅ Complete | 100% | Filters by subscribed services |
+| **Content DNA System** | ✅ Populated | 100% | 406 rows with full schema |
+| **Recommendation Quality** | ⚠️ Needs Work | 60% | Exclusions too aggressive |
+| **For You Tab** | ✅ Complete | 95% | Working but quality issues |
+| **Discover Screen** | ✅ Complete | 100% | Swipe gestures, ratings |
+| **Home Dashboard** | ⚠️ Partial | 80% | Stats work, spending relies on manual entry |
+| **Error Handling** | ✅ Complete | 100% | 404s handled gracefully |
 
 ---
 
-## 🐛 Current Bug List (Post Session 19)
+## 🏦 Plaid Integration Status
 
-### ✅ Fixed in Session 19
+### What Is Done
+- ✅ Plaid developer account created
+- ✅ API credentials obtained and configured
+- ✅ Plaid Link SDK integrated into codebase
+- ✅ Server-side token exchange endpoint ready
+- ✅ Passed Plaid compliance questionnaire
+- ✅ Database schema ready for transaction storage
 
-| # | Issue | Fix Applied |
-|---|-------|-------------|
-| 1 | Content DNA missing columns | Added 26 columns (aesthetic_*, theme_*, narrative_*, content_*, production_*) |
-| 2 | DNA computation fails with PGRST204 | Schema now matches dnaToDatabase() function |
-| 3 | 404 errors cause red popups | Implemented permanent failure tracking in dnaComputationQueue.ts |
-| 4 | TypeScript errors in recommendationOrchestrator.ts | Fixed 5 type issues (function signature, missing fields, renamed property) |
-| 5 | avoid_genres column missing | Added to user_taste_profiles table |
+### What Is NOT Tested
+- ❌ Actual bank account connection flow
+- ❌ Transaction fetching from real banks
+- ❌ Subscription detection from bank data
+- ❌ Recurring transaction categorization
+- ❌ Real-world error handling (bank errors, auth failures)
 
-### 🔴 Active Issues (Priority Order)
+### Why It Remains Untested
+```
+Expo Development Build Limitation:
+├── Plaid Link requires native SDK
+├── Expo Go cannot run native modules properly
+├── Need EAS production build to test
+└── Current state: UI exists but functionality unverified
+```
 
-| # | Issue | Priority | Root Cause | Proposed Fix |
-|---|-------|----------|------------|--------------|
-| 1 | Recommendations feel generic/untargeted | **P0** | Exclusion system too aggressive (900+ items) | Clear shown history, tune exclusion window |
-| 2 | SVD generates 0 predictions | P1 | Only 1 user in system | Expected for single-user, rely on DNA-based recs |
-| 3 | Recently shown bloat | P1 | 525+ items in 7-day window | Reduce window or clear periodically |
-| 4 | Interest graph edges table missing | P2 | Table not created | Create interest_graph_edges table |
-| 5 | Tips content variety | Low | Limited templates | Add more tip types |
+### To Properly Test Plaid
+1. Create EAS production build: `eas build --platform android --profile production`
+2. Install on physical device
+3. Connect real bank account (sandbox mode first)
+4. Verify transaction fetching works
+5. Test subscription detection algorithm
+6. Handle edge cases (auth failures, missing data)
+
+---
+
+## 📱 Feature Status by Screen
+
+### Home Screen
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Monthly spending display | ✅ Working | From manual subscription entry only |
+| Annual projection | ✅ Working | Calculated from manual entry |
+| Watch stats (hours, count) | ✅ Working | From watchlist data |
+| Cost per hour | ⚠️ Partial | Only works with manual entry |
+| Service list | ✅ Working | Manual add/edit/delete |
+| **Auto-detected bills** | ❌ **Untested** | Requires Plaid in production |
+| Picked For You | ✅ Working | DNA-based recommendations |
+
+### Discover Screen
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Swipe gestures | ✅ Working | Left/right/up actions |
+| Half-star ratings | ✅ Working | Fixed in Session 18 |
+| Optimistic UI | ✅ Working | Instant feedback |
+| Provider badges | ✅ Working | Shows streaming service |
+
+### Watchlist / For You Screen
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Multi-lane browsing | ✅ Working | Genre-based lanes |
+| Genre filters | ✅ Working | Fixed in Session 18 |
+| Fade animations | ✅ Working | Smooth transitions |
+| Load performance | ✅ Working | ~600ms (down from 30s) |
+| Recommendation quality | ⚠️ Poor | Exclusions too aggressive |
+
+### Tips Screen
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Blindspot recommendations | ✅ Working | Hidden gems, classics |
+| Savings tips | ⚠️ Limited | Needs Plaid data for real insights |
+
+---
+
+## 🧠 Recommendation System
+
+### Working Components
+| Component | Status | Data |
+|-----------|--------|------|
+| Content DNA | ✅ 406 rows | TMDb metadata extraction |
+| Taste Profile | ✅ Working | "Quirky Comedies Fan" |
+| Genre Affinity | ✅ 22 genres | User interaction tracking |
+| Interest Graph | ✅ 707 nodes, 356 edges | Content relationships |
+| Provider Filtering | ✅ Working | Manual subscription list |
+
+### Current Issues
+| Issue | Impact | Root Cause |
+|-------|--------|------------|
+| Only 6 recommendations shown | High | 900+ items excluded |
+| Feels generic/untargeted | High | Exclusion system too aggressive |
+| SVD generates 0 predictions | Medium | Single user, no collaborative data |
+| Recently shown bloat | Medium | 525 items in 7-day window |
 
 ### Exclusion System Analysis
-
-The recommendation system is being choked by overlapping exclusions:
-
 ```
-Current Exclusion Breakdown:
-├── Watchlist Items:        411 items (expected)
-├── Session Exclusions:      62 items (7-day retention)
-├── Recently Shown:         525 items (7-day window) ⚠️ TOO HIGH
-└── Total Effective:       ~900+ items excluded
+Current State (Problematic):
+├── Watchlist:          411 items excluded
+├── Session:             62 items excluded  
+├── Recently Shown:     525 items excluded ⚠️
+└── Total:             ~900+ exclusions
 
-Problem: With only ~20 items fetched per API call, nearly everything 
-gets filtered out, leaving only 6 recommendations instead of 14+.
+Result: API returns 20 items, 14+ get excluded, 
+        leaving only 6 generic recommendations
 ```
-
-**Recommended Tuning:**
-1. Reduce "recently shown" window from 7 days to 3 days
-2. Clear recently shown on each fresh session
-3. Increase API fetch size to compensate for exclusions
-4. Prioritize DNA-based scoring over exclusion filtering
 
 ---
 
-## ✅ Session 19 Achievements (December 6, 2025)
+## 🔴 Blockers for Launch
 
-### Content DNA Schema Alignment 🧬
+### 1. Plaid Production Testing (CRITICAL)
+- **Risk:** Core "Rocket Money" value proposition is untested
+- **Impact:** Cannot detect subscriptions automatically from bank data
+- **Current State:** Manual entry works, but that is not the differentiator
+- **Action Required:** Build production APK and test with real bank
 
-**Problem:** Session 18 created simplified content_dna table, but the existing 1,558-line contentDNA.ts service expected different column names. DNA computation worked (taste profile: "Quirky Comedies Fan") but failed to persist with PGRST204 errors.
+### 2. Recommendation Quality (HIGH)
+- **Risk:** Users see generic/repetitive content
+- **Impact:** Poor user experience, low engagement
+- **Action Required:** Tune exclusion windows, clear bloated tables
 
-**Root Cause:** The `dnaToDatabase()` function in recommendationOrchestrator.ts (lines 562-608) writes to columns that did not exist.
-
-**Fix Applied:**
-```sql
--- Added 16 aesthetic columns
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS aesthetic_gritty REAL DEFAULT 0;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS aesthetic_polished REAL DEFAULT 0;
--- ... (14 more aesthetic columns)
-
--- Added missing theme columns
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS theme_good_vs_evil REAL DEFAULT 0;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS theme_loss REAL DEFAULT 0;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS theme_friendship REAL DEFAULT 0;
-
--- Added narrative columns
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS narrative_nonlinear REAL DEFAULT 0;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS narrative_twist REAL DEFAULT 0;
-
--- Added content rating columns
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS content_violence REAL DEFAULT 0;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS content_mature REAL DEFAULT 0;
-
--- Added production metadata
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS production_budget TEXT;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS production_era TEXT;
-ALTER TABLE content_dna ADD COLUMN IF NOT EXISTS origin_countries TEXT[];
-```
-
-**Result:** 
-- ✅ DNA now persists to database successfully
-- ✅ 406 items populated (up from 0)
-- ✅ No more PGRST204 column errors
-
-### 404 Error Handling 🛡️
-
-**Problem:** DNA queue retried deleted TMDb content infinitely, causing red error popups and wasted API calls.
-
-**Solution Implemented in dnaComputationQueue.ts:**
-```typescript
-// 1. Track permanently failed items
-private permanentlyFailed = new Set<string>();
-
-// 2. Skip in enqueue
-if (this.permanentlyFailed.has(key)) {
-  console.log(`[DNAQueue] Skipping permanently failed item: ${key}`);
-  return;
-}
-
-// 3. Mark 404s as permanent failures
-if (dna === null || error?.response?.status === 404) {
-  console.warn(`[DNAQueue] ✗ Content not found (404) for ${key}`);
-  this.permanentlyFailed.add(key);
-  return false;
-}
-```
-
-**Result:**
-- ✅ 404 errors logged as warnings, not errors
-- ✅ Failed items never retried
-- ✅ Queue continues processing valid items
-- ✅ No red error popups
-
-### TypeScript Fixes 🔧
-
-**5 Type Errors Fixed in recommendationOrchestrator.ts:**
-
-1. **Line 417:** Function signature mismatch
-   - Changed: `getSmartRecommendations(userId, 20)`
-   - To: `getSmartRecommendations({ userId, limit: 20 })`
-
-2. **Lines 544-550:** Missing talent fields
-   - Added: `cinematographers: []`, `productionCompanies: []`
-
-3. **Lines 552-558:** Missing production fields
-   - Added: `isRemake: false`, `isSequel: false`, `isAdaptation: false`
-
-4. **Lines 560-566:** Renamed property
-   - Changed: `sexualContent` → `sexuality`
-
-5. **Line 611:** Database save updated
-   - Changed: `content_mature: dna.content.sexuality`
-
-### Files Modified (Session 19)
-
-| File | Changes |
-|------|---------|
-| `dnaComputationQueue.ts` | 404 handling, permanent failure tracking |
-| `recommendationOrchestrator.ts` | 5 TypeScript fixes |
-| Supabase `content_dna` | Added 26 columns |
-| Supabase `user_taste_profiles` | Added avoid_genres column |
+### 3. Single-User Limitation (MEDIUM)
+- **Risk:** Collaborative filtering generates nothing
+- **Impact:** Missing "users like you also watched" recommendations
+- **Mitigation:** DNA-based recommendations compensate somewhat
 
 ---
 
-## 📈 Metrics (December 6, 2025 - Post Session 19)
+## 📈 Current Metrics
 
 ```
-Database Status:
-  - watchlist_items:       423 rows (100% have media_type) ✅
-  - content_dna:           406 rows ✅ POPULATED
-  - user_taste_profiles:   1 row (Quirky Comedies Fan)
+Database:
+  - watchlist_items:       423 rows
+  - content_dna:           406 rows
+  - user_taste_profiles:   1 row
+  - subscriptions:         2 (manual entry only)
 
-User Interactions:     423 watchlist items
-Recently Shown:        525 items (7-day window) ⚠️ HIGH
-Session Exclusions:    62 items (7-day retention)
-Watchlist IDs:         411 valid (4 invalid UUIDs skipped)
-Global Exclusions:     413 total
-Genre Affinities:      22 genres tracked
-Top Genres:            Drama, Comedy, Action
-Behavior Mode:         Discovery (exploring widely)
-Session Average:       10.4 items per session
-Confidence Score:      0.69
-Taste Signature:       Quirky Comedies Fan
-Interest Graph:        707 nodes, 356 edges
-Subscriptions:         2 active
-  - Netflix:           $15.49/mo (Provider ID: 8)
-  - Crunchyroll:       $7.99/mo (Provider ID: 283)
-Monthly Total:         $27.98
-Annual Projection:     $336/year
-Provider Filtering:    ✅ Active
-Service Badges:        ✅ Working
+Recommendations:
+  - Recently Shown:        525 items (7-day) ⚠️ TOO HIGH
+  - Session Exclusions:    62 items
+  - Effective Pool:        Very limited
 
-Status Distribution:
-  - Want to Watch:     112 items
-  - Watching:          8 items
-  - Watched:           303 items
+User Profile:
+  - Taste Signature:       Quirky Comedies Fan
+  - Behavior Mode:         Discovery
+  - Confidence:            69%
 
 Performance:
-  - For You Display:   Instant (cached) ✅
-  - Watchlist Load:    ~886ms ✅
-  - Dashboard Stats:   ~350ms ✅
-  - Discover Actions:  <100ms ✅
-  - DNA Computation:   ~170ms per item ✅
-  - Taste Profile:     ~1.6s (100 items) ✅
-  - No Error Popups:   ✅
+  - Watchlist Load:        ~600ms ✅
+  - Dashboard Stats:       ~350ms ✅
+  - DNA Computation:       ~170ms/item ✅
 ```
 
 ---
 
 ## 🛠️ Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Framework | React Native + Expo SDK 54 |
-| Language | TypeScript |
-| Backend | Supabase (Auth, Database, RLS) |
-| Content API | TMDb (The Movie Database) |
-| Banking | Plaid (subscription detection) |
-| Animations | React Native Reanimated v4 |
-| Gestures | React Native Gesture Handler |
-| Gradients | Expo Linear Gradient |
-| Icons | Lucide React Native |
-| Build | EAS Build (development client) |
-| Navigation | Custom state-based tabs |
+| Layer | Technology | Status |
+|-------|------------|--------|
+| Framework | React Native + Expo SDK 54 | ✅ Working |
+| Language | TypeScript | ✅ Working |
+| Backend | Supabase | ✅ Working |
+| Content API | TMDb | ✅ Working |
+| Banking | Plaid | ⚠️ **Untested in Production** |
+| Animations | Reanimated v4 | ✅ Working |
+| Build | EAS Build | ✅ Configured, not yet used for Plaid test |
 
 ---
 
-## 🚀 Remaining Work
+## 🚀 Path to Launch
 
-### Phase 1: Recommendation Quality (Next Session) 🔴
+### Phase 1: Validate Core Value Prop (BLOCKING)
+1. **Build production APK** via EAS Build
+2. **Test Plaid integration** with sandbox bank
+3. **Verify subscription detection** actually works
+4. **Decide:** Fix issues or pivot to manual-entry-only model
 
-**Fix the Exclusion System:**
-1. Identify correct table for "recently shown" tracking
-2. Clear or reduce the 525-item backlog
-3. Tune exclusion windows (7 days → 3 days)
-4. Increase diversity in recommendation sources
-
-**Leverage Content DNA:**
-- Use DNA attributes for similarity scoring
-- Weight recommendations by taste profile match
-- Implement "Because You Watched X" lanes using DNA
-
-### Phase 2: Advanced Recommendations
-
-**Multi-Lane System**
-- [ ] "Because You Watched" lane (DNA-based)
-- [ ] Talent Spotlight lanes
-- [ ] Interest Cluster lanes (using 707 nodes)
-- [ ] Mood-based suggestions
+### Phase 2: Fix Recommendation Quality
+1. Identify and clear "recently shown" bloat
+2. Tune exclusion windows (7 days → 3 days)
+3. Leverage DNA attributes for better personalization
+4. Implement "Because You Watched X" lanes
 
 ### Phase 3: Polish and Launch
-
-**UI Refinements**
-- [ ] Empty state designs
-- [ ] Tips content variety
-- [ ] Onboarding flow
-
-**Launch Preparation**
-- [ ] Waitlist integration
-- [ ] Analytics setup
-- [ ] App store assets
+1. Empty state designs
+2. Onboarding flow
+3. App store assets
+4. Beta testing with real users
 
 ---
 
-## 📅 Timeline to Launch
+## 📅 Realistic Timeline
 
-| Milestone | Target | Status |
-|-----------|--------|--------|
-| UI Redesign Implementation | Week 1-2 | ✅ Complete |
-| Critical Bug Fixes (DB Errors) | Week 2 | ✅ Complete |
-| Subscription Management Modal | Week 2 | ✅ Complete |
-| Provider Filtering | Week 2 | ✅ Complete |
-| Service Badges System | Week 2-3 | ✅ Complete |
-| Performance Optimization | Week 3 | ✅ Complete |
-| Dashboard Stats Fix | Week 3 | ✅ Complete |
-| Discover Optimistic UI | Week 3 | ✅ Complete |
-| Rating Modal | Week 3 | ✅ Complete |
-| Genre Diversity Fix | Week 3 | ✅ Complete |
-| TypeScript Fixes | Week 3-4 | ✅ Complete |
-| 404 Error Handling | Week 4 | ✅ **Complete (Session 19)** |
-| Exclusion System | Week 3-4 | ⚠️ Needs Tuning |
-| For You Tab Overhaul | Week 4 | ✅ Complete |
-| P0 Critical Bugs | Week 4 | ✅ Complete (Session 18) |
-| P1 UI Polish | Week 4 | ✅ Complete (Session 18) |
-| Content DNA Population | Week 4 | ✅ **Complete (Session 19)** |
-| Recommendation Quality | Week 5 | 🔴 **In Progress** |
-| Advanced Recommendations | Week 5-6 | ⏳ Planned |
-| Beta Testing | Week 6-7 | ⏳ Planned |
-| App Store Submission | Week 8 | ⏳ Planned |
+| Milestone | Target | Status | Blocker |
+|-----------|--------|--------|---------|
+| Plaid Production Test | Week 5 | 🔴 **NOT STARTED** | Need EAS production build |
+| Recommendation Fix | Week 5 | ⏳ In Progress | Need to clear exclusion bloat |
+| Core Value Validation | Week 5-6 | 🔴 Blocked | Plaid test results |
+| Beta Testing | Week 6-7 | ⏳ Blocked | Core validation |
+| App Store Submission | Week 8+ | ⏳ Blocked | Beta results |
 
 ---
 
@@ -458,38 +238,67 @@ Performance:
 
 | Session | Date | Focus | Key Achievements |
 |---------|------|-------|------------------|
-| 1-10 | Nov 2025 | Foundation | Core app structure, auth, watchlist |
-| 11 | Dec 3 | Database Errors | Fixed PGRST200, 22P02, relationship errors |
-| 12 | Dec 4 | Dashboard & Ratings | Stats widget, rating modal, backfill system |
-| 13 | Dec 4 | For You Tab | Genre diversity, recommendation lanes |
-| 14 | Dec 4 | TypeScript Fixes | All import/type errors resolved |
-| 15 | Dec 4 | Exclusion Logic | Session tracking, negative filtering |
+| 1-10 | Nov 2025 | Foundation | Core app, auth, watchlist |
+| 11 | Dec 3 | Database Errors | Fixed PGRST200, relationships |
+| 12 | Dec 4 | Dashboard | Stats widget, rating modal |
+| 13 | Dec 4 | For You Tab | Genre diversity, lanes |
+| 14 | Dec 4 | TypeScript | Import/type errors resolved |
+| 15 | Dec 4 | Exclusions | Session tracking |
 | 16 | Dec 5 | Performance | Caching, batch optimization |
-| 17 | Dec 5-6 | For You Overhaul | ID normalization, multi-layer fallback, instant display |
-| 18 | Dec 6 | Bug Sweep | 10 bugs fixed: P0 critical, P1 polish, P2 database |
-| **19** | **Dec 6** | **DNA Schema** | **406 DNA rows, 404 handling, TypeScript fixes, schema alignment** |
+| 17 | Dec 5-6 | For You Overhaul | ID normalization, fallbacks |
+| 18 | Dec 6 | Bug Sweep | 10 bugs fixed |
+| **19** | **Dec 6** | **DNA Schema** | 406 DNA rows, 404 handling, TS fixes |
 
 ---
 
 ## 🎯 Session 19 Summary
 
-**Focus:** Content DNA schema alignment and error handling
-
-**Achievements:**
-- ✅ Fixed Content DNA schema (26 missing columns added)
-- ✅ DNA now populating: 406 rows
+**Completed:**
+- ✅ Content DNA schema aligned (26 columns added)
+- ✅ 406 DNA rows populated
 - ✅ 404 error handling implemented
-- ✅ TypeScript errors fixed (5 issues)
-- ✅ Taste profile working ("Quirky Comedies Fan")
-- ✅ Interest graph built (707 nodes, 356 edges)
+- ✅ TypeScript errors fixed
+- ✅ Interest graph built (707 nodes)
 
-**Issues Identified:**
-- ⚠️ Recommendations feel generic/untargeted
-- ⚠️ Exclusion system too aggressive (900+ items)
-- ⚠️ SVD generates 0 predictions (single user)
+**Issues Discovered:**
+- ⚠️ Recommendations feel generic (exclusion bloat)
+- ⚠️ Plaid integration has never been tested in production
+- ⚠️ Manual subscription entry is the only working path for spending data
 
-**Next Session Priority:** 
-Fix recommendation quality by tuning exclusion system and leveraging DNA for better personalization
+**Next Session Priority:**
+1. **Build production APK to test Plaid** (critical path)
+2. Fix recommendation quality (clear exclusion bloat)
+3. Validate core value proposition end-to-end
+
+---
+
+## ⚠️ Honest Assessment
+
+StreamSense has strong UI/UX and a working content discovery system. However:
+
+### The Good
+- Content DNA system is populated and functional (406 items)
+- Taste profiling works ("Quirky Comedies Fan")
+- UI is polished with smooth animations
+- Performance is good (~600ms load times)
+- Error handling is robust
+
+### The Uncertain
+- **Plaid integration is completely untested in production**
+- The "Rocket Money for streaming" pitch depends on automatic subscription detection
+- Manual entry works but is not a differentiator
+- We do not know if the Plaid flow will work until we build and test
+
+### The Broken
+- Recommendation quality has regressed (only 6 items, feels generic)
+- Exclusion system is too aggressive (900+ items blocked)
+- SVD/collaborative filtering generates nothing (single user)
+
+### Before Claiming Launch Ready
+1. ✅ Test Plaid in production build
+2. ✅ Fix recommendation quality  
+3. ✅ Validate automatic subscription detection works
+4. ✅ Get real user feedback on the value proposition
 
 ---
 
