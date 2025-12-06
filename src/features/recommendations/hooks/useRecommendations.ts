@@ -2,11 +2,10 @@
  * useRecommendations Hook
  * Provides recommendation data for dashboard components
  */
-
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../../../hooks/useAuth';
-import { getSmartRecommendations } from '../../../services/smartRecommendations';
+import { getSmartRecommendations, shouldSkipCache } from '../../../services/smartRecommendations';
 import type { UnifiedContent } from '../../../types';
 
 const RECS_CACHE_KEY = 'picked_for_you_cache';
@@ -49,16 +48,23 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
     }
 
     try {
-      // 1. INSTANT: Load cached recommendations first
-      const cached = await AsyncStorage.getItem(RECS_CACHE_KEY);
-      if (cached) {
-        const { lanes, timestamp } = JSON.parse(cached);
-        // Show cached if less than 1 hour old
-        if (Date.now() - timestamp < 60 * 60 * 1000) {
-          setData(lanes);
-          setIsLoading(false);
-          console.log('[PickedForYou] Showing cached recommendations instantly');
+      // 🆕 FIX: Check if we should skip cache (fresh session)
+      const skipCache = shouldSkipCache();
+
+      // 1. INSTANT: Load cached recommendations ONLY if session has started
+      if (!skipCache) {
+        const cached = await AsyncStorage.getItem(RECS_CACHE_KEY);
+        if (cached) {
+          const { lanes, timestamp } = JSON.parse(cached);
+          // Show cached if less than 1 hour old
+          if (Date.now() - timestamp < 60 * 60 * 1000) {
+            setData(lanes);
+            setIsLoading(false);
+            console.log('[PickedForYou] Showing cached recommendations instantly');
+          }
         }
+      } else {
+        console.log('[PickedForYou] Skipping cache - fresh session, waiting for fresh data');
       }
 
       // 2. BACKGROUND: Fetch fresh recommendations
@@ -68,7 +74,7 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
         limit: 20,
         mediaType: 'mixed',
         forceRefresh: false,
-        excludeSessionItems: true, // 🔧 FIX: Exclude session items to prevent duplicates
+        excludeSessionItems: true,
       });
 
       // Transform UnifiedContent to RecommendationItem format
@@ -76,7 +82,7 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
         tmdb_id: item.id,
         title: item.title,
         poster_path: item.posterPath,
-        match_score: item.rating ? item.rating / 10 : undefined, // Normalize rating to 0-1
+        match_score: item.rating ? item.rating / 10 : undefined,
         reason: 'Based on your taste',
         media_type: item.type,
       }));
@@ -97,6 +103,7 @@ export const useRecommendationLanes = (): UseRecommendationLanesResult => {
         lanes,
         timestamp: Date.now(),
       }));
+
       console.log('[PickedForYou] Cached', items.length, 'recommendations');
 
     } catch (err) {
