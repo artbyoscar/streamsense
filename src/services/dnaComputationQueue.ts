@@ -236,8 +236,16 @@ class DNAComputationQueue {
 
       console.log(`[DNAQueue] Found ${watchlistItems.length} watchlist items, checking for missing DNA...`);
 
-      // Get all existing DNA records
-      const tmdbIds = watchlistItems.map(item => item.tmdb_id);
+      // Get all existing DNA records (filter out null/invalid tmdb_ids)
+      const tmdbIds = watchlistItems
+        .map(item => item.tmdb_id)
+        .filter(id => id != null && id !== 'null' && !isNaN(Number(id)));
+
+      if (tmdbIds.length === 0) {
+        console.log('[DNAQueue] No valid tmdb_ids to check');
+        return;
+      }
+
       const { data: existingDNA, error: dnaError } = await supabase
         .from('content_dna')
         .select('tmdb_id, media_type')
@@ -257,8 +265,12 @@ class DNAComputationQueue {
         (existingDNA || []).map(dna => `${dna.media_type}-${dna.tmdb_id}`)
       );
 
-      // Find items missing DNA
+      // Find items missing DNA (and have valid tmdb_ids)
       const missingDNA = watchlistItems.filter(item => {
+        // Skip items with invalid tmdb_id
+        if (!item.tmdb_id || item.tmdb_id === 'null' || isNaN(Number(item.tmdb_id))) {
+          return false;
+        }
         const key = `${item.media_type}-${item.tmdb_id}`;
         return !existingDNASet.has(key);
       });
