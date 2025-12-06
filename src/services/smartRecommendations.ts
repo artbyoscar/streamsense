@@ -20,6 +20,7 @@ const SESSION_CACHE_KEY = 'streamsense_session_shown';
 const WATCHLIST_CACHE_KEY = 'streamsense_watchlist_ids';
 const SESSION_EXCLUSIONS_KEY = 'streamsense_session_exclusions'; // 🆕 NEW: Persist skipped items
 const SHOWN_ITEMS_KEY = 'smartrecs_shown_items'; // 🆕 NEW: Track shown items across sessions
+const PICKED_FOR_YOU_CACHE_KEY = 'picked_for_you_cache'; // 🆕 FIX 3: PickedForYou cache
 
 let sessionShownIds: Set<number> = new Set();
 let watchlistTmdbIds: Set<number> = new Set();
@@ -322,11 +323,14 @@ const initializeCaches = async (userId: string) => {
       await AsyncStorage.removeItem(SESSION_CACHE_KEY);
       sessionShownIds = new Set();
 
-      // 🆕 FIX: Also clear recently shown items for fresh start
+      // 🆕 FIX 2: Also clear recently shown items for fresh start
       await AsyncStorage.removeItem(SHOWN_ITEMS_KEY);
       recentlyShownIds = new Set();
 
-      console.log('[SmartRecs] Cleared session cache AND recently shown for fresh recommendations');
+      // 🆕 FIX 3: Clear PickedForYou cache for fresh start
+      await AsyncStorage.removeItem(PICKED_FOR_YOU_CACHE_KEY);
+
+      console.log('[SmartRecs] Cleared session cache, recently shown, AND PickedForYou cache for fresh recommendations');
     } catch (e) {
       console.log('[SmartRecs] Error clearing caches:', e);
     }
@@ -341,26 +345,9 @@ const initializeCaches = async (userId: string) => {
     // 🆕 Load recently shown items (7-day window)
     recentlyShownIds = await loadRecentlyShownItems();
 
-    // 🆕 Seed recently shown from session exclusions (backfill for pre-tracking items)
-    if (sessionExclusionIds.size > 0) {
-      let addedCount = 0;
-      const stored = await AsyncStorage.getItem(SHOWN_ITEMS_KEY);
-      const data = stored ? JSON.parse(stored) : {};
-      const now = Date.now();
-
-      sessionExclusionIds.forEach(id => {
-        if (!recentlyShownIds.has(id)) {
-          data[id] = now;
-          recentlyShownIds.add(id);
-          addedCount++;
-        }
-      });
-
-      if (addedCount > 0) {
-        await AsyncStorage.setItem(SHOWN_ITEMS_KEY, JSON.stringify(data));
-        console.log('[SmartRecs] Seeded', addedCount, 'items from session exclusions into 7-day tracking');
-      }
-    }
+    // 🔧 FIX 4: REMOVED - Don't re-seed session exclusions into recently shown
+    // This was undoing the fresh start by putting old items back into tracking
+    // The seeding logic has been removed to allow truly fresh recommendations
 
     // Load FRESH watchlist IDs with normalization
     await loadWatchlistIds(userId);
