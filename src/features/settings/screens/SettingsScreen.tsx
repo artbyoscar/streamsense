@@ -21,6 +21,9 @@ import { COLORS, Card } from '@/components';
 import { useTheme } from '@/providers/ThemeProvider';
 import { useCustomNavigation } from '@/navigation/NavigationContext';
 import { backfillWatchlistMetadata } from '@/utils/backfillWatchlistMetadata';
+import { dnaComputationQueue } from '@/services/dnaComputationQueue';
+import { contentDNAService } from '@/services/contentDNA';
+import { recommendationOrchestrator } from '@/services/recommendationOrchestrator';
 
 // ============================================================================
 // TYPES
@@ -155,6 +158,10 @@ export const SettingsScreen: React.FC = () => {
 
   // Developer state
   const [isBackfilling, setIsBackfilling] = useState(false);
+  const [dnaStatus, setDnaStatus] = useState<string | null>(null);
+  const [profileStatus, setProfileStatus] = useState<string | null>(null);
+  const [isBuildingDNA, setIsBuildingDNA] = useState(false);
+  const [isBuildingProfile, setIsBuildingProfile] = useState(false);
 
   // Get user info
   const userName = user?.user_metadata?.first_name
@@ -304,6 +311,137 @@ export const SettingsScreen: React.FC = () => {
                 },
               ]
             );
+          },
+        },
+      ]
+    );
+  };
+
+  // Handler to populate Content DNA
+  const handleBuildContentDNA = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
+    Alert.alert(
+      'Build Content DNA',
+      'This will analyze all your watchlist items to build deep content profiles. This improves recommendations and may take 1-2 minutes.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Start Analysis',
+          onPress: async () => {
+            setIsBuildingDNA(true);
+            setDnaStatus('Scanning watchlist...');
+
+            try {
+              // Scan watchlist and queue items for DNA computation
+              await dnaComputationQueue.scanWatchlistForMissingDNA(user.id);
+
+              // Check queue status
+              const status = dnaComputationQueue.getStatus();
+
+              if (status.queueSize === 0) {
+                setDnaStatus('All items already analyzed!');
+                Alert.alert('DNA Analysis', 'All your watchlist items already have DNA profiles!');
+                setTimeout(() => {
+                  setDnaStatus(null);
+                  setIsBuildingDNA(false);
+                }, 2000);
+                return;
+              }
+
+              setDnaStatus(`Processing ${status.queueSize} items...`);
+
+              // Poll for completion
+              const checkProgress = setInterval(() => {
+                const current = dnaComputationQueue.getStatus();
+                const remaining = current.queueSize + current.processing;
+
+                if (remaining === 0) {
+                  clearInterval(checkProgress);
+                  setDnaStatus('DNA computation complete!');
+                  Alert.alert(
+                    'Analysis Complete',
+                    'Content DNA profiles have been built for your watchlist. Your recommendations are now smarter!'
+                  );
+                  setTimeout(() => {
+                    setDnaStatus(null);
+                    setIsBuildingDNA(false);
+                  }, 2000);
+                } else {
+                  setDnaStatus(`Processing... ${remaining} remaining`);
+                }
+              }, 2000);
+
+            } catch (error) {
+              console.error('[Settings] DNA build error:', error);
+              setDnaStatus('Error - check console');
+              Alert.alert('Error', 'Failed to build DNA. Check console for details.');
+              setTimeout(() => {
+                setDnaStatus(null);
+                setIsBuildingDNA(false);
+              }, 3000);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Handler to build/update Taste Profile
+  const handleBuildTasteProfile = async () => {
+    if (!user?.id) {
+      Alert.alert('Error', 'No user logged in');
+      return;
+    }
+
+    Alert.alert(
+      'Build Taste Profile',
+      'This will analyze your viewing history to create your personalized taste profile. This may take 30-60 seconds.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Build Profile',
+          onPress: async () => {
+            setIsBuildingProfile(true);
+            setProfileStatus('Analyzing watch history...');
+
+            try {
+              const profile = await contentDNAService.buildUserTasteProfile(user.id);
+
+              if (profile) {
+                setProfileStatus(`Profile built: ${profile.tasteSignature || 'Complete'}`);
+                Alert.alert(
+                  'Profile Built!',
+                  `Taste Signature: ${profile.tasteSignature}\n\nSample Size: ${profile.sampleSize} items\nConfidence: ${Math.round(profile.confidence * 100)}%${
+                    profile.discoveryOpportunities.length > 0
+                      ? `\n\nDiscovery Opportunities:\n• ${profile.discoveryOpportunities.slice(0, 3).join('\n• ')}`
+                      : ''
+                  }`
+                );
+              } else {
+                setProfileStatus('Could not build profile');
+                Alert.alert(
+                  'Profile Not Built',
+                  'Not enough data to build a taste profile. Add more items to your watchlist and mark them as watched.'
+                );
+              }
+
+              setTimeout(() => {
+                setProfileStatus(null);
+                setIsBuildingProfile(false);
+              }, 3000);
+            } catch (error) {
+              console.error('[Settings] Profile build error:', error);
+              setProfileStatus('Error - check console');
+              Alert.alert('Error', 'Failed to build profile. Check console for details.');
+              setTimeout(() => {
+                setProfileStatus(null);
+                setIsBuildingProfile(false);
+              }, 3000);
+            }
           },
         },
       ]
@@ -485,6 +623,30 @@ export const SettingsScreen: React.FC = () => {
               title="Test Features"
               subtitle="Test error handling, performance, and Sentry"
               onPress={() => Alert.alert('Test Features', 'Test features coming soon!')}
+            />
+
+            <View style={styles.divider} />
+
+            <SettingItem
+              icon="dna"
+              title={isBuildingDNA ? 'Building Content DNA...' : 'Build Content DNA'}
+              subtitle={dnaStatus || 'Analyze content for smarter recommendations'}
+              onPress={isBuildingDNA ? undefined : handleBuildContentDNA}
+              showChevron={!isBuildingDNA}
+              badge={isBuildingDNA ? 'RUNNING' : undefined}
+              badgeColor={COLORS.warning}
+            />
+
+            <View style={styles.divider} />
+
+            <SettingItem
+              icon="brain"
+              title={isBuildingProfile ? 'Building Taste Profile...' : 'Build Taste Profile'}
+              subtitle={profileStatus || 'Create your personalized taste signature'}
+              onPress={isBuildingProfile ? undefined : handleBuildTasteProfile}
+              showChevron={!isBuildingProfile}
+              badge={isBuildingProfile ? 'RUNNING' : undefined}
+              badgeColor={COLORS.warning}
             />
 
             <View style={styles.divider} />
