@@ -414,7 +414,7 @@ export class RecommendationOrchestrator {
    */
   private async getFallbackRecommendations(userId: string): Promise<RecommendationLane[]> {
     try {
-      const smartRecs = await getSmartRecommendations(userId, 20);
+      const smartRecs = await getSmartRecommendations({ userId, limit: 20 });
 
       return [
         {
@@ -546,16 +546,23 @@ export class RecommendationOrchestrator {
         leadActors: data.lead_actors || [],
         writers: data.writers || [],
         composers: data.composers || [],
+        cinematographers: [],
+        productionCompanies: [],
       },
       production: {
         budget: data.production_budget || 'unknown',
         era: data.production_era || 'unknown',
         originCountry: data.origin_countries || [],
+        isRemake: false,
+        isSequel: false,
+        isAdaptation: false,
       },
       content: {
         violence: data.content_violence || 0,
-        sexualContent: data.content_mature || 0,
+        sexuality: data.content_mature || 0,
         language: 0,
+        frightening: 0,
+        substanceUse: 0,
       },
       keywords: data.keywords || [],
       collections: [],
@@ -601,7 +608,7 @@ export class RecommendationOrchestrator {
       narrative_nonlinear: dna.narrative.nonLinear,
       narrative_twist: dna.narrative.twistEnding,
       content_violence: dna.content.violence,
-      content_mature: dna.content.sexualContent,
+      content_mature: dna.content.sexuality,
       production_budget: dna.production.budget,
       production_era: dna.production.era,
       origin_countries: dna.production.originCountry,
