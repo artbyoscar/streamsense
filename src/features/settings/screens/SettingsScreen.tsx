@@ -470,7 +470,7 @@ export const SettingsScreen: React.FC = () => {
               if (result.success) {
                 Alert.alert(
                   'Backfill Complete',
-                  `Successfully updated ${result.updated} items.\n${result.failed > 0 ? `Failed: ${result.failed}` : 'No failures.'}`,
+                  `Successfully updated ${result.updated} items.\n${(result.failed ?? 0) > 0 ? `Failed: ${result.failed}` : 'No failures.'}`,
                   [{ text: 'OK' }]
                 );
               } else {
