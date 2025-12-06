@@ -28,7 +28,32 @@ let sessionExclusionIds: Set<number> = new Set(); // 🆕 NEW: Separate set for 
 let recentlyShownIds: Set<number> = new Set(); // 🆕 NEW: Recently shown items (7-day window)
 let cacheInitialized = false;
 
+// 🆕 FIX 5: Track if this is a fresh app session (prevents stale cache usage)
+let freshSessionStarted = false;
+let sessionExclusionsLoaded = false; // Prevent duplicate loads
+
 const SHOWN_ITEMS_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+// ============================================================================
+// SESSION TRACKING - FIX 5
+// ============================================================================
+
+/**
+ * 🆕 Check if cache should be skipped (fresh session)
+ * Call this from useRecommendations before using cache
+ */
+export const shouldSkipCache = (): boolean => {
+  return !freshSessionStarted;
+};
+
+/**
+ * 🆕 Mark session as started (cache is now safe to use)
+ * Called after initializeCaches completes
+ */
+export const markSessionStarted = (): void => {
+  freshSessionStarted = true;
+  console.log('[SmartRecs] Session started, cache now valid');
+};
 
 // ============================================================================
 // GLOBAL EXCLUSION SYSTEM - FIXED VERSION
@@ -362,6 +387,9 @@ const initializeCaches = async (userId: string) => {
     }));
 
     cacheInitialized = true;
+
+    // 🆕 FIX 5: Mark session as started (cache is now valid)
+    markSessionStarted();
   } catch (error) {
     console.error('[SmartRecs] Cache init error:', error);
   }
