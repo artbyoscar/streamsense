@@ -336,60 +336,51 @@ export const getExclusionInfo = () => ({
 // ============================================================================
 
 const initializeCaches = async (userId: string) => {
-  // 🔧 FIX: Guard against invalid userId
   if (!userId || userId === 'undefined' || userId === 'null') {
-    console.warn('[SmartRecs] ⚠️  initializeCaches called with invalid userId:', userId);
+    console.warn('[SmartRecs] ⚠️ initializeCaches called with invalid userId:', userId);
     return;
   }
 
-  // 🆕 ALWAYS clear session cache on first init for fresh recommendations
+  // 🆕 ALWAYS clear on first init (before cacheInitialized check)
   if (!cacheInitialized) {
     try {
       await AsyncStorage.removeItem(SESSION_CACHE_KEY);
-      sessionShownIds = new Set();
-
-      // 🆕 FIX 2: Also clear recently shown items for fresh start
       await AsyncStorage.removeItem(SHOWN_ITEMS_KEY);
-      recentlyShownIds = new Set();
-
-      // 🆕 FIX 3: Clear PickedForYou cache for fresh start
       await AsyncStorage.removeItem(PICKED_FOR_YOU_CACHE_KEY);
-
-      console.log('[SmartRecs] Cleared session cache, recently shown, AND PickedForYou cache for fresh recommendations');
+      sessionShownIds = new Set();
+      recentlyShownIds = new Set();
+      console.log('[SmartRecs] Cleared ALL caches for fresh session');
     } catch (e) {
       console.log('[SmartRecs] Error clearing caches:', e);
     }
   }
 
-  if (cacheInitialized) return;
+  if (cacheInitialized) {
+    markSessionStarted(); // 🆕 Ensure flag is set even on re-init
+    return;
+  }
 
   try {
-    // 🆕 Load session exclusions (skipped items)
-    await loadSessionExclusions();
+    // 🆕 FIX: Only load session exclusions ONCE
+    if (!sessionExclusionsLoaded) {
+      await loadSessionExclusions();
+      sessionExclusionsLoaded = true;
+    }
 
-    // 🆕 Load recently shown items (7-day window)
-    recentlyShownIds = await loadRecentlyShownItems();
-
-    // 🔧 FIX 4: REMOVED - Don't re-seed session exclusions into recently shown
-    // This was undoing the fresh start by putting old items back into tracking
-    // The seeding logic has been removed to allow truly fresh recommendations
-
-    // Load FRESH watchlist IDs with normalization
+    // Load FRESH watchlist IDs
     await loadWatchlistIds(userId);
 
-    // 🔧 FIX: Rebuild global exclusions (combines watchlist + session)
+    // Rebuild global exclusions
     rebuildGlobalExclusions();
 
-    // Cache to storage
+    // Cache watchlist to storage
     await AsyncStorage.setItem(WATCHLIST_CACHE_KEY, JSON.stringify({
       ids: Array.from(watchlistTmdbIds),
       timestamp: Date.now(),
     }));
 
     cacheInitialized = true;
-
-    // 🆕 FIX 5: Mark session as started (cache is now valid)
-    markSessionStarted();
+    markSessionStarted(); // 🆕 NOW cache is safe to use
   } catch (error) {
     console.error('[SmartRecs] Cache init error:', error);
   }
