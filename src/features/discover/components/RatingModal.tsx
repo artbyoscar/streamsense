@@ -6,7 +6,7 @@
 
 import React, { useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Star } from 'lucide-react-native';
+import { Star, StarHalf } from 'lucide-react-native';
 
 interface RatingModalProps {
   visible: boolean;
@@ -23,46 +23,57 @@ export const RatingModal: React.FC<RatingModalProps> = ({
 }) => {
   const [rating, setRating] = useState<number>(0);
 
-  const handleStarPress = (starIndex: number, event: any) => {
-    // Detect which half of the star was tapped
-    const { locationX } = event.nativeEvent;
-    const isLeftHalf = locationX < 20; // Half of 40px star width
-
-    const newRating = isLeftHalf ? starIndex - 0.5 : starIndex;
-    setRating(newRating);
-  };
-
   const renderStar = (starIndex: number) => {
     const isFull = rating >= starIndex;
     const isHalf = rating >= starIndex - 0.5 && rating < starIndex;
 
     return (
-      <TouchableOpacity
-        key={starIndex}
-        style={styles.starButton}
-        onPress={(event) => handleStarPress(starIndex, event)}
-        activeOpacity={0.7}
-      >
-        {isFull ? (
-          <Star size={40} fill="#FFD700" color="#FFD700" />
-        ) : isHalf ? (
-          <View style={styles.halfStarContainer}>
-            <View style={styles.halfStarLeft}>
-              <Star size={40} fill="#FFD700" color="#FFD700" />
-            </View>
-            <View style={styles.halfStarRight}>
-              <Star size={40} fill="transparent" color="#444" />
-            </View>
+      <View key={starIndex} style={styles.starContainer}>
+        {/* LEFT HALF - tap for X.5 rating */}
+        <TouchableOpacity
+          style={styles.halfTouchTarget}
+          onPress={() => {
+            const newRating = starIndex - 0.5;
+            console.log('[Rating] Half star pressed:', newRating);
+            setRating(newRating);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.leftHalf}>
+            {isHalf ? (
+              <StarHalf size={36} fill="#FFD700" color="#FFD700" />
+            ) : isFull ? (
+              <Star size={36} fill="#FFD700" color="#FFD700" />
+            ) : (
+              <Star size={36} color="#555" fill="transparent" />
+            )}
           </View>
-        ) : (
-          <Star size={40} fill="transparent" color="#444" />
-        )}
-      </TouchableOpacity>
+        </TouchableOpacity>
+
+        {/* RIGHT HALF - tap for X.0 rating */}
+        <TouchableOpacity
+          style={styles.halfTouchTarget}
+          onPress={() => {
+            console.log('[Rating] Full star pressed:', starIndex);
+            setRating(starIndex);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={styles.rightHalf}>
+            {isFull ? (
+              <Star size={36} fill="#FFD700" color="#FFD700" />
+            ) : (
+              <Star size={36} color="#555" fill="transparent" />
+            )}
+          </View>
+        </TouchableOpacity>
+      </View>
     );
   };
 
   const handleSubmit = () => {
     if (rating > 0) {
+      console.log('[RatingModal] Submitting rating:', rating, 'type:', typeof rating);
       onSubmit(rating);
       setRating(0); // Reset for next use
     }
@@ -145,27 +156,22 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 20,
   },
-  starButton: {
-    padding: 4,
+  starContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 4,
   },
-  halfStarContainer: {
+  halfTouchTarget: {
+    width: 20,
+    height: 44,
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  leftHalf: {
     width: 40,
-    height: 40,
-    position: 'relative',
   },
-  halfStarLeft: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: 20,
-    overflow: 'hidden',
-  },
-  halfStarRight: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: 20,
-    overflow: 'hidden',
+  rightHalf: {
+    width: 40,
+    marginLeft: -20,
   },
   ratingText: {
     fontSize: 13,
